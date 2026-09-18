@@ -66,16 +66,47 @@ Gdip_NewLayeredCanvas(w, h) {
     DllCall("gdiplus\GdipSetTextRenderingHint", "Ptr", pGraphics, "Int", 4) ; AntiAlias
     DllCall("gdiplus\GdipGraphicsClear", "Ptr", pGraphics, "UInt", 0x00000000)
 
-    return { w: w, h: h, hBitmap: hBitmap, ppvBits: ppvBits, pBitmap: pBitmap, pGraphics: pGraphics }
+    ; capW/capH = tamanho real do DIB alocado; w/h = tamanho lógico exibido
+    ; nesse frame (ver Gdip_ResizeCanvas — podem ser menores que a capacidade
+    ; quando o canvas é reaproveitado entre frames).
+    return { w: w, h: h, capW: w, capH: h, hBitmap: hBitmap, ppvBits: ppvBits, pBitmap: pBitmap, pGraphics: pGraphics }
+}
+
+; Redimensiona logicamente um canvas persistente (passado por referência),
+; reaproveitando o DIB/Graphics do GDI+ quando ele já é grande o bastante
+; e só recriando (destruindo o antigo) quando precisa crescer. Recriar
+; CreateDIBSection + GdipCreateBitmapFromScan0 do zero a cada frame — como
+; a HUD fazia, redesenhando a até 60fps durante hover/expandir — é a causa
+; mais cara de lag nessas animações; aqui o custo por frame vira só um
+; GdipGraphicsClear (memset) na área já alocada.
+Gdip_ResizeCanvas(&canvasVar, w, h) {
+    if (!IsObject(canvasVar) || w > canvasVar.capW || h > canvasVar.capH) {
+        capW := IsObject(canvasVar) ? Max(canvasVar.capW, w) : w
+        capH := IsObject(canvasVar) ? Max(canvasVar.capH, h) : h
+        if IsObject(canvasVar)
+            Gdip_DestroyLayeredCanvas(canvasVar)
+        canvasVar := Gdip_NewLayeredCanvas(capW, capH)
+    } else {
+        DllCall("gdiplus\GdipGraphicsClear", "Ptr", canvasVar.pGraphics, "UInt", 0x00000000)
+    }
+    canvasVar.w := w
+    canvasVar.h := h
+    return canvasVar
 }
 
 ; Envia o canvas para a tela através de UpdateLayeredWindow (janela toda,
-; posição e tamanho vêm juntos nessa mesma chamada).
+; posição e tamanho vêm juntos nessa mesma chamada). O DC de memória fica
+; guardado no próprio canvas e é reaproveitado entre chamadas (criado só na
+; primeira vez que esse hBitmap é apresentado) — o mesmo raciocínio do
+; Gdip_ResizeCanvas: recriar CreateCompatibleDC/SelectObject a cada frame
+; custa mais do que manter um DC vivo enquanto o bitmap não muda.
 Gdip_PresentLayeredCanvas(canvas, hwnd, x, y) {
     global _gdipHDCScreen
 
-    hdcMem := DllCall("CreateCompatibleDC", "Ptr", _gdipHDCScreen, "Ptr")
-    hOld   := DllCall("SelectObject", "Ptr", hdcMem, "Ptr", canvas.hBitmap, "Ptr")
+    if (!canvas.HasOwnProp("hdcMem")) {
+        canvas.hdcMem := DllCall("CreateCompatibleDC", "Ptr", _gdipHDCScreen, "Ptr")
+        canvas.hOld   := DllCall("SelectObject", "Ptr", canvas.hdcMem, "Ptr", canvas.hBitmap, "Ptr")
+    }
 
     sizeBuf := Buffer(8)
     NumPut("Int", canvas.w, sizeBuf, 0)
@@ -94,14 +125,15 @@ Gdip_PresentLayeredCanvas(canvas, hwnd, x, y) {
     NumPut("UChar", 1,   blend, 3) ; AC_SRC_ALPHA
 
     DllCall("UpdateLayeredWindow", "Ptr", hwnd, "Ptr", _gdipHDCScreen,
-        "Ptr", ptDst, "Ptr", sizeBuf, "Ptr", hdcMem, "Ptr", ptSrc,
+        "Ptr", ptDst, "Ptr", sizeBuf, "Ptr", canvas.hdcMem, "Ptr", ptSrc,
         "UInt", 0, "Ptr", blend, "UInt", 2) ; ULW_ALPHA
-
-    DllCall("SelectObject", "Ptr", hdcMem, "Ptr", hOld, "Ptr")
-    DllCall("DeleteDC", "Ptr", hdcMem)
 }
 
 Gdip_DestroyLayeredCanvas(canvas) {
+    if (canvas.HasOwnProp("hdcMem")) {
+        DllCall("SelectObject", "Ptr", canvas.hdcMem, "Ptr", canvas.hOld, "Ptr")
+        DllCall("DeleteDC", "Ptr", canvas.hdcMem)
+    }
     DllCall("gdiplus\GdipDeleteGraphics", "Ptr", canvas.pGraphics)
     DllCall("gdiplus\GdipDisposeImage",   "Ptr", canvas.pBitmap)
     DllCall("DeleteObject", "Ptr", canvas.hBitmap)

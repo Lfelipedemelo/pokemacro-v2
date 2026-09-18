@@ -28,6 +28,7 @@ global _hudHoverId    := ""
 global _hudHoverT     := Map()
 global _hudBoxes      := []
 global _hudVisibleCache := 0   ; cache de _HudVisibleItems() — ver comentário lá
+global _hudCanvas       := 0   ; canvas GDI+ persistente entre frames (ver Gdip_ResizeCanvas em lib\gdip.ahk)
 global _hudEventHook    := 0   ; handle do hook de EVENT_SYSTEM_FOREGROUND (ver _HudRegistrarHook)
 global _hudEventCb      := 0   ; ponteiro do callback, criado uma única vez
 
@@ -133,7 +134,7 @@ _HudAbrir() {
 }
 
 _HudFechar() {
-    global miniGui
+    global miniGui, _hudCanvas
     if (!miniGui)
         return
     _HudSalvarPos()
@@ -142,6 +143,10 @@ _HudFechar() {
     _HudRemoverHook()
     try miniGui.Destroy()
     miniGui := 0
+    if (_hudCanvas) {
+        Gdip_DestroyLayeredCanvas(_hudCanvas)
+        _hudCanvas := 0
+    }
 }
 
 ; Chamado pelo resto do app quando um macro muda de estado em outra tela,
@@ -454,7 +459,7 @@ _HudDrawMiniBtn(g, kind, cx, cy, d, hoverT, expandido := false) {
 
 ; ── Desenho principal ────────────────────────────────────
 _HudRedraw() {
-    global miniGui, _hudX, _hudY, _hudExpandT, _hudExpanded, _hudHoverT, _hudBoxes, macros, _HUD_SCALE, _hudBarHover
+    global miniGui, _hudX, _hudY, _hudExpandT, _hudExpanded, _hudHoverT, _hudBoxes, macros, _HUD_SCALE, _hudBarHover, _hudCanvas
     Critical "On"
 
     if (!miniGui) {
@@ -556,7 +561,7 @@ _HudRedraw() {
 
     winW := Max(winW, 10)
     winH := Max(winH, 10)
-    canvas := Gdip_NewLayeredCanvas(winW, winH)
+    canvas := Gdip_ResizeCanvas(&_hudCanvas, winW, winH)
     g := canvas.pGraphics
 
     ; fundo + borda
@@ -675,6 +680,5 @@ _HudRedraw() {
     }
 
     Gdip_PresentLayeredCanvas(canvas, hudHwnd, _hudX, _hudY)
-    Gdip_DestroyLayeredCanvas(canvas)
     Critical "Off"
 }
