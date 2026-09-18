@@ -23,6 +23,7 @@ global _hudX          := 0
 global _hudY          := 0
 global _hudExpanded   := false
 global _hudExpandT    := 0.0
+global _hudBarHover   := false  ; true enquanto o mouse está sobre a barra — engrenagem/expandir/fechar só existem nesse momento
 global _hudHoverId    := ""
 global _hudHoverT     := Map()
 global _hudBoxes      := []
@@ -101,12 +102,13 @@ AbrirMiniMenu() {
 }
 
 _HudAbrir() {
-    global miniGui, _hudX, _hudY, _hudExpanded, _hudExpandT, _hudHoverId, _hudHoverT
+    global miniGui, _hudX, _hudY, _hudExpanded, _hudExpandT, _hudHoverId, _hudHoverT, _hudBarHover
 
     Gdip_EnsureStarted()
 
     _hudHoverId := ""
     _hudHoverT  := Map()
+    _hudBarHover := false
     _hudExpanded := (IniRead(configFile, "MiniMenu", "expandido", "1") = "1")
     _hudExpandT  := _hudExpanded ? 1.0 : 0.0
     _HudAtualizarVisibleItems()
@@ -257,10 +259,19 @@ _HudHitTest(x, y) {
 }
 
 _HudWM_MouseMove(wParam, lParam, msg, hwnd) {
-    global miniGui, _hudHoverId
+    global miniGui, _hudHoverId, _hudBarHover
     if (!miniGui || hwnd != miniGui.Hwnd)
         return
     _HudArmarSaida(hwnd)
+    ; WM_MOUSEMOVE só chega enquanto o cursor está sobre a janela da HUD,
+    ; então essa borda (false → true) é o sinal de "entrou na barra" —
+    ; usado para só então desenhar engrenagem/expandir/fechar. Redesenha
+    ; uma vez aqui (não a cada pixel), o resto do frame já ia rodar de
+    ; qualquer forma pelo hit-test de hover abaixo.
+    if (!_hudBarHover) {
+        _hudBarHover := true
+        _HudRedraw()
+    }
     xy := _HudDecodeXY(lParam)
     box := _HudHitTest(xy[1], xy[2])
     novoId := box ? box.id : ""
@@ -289,13 +300,12 @@ _HudWM_Move(wParam, lParam, msg, hwnd) {
 }
 
 _HudWM_MouseLeave(wParam, lParam, msg, hwnd) {
-    global miniGui, _hudHoverId
+    global miniGui, _hudHoverId, _hudBarHover
     if (!miniGui || hwnd != miniGui.Hwnd)
         return
-    if (_hudHoverId != "") {
-        _hudHoverId := ""
-        _HudStartFx()
-    }
+    _hudHoverId := ""
+    _hudBarHover := false   ; sai da barra: some com gear/expandir/fechar
+    _HudRedraw()
 }
 
 _HudWM_LButtonDown(wParam, lParam, msg, hwnd) {
@@ -444,7 +454,7 @@ _HudDrawMiniBtn(g, kind, cx, cy, d, hoverT, expandido := false) {
 
 ; ── Desenho principal ────────────────────────────────────
 _HudRedraw() {
-    global miniGui, _hudX, _hudY, _hudExpandT, _hudExpanded, _hudHoverT, _hudBoxes, macros, _HUD_SCALE
+    global miniGui, _hudX, _hudY, _hudExpandT, _hudExpanded, _hudHoverT, _hudBoxes, macros, _HUD_SCALE, _hudBarHover
     Critical "On"
 
     if (!miniGui) {
@@ -477,24 +487,35 @@ _HudRedraw() {
         cx += BTN_D + GAP
     }
 
-    cx += 2
-    sepX := cx
-    cx += 1 + GAP
+    ; Separador + engrenagem/expandir/fechar só existem enquanto o mouse
+    ; está sobre a barra (_hudBarHover) — no jogo, quase sempre só se quer
+    ; ligar/desligar um macro pelos ícones da esquerda, então esse grupo
+    ; nem ocupa espaço fora do hover.
+    mostrarCluster := _hudBarHover
+    sepX := 0
+    gearCx := 0, chevCx := 0, closeCx := 0
+    tGear := 0, tChev := 0, tClose := 0
 
-    tGear := _hudHoverT.Has("gear") ? _hudHoverT["gear"] : 0
-    gearCx := cx + MINI_D / 2
-    boxes.Push({ id: "gear", kind: "gear", cx: gearCx, cy: barCY, r: MINI_D / 2 + 3 })
-    cx += MINI_D + 6
+    if (mostrarCluster) {
+        cx += 2
+        sepX := cx
+        cx += 1 + GAP
 
-    tChev := _hudHoverT.Has("chevron") ? _hudHoverT["chevron"] : 0
-    chevCx := cx + MINI_D / 2
-    boxes.Push({ id: "chevron", kind: "chevron", cx: chevCx, cy: barCY, r: MINI_D / 2 + 3 })
-    cx += MINI_D + 6
+        tGear := _hudHoverT.Has("gear") ? _hudHoverT["gear"] : 0
+        gearCx := cx + MINI_D / 2
+        boxes.Push({ id: "gear", kind: "gear", cx: gearCx, cy: barCY, r: MINI_D / 2 + 3 })
+        cx += MINI_D + 6
 
-    tClose := _hudHoverT.Has("close") ? _hudHoverT["close"] : 0
-    closeCx := cx + MINI_D / 2
-    boxes.Push({ id: "close", kind: "close", cx: closeCx, cy: barCY, r: MINI_D / 2 + 3 })
-    cx += MINI_D
+        tChev := _hudHoverT.Has("chevron") ? _hudHoverT["chevron"] : 0
+        chevCx := cx + MINI_D / 2
+        boxes.Push({ id: "chevron", kind: "chevron", cx: chevCx, cy: barCY, r: MINI_D / 2 + 3 })
+        cx += MINI_D + 6
+
+        tClose := _hudHoverT.Has("close") ? _hudHoverT["close"] : 0
+        closeCx := cx + MINI_D / 2
+        boxes.Push({ id: "close", kind: "close", cx: closeCx, cy: barCY, r: MINI_D / 2 + 3 })
+        cx += MINI_D
+    }
 
     winW := cx + PAD
 
@@ -593,15 +614,16 @@ _HudRedraw() {
         }
     }
 
-    ; separador vertical
-    sepPen := Gdip_Pen(Gdip_Argb(255, "0x221f27"), 1)
-    Gdip_DrawLine(g, sepPen, sepX, barCY - SEP_H / 2, sepX, barCY + SEP_H / 2)
-    Gdip_DeletePen(sepPen)
+    ; separador vertical + botões auxiliares — só existem com o mouse sobre a barra
+    if (mostrarCluster) {
+        sepPen := Gdip_Pen(Gdip_Argb(255, "0x221f27"), 1)
+        Gdip_DrawLine(g, sepPen, sepX, barCY - SEP_H / 2, sepX, barCY + SEP_H / 2)
+        Gdip_DeletePen(sepPen)
 
-    ; botões auxiliares
-    _HudDrawMiniBtn(g, "gear",    gearCx,  barCY, MINI_D, tGear)
-    _HudDrawMiniBtn(g, "chevron", chevCx,  barCY, MINI_D, tChev, _hudExpanded)
-    _HudDrawMiniBtn(g, "close",   closeCx, barCY, MINI_D, tClose)
+        _HudDrawMiniBtn(g, "gear",    gearCx,  barCY, MINI_D, tGear)
+        _HudDrawMiniBtn(g, "chevron", chevCx,  barCY, MINI_D, tChev, _hudExpanded)
+        _HudDrawMiniBtn(g, "close",   closeCx, barCY, MINI_D, tClose)
+    }
 
     ; painel-resumo
     if (mostrarPainel) {
