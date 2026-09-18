@@ -17,8 +17,16 @@ GetModoLegado() {
     return IniRead(configFile, "Geral", "modoLegado", "false")
 }
 
+; Orientação da barra de ícones da HUD — "horizontal" (padrão, ícones
+; lado a lado) ou "vertical" (ícones empilhados numa coluna). Lida em
+; tempo real por _HudRedraw (ui\mini_menu.ahk), sem cache.
+GetHudOrientacao() {
+    global configFile
+    return IniRead(configFile, "Geral", "hudOrientacao", "horizontal")
+}
+
 AbrirConfigGeral() {
-    _GCfg_Abrir(288, 476, _DesenharConfigGeral)
+    _GCfg_Abrir(288, 528, _DesenharConfigGeral)
 }
 
 ; ── Tamanho da interface (HUD + telas de config) ──
@@ -98,6 +106,12 @@ _DesenharConfigGeral(g, w, h, hoverId) {
     _GCfg_Segmented(g, boxes, "escala", pad, y, w - pad*2, "TAMANHO DA INTERFACE",
         ["PEQUENO", "NORMAL", "GRANDE"], _ConfigGeral_EscalaIdx(GetEscalaInterface()),
         (idx) => AplicarEscalaInterface(_ConfigGeral_EscalaNome(idx)), hoverId)
+    y += 44 + 8
+
+    orientVertical := GetHudOrientacao() = "vertical"
+    _GCfg_Toggle(g, boxes, "orient", pad, y, w - pad*2, "ORIENTAÇÃO DOS ÍCONES (HUD)", "HORIZONTAL", "VERTICAL", !orientVertical,
+        (*) => (IniWrite("horizontal", configFile, "Geral", "hudOrientacao"), _RecriarMini()),
+        (*) => (IniWrite("vertical",   configFile, "Geral", "hudOrientacao"), _RecriarMini()), hoverId)
     y += 44 + 8
 
     faVal := IniRead(configFile, "Geral", "fullAttack", "N/A")

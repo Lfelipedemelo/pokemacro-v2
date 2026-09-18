@@ -473,56 +473,100 @@ _HudRedraw() {
     s      := _HUD_SCALE
 
     PAD := Round(14*s), GAP := Round(10*s), BTN_D := Round(36*s), MINI_D := Round(22*s), SEP_H := Round(22*s)
-    BAR_H := Round(58*s)
+    BAR_THICK := Round(58*s)   ; espessura fixa da barra (altura se horizontal, largura se vertical)
     ICON_BAR_SZ := Round(34*s), ICON_ROW_SZ := Round(20*s)
 
-    cx := PAD
-    barCY := BAR_H // 2
+    vertical := (GetHudOrientacao() = "vertical")
 
     boxes    := []
     barIcons := []
 
-    for m in items {
-        hk := "bar_" m["id"]
-        hv := _hudHoverT.Has(hk) ? _hudHoverT[hk] : 0
-        r  := BTN_D / 2 + hv * 2 * s
-        thisCx := cx + BTN_D / 2
-        boxes.Push({ id: hk, kind: "macro", nome: m["nome"], cx: thisCx, cy: barCY, r: BTN_D / 2 + 3 })
-        barIcons.Push({ m: m, cx: thisCx, cy: barCY, r: r, hoverT: hv })
-        cx += BTN_D + GAP
-    }
-
     ; Separador + engrenagem/expandir/fechar só existem enquanto o mouse
     ; está sobre a barra (_hudBarHover) — no jogo, quase sempre só se quer
-    ; ligar/desligar um macro pelos ícones da esquerda, então esse grupo
-    ; nem ocupa espaço fora do hover.
+    ; ligar/desligar um macro pelos ícones, então esse grupo nem ocupa
+    ; espaço fora do hover.
     mostrarCluster := _hudBarHover
-    sepX := 0
-    gearCx := 0, chevCx := 0, closeCx := 0
+    sepX := 0, sepY := 0
+    gearCx := 0, gearCy := 0, chevCx := 0, chevCy := 0, closeCx := 0, closeCy := 0
     tGear := 0, tChev := 0, tClose := 0
 
-    if (mostrarCluster) {
-        cx += 2
-        sepX := cx
-        cx += 1 + GAP
+    if (vertical) {
+        ; Ícones empilhados numa coluna estreita — a mesma lógica de
+        ; sempre, só que ao longo de y em vez de x (ver ramo "else").
+        barCX := BAR_THICK // 2
+        cy := PAD
 
-        tGear := _hudHoverT.Has("gear") ? _hudHoverT["gear"] : 0
-        gearCx := cx + MINI_D / 2
-        boxes.Push({ id: "gear", kind: "gear", cx: gearCx, cy: barCY, r: MINI_D / 2 + 3 })
-        cx += MINI_D + 6
+        for m in items {
+            hk := "bar_" m["id"]
+            hv := _hudHoverT.Has(hk) ? _hudHoverT[hk] : 0
+            r  := BTN_D / 2 + hv * 2 * s
+            thisCy := cy + BTN_D / 2
+            boxes.Push({ id: hk, kind: "macro", nome: m["nome"], cx: barCX, cy: thisCy, r: BTN_D / 2 + 3 })
+            barIcons.Push({ m: m, cx: barCX, cy: thisCy, r: r, hoverT: hv })
+            cy += BTN_D + GAP
+        }
 
-        tChev := _hudHoverT.Has("chevron") ? _hudHoverT["chevron"] : 0
-        chevCx := cx + MINI_D / 2
-        boxes.Push({ id: "chevron", kind: "chevron", cx: chevCx, cy: barCY, r: MINI_D / 2 + 3 })
-        cx += MINI_D + 6
+        if (mostrarCluster) {
+            cy += 2
+            sepY := cy
+            cy += 1 + GAP
 
-        tClose := _hudHoverT.Has("close") ? _hudHoverT["close"] : 0
-        closeCx := cx + MINI_D / 2
-        boxes.Push({ id: "close", kind: "close", cx: closeCx, cy: barCY, r: MINI_D / 2 + 3 })
-        cx += MINI_D
+            tGear := _hudHoverT.Has("gear") ? _hudHoverT["gear"] : 0
+            gearCx := barCX, gearCy := cy + MINI_D / 2
+            boxes.Push({ id: "gear", kind: "gear", cx: gearCx, cy: gearCy, r: MINI_D / 2 + 3 })
+            cy += MINI_D + 6
+
+            tChev := _hudHoverT.Has("chevron") ? _hudHoverT["chevron"] : 0
+            chevCx := barCX, chevCy := cy + MINI_D / 2
+            boxes.Push({ id: "chevron", kind: "chevron", cx: chevCx, cy: chevCy, r: MINI_D / 2 + 3 })
+            cy += MINI_D + 6
+
+            tClose := _hudHoverT.Has("close") ? _hudHoverT["close"] : 0
+            closeCx := barCX, closeCy := cy + MINI_D / 2
+            boxes.Push({ id: "close", kind: "close", cx: closeCx, cy: closeCy, r: MINI_D / 2 + 3 })
+            cy += MINI_D
+        }
+
+        barSectionW := BAR_THICK
+        barSectionH := cy + PAD
+    } else {
+        barCY := BAR_THICK // 2
+        cx := PAD
+
+        for m in items {
+            hk := "bar_" m["id"]
+            hv := _hudHoverT.Has(hk) ? _hudHoverT[hk] : 0
+            r  := BTN_D / 2 + hv * 2 * s
+            thisCx := cx + BTN_D / 2
+            boxes.Push({ id: hk, kind: "macro", nome: m["nome"], cx: thisCx, cy: barCY, r: BTN_D / 2 + 3 })
+            barIcons.Push({ m: m, cx: thisCx, cy: barCY, r: r, hoverT: hv })
+            cx += BTN_D + GAP
+        }
+
+        if (mostrarCluster) {
+            cx += 2
+            sepX := cx
+            cx += 1 + GAP
+
+            tGear := _hudHoverT.Has("gear") ? _hudHoverT["gear"] : 0
+            gearCx := cx + MINI_D / 2, gearCy := barCY
+            boxes.Push({ id: "gear", kind: "gear", cx: gearCx, cy: gearCy, r: MINI_D / 2 + 3 })
+            cx += MINI_D + 6
+
+            tChev := _hudHoverT.Has("chevron") ? _hudHoverT["chevron"] : 0
+            chevCx := cx + MINI_D / 2, chevCy := barCY
+            boxes.Push({ id: "chevron", kind: "chevron", cx: chevCx, cy: chevCy, r: MINI_D / 2 + 3 })
+            cx += MINI_D + 6
+
+            tClose := _hudHoverT.Has("close") ? _hudHoverT["close"] : 0
+            closeCx := cx + MINI_D / 2, closeCy := barCY
+            boxes.Push({ id: "close", kind: "close", cx: closeCx, cy: closeCy, r: MINI_D / 2 + 3 })
+            cx += MINI_D
+        }
+
+        barSectionW := cx + PAD
+        barSectionH := BAR_THICK
     }
-
-    winW := cx + PAD
 
     ROW_H := Round(28*s), ROW_GAP := Round(4*s), PANEL_PAD := Round(10*s), HEADER_H := Round(18*s)
     nRows := items.Length
@@ -532,13 +576,19 @@ _HudRedraw() {
     panelH := Round(panelFullH * ease)
     mostrarPainel := (panelH > 2) && (nRows > 0)
 
-    winH := BAR_H + panelH
+    ; Barra vertical é mais estreita que o painel-resumo (ícone + rótulo +
+    ; engrenagem + indicador não cabem nos ~64px da coluna) — larga a
+    ; janela pro mínimo do painel quando ele está visível. Barra horizontal
+    ; já é larga o bastante sozinha (winW cresce com a quantidade de ícones).
+    PANEL_MIN_W := Round(230*s)
+    winW := vertical ? Max(barSectionW, mostrarPainel ? PANEL_MIN_W : 0) : barSectionW
+    winH := barSectionH + panelH
 
     GEAR_D := Round(20*s)
 
     panelRows := []
     if (mostrarPainel) {
-        py := BAR_H + PANEL_PAD + HEADER_H
+        py := barSectionH + PANEL_PAD + HEADER_H
         for m in items {
             avail := winH - py
             if (avail < 6)
@@ -619,26 +669,31 @@ _HudRedraw() {
         }
     }
 
-    ; separador vertical + botões auxiliares — só existem com o mouse sobre a barra
+    ; separador + botões auxiliares — só existem com o mouse sobre a barra.
+    ; A linha do separador é perpendicular ao eixo da barra: vertical
+    ; quando a barra é horizontal, horizontal quando a barra é a coluna.
     if (mostrarCluster) {
         sepPen := Gdip_Pen(Gdip_Argb(255, "0x221f27"), 1)
-        Gdip_DrawLine(g, sepPen, sepX, barCY - SEP_H / 2, sepX, barCY + SEP_H / 2)
+        if (vertical)
+            Gdip_DrawLine(g, sepPen, gearCx - SEP_H / 2, sepY, gearCx + SEP_H / 2, sepY)
+        else
+            Gdip_DrawLine(g, sepPen, sepX, gearCy - SEP_H / 2, sepX, gearCy + SEP_H / 2)
         Gdip_DeletePen(sepPen)
 
-        _HudDrawMiniBtn(g, "gear",    gearCx,  barCY, MINI_D, tGear)
-        _HudDrawMiniBtn(g, "chevron", chevCx,  barCY, MINI_D, tChev, _hudExpanded)
-        _HudDrawMiniBtn(g, "close",   closeCx, barCY, MINI_D, tClose)
+        _HudDrawMiniBtn(g, "gear",    gearCx,  gearCy,  MINI_D, tGear)
+        _HudDrawMiniBtn(g, "chevron", chevCx,  chevCy,  MINI_D, tChev, _hudExpanded)
+        _HudDrawMiniBtn(g, "close",   closeCx, closeCy, MINI_D, tClose)
     }
 
     ; painel-resumo
     if (mostrarPainel) {
         sepPen2 := Gdip_Pen(Gdip_Argb(Round(255 * ease), "0x1c1a20"), 1)
-        Gdip_DrawLine(g, sepPen2, PAD * 0.5, BAR_H, winW - PAD * 0.5, BAR_H)
+        Gdip_DrawLine(g, sepPen2, PAD * 0.5, barSectionH, winW - PAD * 0.5, barSectionH)
         Gdip_DeletePen(sepPen2)
 
         if (ease > 0.4)
             Gdip_DrawText(g, "RESUMO RÁPIDO", 9*s, true, Gdip_Argb(Round(190 * ((ease - 0.4) / 0.6)), "0x65636d"),
-                PAD, BAR_H + PANEL_PAD - 2*s, winW - PAD * 2, HEADER_H, false)
+                PAD, barSectionH + PANEL_PAD - 2*s, winW - PAD * 2, HEADER_H, false)
 
         for pr in panelRows {
             m := pr.m
