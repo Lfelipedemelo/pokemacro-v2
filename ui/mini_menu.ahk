@@ -26,6 +26,7 @@ global _hudExpandT    := 0.0
 global _hudHoverId    := ""
 global _hudHoverT     := Map()
 global _hudBoxes      := []
+global _hudVisibleCache := 0   ; cache de _HudVisibleItems() — ver comentário lá
 
 ; ── Tecla configurada de cada macro, para o tooltip da barra ──
 _KeyHint(tipo) {
@@ -51,12 +52,28 @@ _HudMacroList() {
     ]
 }
 
-_HudVisibleItems() {
+; Lê o INI (showInMini de cada macro) e recacheia. Só precisa rodar quando
+; a HUD abre ou quando o toggle "EXIBIR NO MINI MENU" muda na config geral
+; (_RecriarMini chama isso) — nunca a cada frame (ver _HudVisibleItems).
+_HudAtualizarVisibleItems() {
+    global _hudVisibleCache
     out := []
     for m in _HudMacroList()
         if GetShowInMini(m["secao"])
             out.Push(m)
-    return out
+    _hudVisibleCache := out
+}
+
+; Igual aos ícones (_HudIconImg): _HudRedraw roda a 60fps durante hover/
+; expandir/pulso, e IniRead é I/O de arquivo — reler 5 seções do INI em
+; todo frame era a mesma classe de lentidão que já resolvemos pros ícones.
+; Devolve a lista cacheada; quem muda o INI é responsável por chamar
+; _HudAtualizarVisibleItems() (abrir a HUD, ou _RecriarMini).
+_HudVisibleItems() {
+    global _hudVisibleCache
+    if !_hudVisibleCache
+        _HudAtualizarVisibleItems()
+    return _hudVisibleCache
 }
 
 ; ── Abrir / fechar ──────────────────────────────────────
@@ -78,6 +95,7 @@ _HudAbrir() {
     _hudHoverT  := Map()
     _hudExpanded := (IniRead(configFile, "MiniMenu", "expandido", "1") = "1")
     _hudExpandT  := _hudExpanded ? 1.0 : 0.0
+    _HudAtualizarVisibleItems()
 
     pos := _HudCarregarPos()
     _hudX := pos[1]
@@ -109,11 +127,15 @@ _HudFechar() {
     miniGui := 0
 }
 
-; Chamado pelo resto do app quando um macro muda de estado em outra tela.
+; Chamado pelo resto do app quando um macro muda de estado em outra tela,
+; ou quando o toggle "EXIBIR NO MINI MENU" muda na config geral — por
+; isso recacheia a lista de visíveis antes de redesenhar.
 _RecriarMini() {
     global miniGui
-    if (miniGui)
+    if (miniGui) {
+        _HudAtualizarVisibleItems()
         _HudRedraw()
+    }
 }
 
 _HudCarregarPos() {
@@ -389,7 +411,7 @@ _HudRedraw() {
 
     PAD := 14, GAP := 10, BTN_D := 36, MINI_D := 22, SEP_H := 22
     BAR_H := 58
-    ICON_BAR_SZ := 24, ICON_ROW_SZ := 16
+    ICON_BAR_SZ := 34, ICON_ROW_SZ := 20
 
     cx := PAD
     barCY := BAR_H // 2
@@ -553,14 +575,14 @@ _HudRedraw() {
                 Gdip_DeleteBrush(rowBg)
             }
 
-            icoSz := 22
+            icoSz := 24
             icoY := y + (h - icoSz) / 2
             icoBg := ligado ? Gdip_LerpArgb(255, "0x201e24", accent, 0.26) : Gdip_Argb(255, "0x201e24")
             icoBrush := Gdip_BrushSolid(icoBg)
             Gdip_FillRoundRect(g, icoBrush, PAD + 4, icoY, icoSz, icoSz, 6)
             Gdip_DeleteBrush(icoBrush)
 
-            imgPad := 3
+            imgPad := 2
             Gdip_DrawImage(g, _HudIconImg(m["nome"], ICON_ROW_SZ), PAD + 4 + imgPad, icoY + imgPad, ICON_ROW_SZ, ICON_ROW_SZ)
 
             labelX := PAD + 4 + icoSz + 10
