@@ -58,21 +58,21 @@ global uiRefs := Map()
 ; Anti-double-click
 global lastClick := 0
 
-; ─── Tema fixo (Pokédex Vermelho) ────────────────────
+; ─── Tema fixo (Pokédex Azul) ────────────────────
 T() {
     return Map(
-        "BG",      "0x1a1c1e",
-        "BG2",     "0x282a2d",
-        "BG3",     "0x2f3136",
-        "ACCENT",  "0x57f287",
-        "ACCENT2", "0x3ba55d",
+        "BG",      "0x14181f",
+        "BG2",     "0x1e2530",
+        "BG3",     "0x262e3b",
+        "ACCENT",  "0x2f6fed",
+        "ACCENT2", "0x5b9bff",
         "TEXT",    "0xffffff",
-        "MUTED",   "0xb5b8bd",
-        "SEP",     "0x1e1f22",
-        "DANGER",  "0xed4245",
-        "STRIPE1", "0xed4245",
-        "STRIPE2", "0xfaa61a",
-        "STRIPE3", "0x5865f2",
-        "BADGE",   "0x1e2124"
+        "MUTED",   "0xa9b4c4",
+        "SEP",     "0x1a2028",
+        "DANGER",  "0xee1515",
+        "STRIPE1", "0x2f6fed",
+        "STRIPE2", "0xffcb05",
+        "STRIPE3", "0xee1515",
+        "BADGE",   "0x1a2028"
     )
 }
