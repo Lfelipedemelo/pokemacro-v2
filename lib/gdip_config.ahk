@@ -30,6 +30,10 @@
 global _gcfgGui     := 0
 global _gcfgW       := 0
 global _gcfgH       := 0
+; _gcfgX/_gcfgY: posição atual (física, top-left) da tela de config aberta.
+; Persistida em config.ini ["Geral"]configPosX/configPosY ao fechar (ver
+; _GCfg_Fechar) e restaurada ao abrir (ver _GCfg_Abrir) — compartilhada
+; entre todas as telas de config, já que só uma fica aberta por vez.
 global _gcfgX       := 0
 global _gcfgY       := 0
 global _gcfgBoxes   := []
@@ -59,7 +63,7 @@ global _GCFG_SCALE      := _GCFG_SCALE_BASE * EscalaFator()
 ; fica visível por vez, mas clicar num botão de config sempre leva a
 ; ele (em vez de ficar sem efeito porque "já tinha algo aberto").
 _GCfg_Abrir(w, h, drawFn) {
-    global _gcfgGui, _gcfgW, _gcfgH, _gcfgX, _gcfgY, _gcfgBoxes, _gcfgHoverId, _gcfgDraw, _gcfgDragBox, _GCFG_SCALE
+    global _gcfgGui, _gcfgW, _gcfgH, _gcfgX, _gcfgY, _gcfgBoxes, _gcfgHoverId, _gcfgDraw, _gcfgDragBox, _GCFG_SCALE, configFile
 
     if (_gcfgGui)
         _GCfg_Fechar()
@@ -68,8 +72,20 @@ _GCfg_Abrir(w, h, drawFn) {
 
     _gcfgW := w, _gcfgH := h
     physW := Round(w * _GCFG_SCALE), physH := Round(h * _GCFG_SCALE)
-    _gcfgX := (A_ScreenWidth  - physW) // 2
-    _gcfgY := (A_ScreenHeight - physH) // 2
+
+    ; Reabre no mesmo lugar onde a última tela de config (qualquer uma —
+    ; só existe uma por vez, ver comentário no topo do arquivo) foi
+    ; fechada. Clampado contra o tamanho atual da tela pra não deixar a
+    ; janela presa fora da área visível se a resolução/monitor mudou.
+    savedX := IniRead(configFile, "Geral", "configPosX", "")
+    savedY := IniRead(configFile, "Geral", "configPosY", "")
+    if (savedX != "" && savedY != "") {
+        _gcfgX := Max(0, Min(Integer(savedX), A_ScreenWidth  - physW))
+        _gcfgY := Max(0, Min(Integer(savedY), A_ScreenHeight - physH))
+    } else {
+        _gcfgX := (A_ScreenWidth  - physW) // 2
+        _gcfgY := (A_ScreenHeight - physH) // 2
+    }
     _gcfgBoxes   := []
     _gcfgHoverId := ""
     _gcfgDraw    := drawFn
@@ -90,9 +106,11 @@ _GCfg_Abrir(w, h, drawFn) {
 }
 
 _GCfg_Fechar() {
-    global _gcfgGui, _gcfgDragBox
+    global _gcfgGui, _gcfgDragBox, _gcfgX, _gcfgY, configFile
     if (!_gcfgGui)
         return
+    IniWrite(_gcfgX, configFile, "Geral", "configPosX")
+    IniWrite(_gcfgY, configFile, "Geral", "configPosY")
     _gcfgDragBox := 0
     try _gcfgGui.Destroy()
     _gcfgGui := 0
