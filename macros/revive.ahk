@@ -73,7 +73,7 @@ ExecutarRevive() {
     _reviveOcupado := true
     try {
         if !_EnviarSequenciaRevive(cfg, modoLegado)
-            ShowHint("Erro: Defina a posição primeiro!", 1500)
+            ShowHint("Erro: Defina a posição primeiro!", 1500, "danger")
     } finally {
         _reviveOcupado := false
     }

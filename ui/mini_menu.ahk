@@ -8,14 +8,17 @@
 ; realce animado + tooltip, estado ativo com anel de brilho pulsante,
 ; e um painel-resumo que expande/recolhe com transição de altura.
 ;
+; É a interface principal do app: abre/fecha com Ctrl+F12 (main.ahk).
+; O painel expandido (chevron) mostra um botão ⚙ por macro que abre a
+; tela de configuração específica daquele macro.
+;
 ; API pública mantida para o resto do app:
 ;   global miniGui          — objeto Gui quando aberta, 0 quando fechada
-;   AbrirMiniMenu()          — abre/fecha (chamado pelo botão ◉ da janela principal)
+;   AbrirMiniMenu()          — abre/fecha (chamado pelo Ctrl+F12 e pelo botão ⚙ interno)
 ;   _RecriarMini()           — pede um redesenho (chamado quando um macro
-;                              é ligado/desligado por outra tela)
+;                              é ligado/desligado por outra tela, ou o tema muda)
 
 global miniGui        := 0
-global _hudToken      := 0
 global _hudX          := 0
 global _hudY          := 0
 global _hudExpanded   := false
@@ -24,14 +27,27 @@ global _hudHoverId    := ""
 global _hudHoverT     := Map()
 global _hudBoxes      := []
 
+; ── Tecla configurada de cada macro, para o tooltip da barra ──
+_KeyHint(tipo) {
+    cfg := GetCfg(tipo)
+    hk  := cfg["teclaHotkey"]
+    return (hk != "N/A" && hk != "") ? StrUpper(hk) : ""
+}
+
+_KeyHintCooldown() {
+    cfg := GetCfg("Cooldown")
+    hk  := cfg["hotkeyCooldown"]
+    return (hk != "N/A" && hk != "") ? StrUpper(hk) : ""
+}
+
 ; ── Lista de macros exibidos na HUD ────────────────────
 _HudMacroList() {
     return [
-        Map("id", "c1", "nome", "comboPrincipal",  "label", "Combo Principal",  "secao", "comboPrincipal"),
-        Map("id", "c2", "nome", "comboSecundario", "label", "Combo Secundário", "secao", "comboSecundario"),
-        Map("id", "c3", "nome", "revive",          "label", "Reviver",          "secao", "Revive"),
-        Map("id", "c4", "nome", "comboRevive",     "label", "Combo Revive",     "secao", "comboRevive"),
-        Map("id", "c5", "nome", "cooldown",        "label", "Cooldown",         "secao", "Cooldown"),
+        Map("id", "c1", "nome", "comboPrincipal",  "label", "Combo Principal",  "secao", "comboPrincipal",  "cfg", (*) => AbrirConfigCombo("comboPrincipal")),
+        Map("id", "c2", "nome", "comboSecundario", "label", "Combo Secundário", "secao", "comboSecundario", "cfg", (*) => AbrirConfigCombo("comboSecundario")),
+        Map("id", "c3", "nome", "revive",          "label", "Reviver",          "secao", "Revive",          "cfg", (*) => AbrirTelaConfigRevive("revive")),
+        Map("id", "c4", "nome", "comboRevive",     "label", "Combo Revive",     "secao", "comboRevive",     "cfg", (*) => AbrirConfigComboRevive()),
+        Map("id", "c5", "nome", "cooldown",        "label", "Cooldown",         "secao", "Cooldown",        "cfg", (*) => AbrirConfigCooldown()),
     ]
 }
 
@@ -54,12 +70,9 @@ AbrirMiniMenu() {
 }
 
 _HudAbrir() {
-    global miniGui, _hudToken, _hudX, _hudY, _hudExpanded, _hudExpandT, _hudHoverId, _hudHoverT
+    global miniGui, _hudX, _hudY, _hudExpanded, _hudExpandT, _hudHoverId, _hudHoverT
 
-    if (!_hudToken) {
-        _hudToken := Gdip_Startup()
-        OnExit((*) => Gdip_Shutdown(_hudToken))
-    }
+    Gdip_EnsureStarted()
 
     _hudHoverId := ""
     _hudHoverT  := Map()
@@ -227,6 +240,8 @@ _HudWM_LButtonDown(wParam, lParam, msg, hwnd) {
     box := _HudHitTest(xy[1], xy[2])
     if (box)
         _HudActivar(box)
+    else
+        DragJanela()   ; clique fora de qualquer ícone: arrasta a barra pelo fundo
 }
 
 _HudActivar(box) {
@@ -237,8 +252,13 @@ _HudActivar(box) {
             _hudExpanded := !_hudExpanded
             IniWrite(_hudExpanded ? "1" : "0", configFile, "MiniMenu", "expandido")
             _HudStartFx()
-        case "close":   _HudFechar()
+        ; Fechar é adiado para fora do handler de WM_LBUTTONDOWN: destruir a
+        ; janela enquanto ainda se está dentro do próprio despacho de
+        ; mensagens dela causa erro (reentrância). Ctrl+F12 fecha direto
+        ; porque roda numa thread de hotkey, sem esse problema.
+        case "close":   SetTimer(_HudFechar, -1)
         case "macro":   _HudToggleMacro(box.nome)
+        case "cfg":     box.cfgFn()
     }
 }
 
@@ -334,13 +354,13 @@ _HudDrawMiniBtn(g, kind, cx, cy, d, hoverT, expandido := false) {
     s := d * 0.22
     switch kind {
         case "gear":
-            Gdip_DrawEllipse(g, pen, cx - s * 0.9, cy - s * 0.9, s * 1.8, s * 1.8)
-            loop 4 {
-                ang := (A_Index - 1) * 90 * 0.0174533
-                x1 := cx + Cos(ang) * s * 1.3, y1 := cy + Sin(ang) * s * 1.3
-                x2 := cx + Cos(ang) * s * 2.0, y2 := cy + Sin(ang) * s * 2.0
-                Gdip_DrawLine(g, pen, x1, y1, x2, y2)
-            }
+            ; Ícone de engrenagem pronto (icons\gear.png, recolorido para
+            ; cinza claro), reamostrado e cacheado uma vez por tamanho — mesmo
+            ; mecanismo dos ícones dos macros (_HudIconImg), sem custo de
+            ; desenho vetorial por frame.
+            iconSz := Round(d * 0.62)
+            Gdip_DrawImage(g, Gdip_ScaledIcon(A_ScriptDir "\icons\gear.png", iconSz),
+                cx - iconSz / 2, cy - iconSz / 2, iconSz, iconSz)
         case "chevron":
             y1 := expandido ? cy + s * 0.5 : cy - s * 0.3
             y2 := expandido ? cy - s * 0.3 : cy + s * 0.5
@@ -418,6 +438,8 @@ _HudRedraw() {
 
     winH := BAR_H + panelH
 
+    GEAR_D := 20
+
     panelRows := []
     if (mostrarPainel) {
         py := BAR_H + PANEL_PAD + HEADER_H
@@ -426,8 +448,15 @@ _HudRedraw() {
             if (avail < 6)
                 break
             rh := Min(ROW_H, avail)
+            rowCy := py + rh / 2
+            dotCx := winW - PAD - 8
+            rowGearCx := dotCx - 10 - GEAR_D / 2
+
+            ; botão de configurações fica acima na lista de boxes para ter
+            ; prioridade no hit-test sobre a linha inteira (que também é clicável)
+            boxes.Push({ id: "cfg_" m["id"], kind: "cfg", cfgFn: m["cfg"], cx: rowGearCx, cy: rowCy, r: GEAR_D / 2 + 3 })
             boxes.Push({ id: "row_" m["id"], kind: "macro", nome: m["nome"], x: PAD, y: py, w: winW - PAD * 2, h: rh })
-            panelRows.Push({ m: m, y: py, h: rh })
+            panelRows.Push({ m: m, y: py, h: rh, cy: rowCy, gearCx: rowGearCx, dotCx: dotCx })
             py += ROW_H + ROW_GAP
         }
     }
@@ -534,28 +563,20 @@ _HudRedraw() {
             imgPad := 3
             Gdip_DrawImage(g, _HudIconImg(m["nome"], ICON_ROW_SZ), PAD + 4 + imgPad, icoY + imgPad, ICON_ROW_SZ, ICON_ROW_SZ)
 
-            hint := (m["nome"] = "cooldown") ? _KeyHintCooldown() : _KeyHint(m["nome"])
-            badgeW := (hint != "") ? StrLen(hint) * 6.5 + 14 : 0
-
             labelX := PAD + 4 + icoSz + 10
-            labelW := winW - PAD - labelX - badgeW - 20
+            labelW := pr.gearCx - GEAR_D / 2 - 8 - labelX
             Gdip_DrawText(g, m["label"], 11, true,
                 ligado ? Gdip_Argb(255, "0xf2f0f5") : Gdip_Argb(255, "0xdcdae0"),
                 labelX, y, labelW, h, false)
 
-            if (hint != "") {
-                badgeX := winW - PAD - 18 - badgeW
-                badgeBg := Gdip_BrushSolid(Gdip_Argb(255, "0x1b1720"))
-                Gdip_FillRoundRect(g, badgeBg, badgeX, y + (h - 16) / 2, badgeW, 16, 5)
-                Gdip_DeleteBrush(badgeBg)
-                Gdip_DrawText(g, hint, 9, true, Gdip_Argb(255, "0x8b8894"), badgeX, y + (h - 16) / 2, badgeW, 16, true)
-            }
+            tCfg := _hudHoverT.Has("cfg_" m["id"]) ? _hudHoverT["cfg_" m["id"]] : 0
+            _HudDrawMiniBtn(g, "gear", pr.gearCx, pr.cy, GEAR_D, tCfg)
 
             dotR := 3
-            dotCx := winW - PAD - 8, dotCy := y + h / 2
+            dotCy := pr.cy
             dotArgb := ligado ? Gdip_Argb(255, accent) : Gdip_Argb(255, "0x4b4855")
             dotBrush := Gdip_BrushSolid(dotArgb)
-            Gdip_FillEllipse(g, dotBrush, dotCx - dotR, dotCy - dotR, dotR * 2, dotR * 2)
+            Gdip_FillEllipse(g, dotBrush, pr.dotCx - dotR, dotCy - dotR, dotR * 2, dotR * 2)
             Gdip_DeleteBrush(dotBrush)
         }
     }

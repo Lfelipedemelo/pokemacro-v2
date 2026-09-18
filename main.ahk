@@ -1,6 +1,8 @@
 #Requires AutoHotkey v2.0
 #MaxThreadsPerHotkey 2
 
+TraySetIcon(A_ScriptDir "\icons\logo.png")
+
 ; =====================================================
 ; ENTRY POINT — Carrega todos os módulos
 ; =====================================================
@@ -8,12 +10,12 @@
 #Include lib\globals.ahk
 #Include lib\config.ahk
 #Include lib\gdip.ahk
+#Include lib\gdip_config.ahk
 #Include lib\hint.ahk
 #Include lib\window.ahk
 #Include lib\input.ahk
 
 #Include ui\slot.ahk
-#Include ui\gui_main.ahk
 #Include ui\mini_menu.ahk
 #Include ui\config_combo.ahk
 #Include ui\config_revive.ahk
@@ -37,18 +39,9 @@ CoordMode("ToolTip", "Screen")
 SetDefaultMouseSpeed(0)
 
 AtualizarHotkeyCombo()
+AbrirMiniMenu()
 
 ; =====================================================
-; HOTKEY GLOBAL — Ctrl+F12 abre/fecha a interface
+; HOTKEY GLOBAL — Ctrl+F12 abre/fecha a interface (HUD)
 ; =====================================================
-^F12:: {
-    global myGui
-
-    if (myGui) {
-        SalvarPosicaoJanela()
-        myGui.Destroy()
-        myGui := 0
-    } else {
-        CriarInterface()
-    }
-}
+^F12:: AbrirMiniMenu()

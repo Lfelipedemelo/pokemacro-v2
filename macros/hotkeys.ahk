@@ -96,7 +96,7 @@ ToggleMacroPorHotkey(nome) {
         try AtualizarVisual(uiRefs[nome], macros[nome])
     }
 
-    ShowHint(StrUpper(nome) ": " (macros[nome] ? "LIGADO" : "DESLIGADO"), 1200)
+    ShowHint(StrUpper(nome) ": " (macros[nome] ? "LIGADO" : "DESLIGADO"), 1200, macros[nome] ? "success" : "info")
     AtualizarHotkeyCombo()
 }
 
@@ -137,7 +137,7 @@ ProcessarPressionamento(thisHotkey) {
         else if (ehCooldown) {
             if (executandoCooldown) {
                 executandoCooldown := false
-                ShowHint("CANCELADO", 1000)
+                ShowHint("CANCELADO", 1000, "warn")
             } else {
                 ExecutarMacroCooldown()
             }

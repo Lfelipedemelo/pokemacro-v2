@@ -9,6 +9,7 @@
 ; os controles nativos Gui (usados no resto do app) não suportam.
 
 global _gdipHDCScreen := 0
+global _gdipToken     := 0
 
 ; ── Ciclo de vida ──────────────────────────────────────
 Gdip_Startup() {
@@ -22,6 +23,17 @@ Gdip_Startup() {
 Gdip_Shutdown(pToken) {
     if (pToken)
         DllCall("gdiplus\GdiplusShutdown", "Ptr", pToken)
+}
+
+; Inicializa o GDI+ uma única vez para todo o app (HUD + telas de
+; configuração), não importa qual delas abre primeiro.
+Gdip_EnsureStarted() {
+    global _gdipToken
+    if (!_gdipToken) {
+        _gdipToken := Gdip_Startup()
+        OnExit((*) => Gdip_Shutdown(_gdipToken))
+    }
+    return _gdipToken
 }
 
 ; ── Canvas em camadas (DIB de topo p/ baixo + Graphics do GDI+) ──
@@ -149,6 +161,20 @@ Gdip_DrawPolygon(g, pen, pts) {
     DllCall("gdiplus\GdipDrawPolygon", "Ptr", g, "Ptr", pen, "Ptr", buf, "Int", n)
 }
 
+Gdip_FillPolygon(g, brush, pts) {
+    n := pts.Length // 2
+    buf := Buffer(8 * n)
+    loop n {
+        NumPut("Float", pts[(A_Index - 1) * 2 + 1], buf, (A_Index - 1) * 8)
+        NumPut("Float", pts[(A_Index - 1) * 2 + 2], buf, (A_Index - 1) * 8 + 4)
+    }
+    DllCall("gdiplus\GdipFillPolygon", "Ptr", g, "Ptr", brush, "Ptr", buf, "Int", n, "Int", 0) ; FillModeAlternate
+}
+
+Gdip_DrawArc(g, pen, x, y, w, h, startAngle, sweepAngle) =>
+    DllCall("gdiplus\GdipDrawArc", "Ptr", g, "Ptr", pen,
+        "Float", x, "Float", y, "Float", w, "Float", h, "Float", startAngle, "Float", sweepAngle)
+
 _Gdip_RoundRectPath(x, y, w, h, r) {
     DllCall("gdiplus\GdipCreatePath", "Int", 0, "Ptr*", &p := 0)
     d := r * 2
@@ -172,6 +198,24 @@ Gdip_DrawRoundRect(g, pen, x, y, w, h, r) {
     DllCall("gdiplus\GdipDeletePath", "Ptr", p)
 }
 
+; Recorta os desenhos seguintes a um retângulo de cantos arredondados —
+; usado para pintar um cabeçalho/corpo em blocos retos que ainda assim
+; respeitam a moldura arredondada da janela (sem isso, os cantos do
+; cabeçalho ficariam quadrados por cima do fundo arredondado).
+Gdip_SetClipRoundRect(g, x, y, w, h, r) {
+    p := _Gdip_RoundRectPath(x, y, w, h, r)
+    DllCall("gdiplus\GdipSetClipPath", "Ptr", g, "Ptr", p, "Int", 0) ; CombineModeReplace
+    DllCall("gdiplus\GdipDeletePath", "Ptr", p)
+}
+
+Gdip_ResetClip(g) => DllCall("gdiplus\GdipResetClip", "Ptr", g)
+
+; Escala tudo que for desenhado depois (formas, canetas, texto) — usado
+; pelas telas de configuração para ficarem maiores sem reescrever a
+; matemática de layout de cada widget (lib\gdip_config.ahk).
+Gdip_ScaleTransform(g, sx, sy) =>
+    DllCall("gdiplus\GdipScaleWorldTransform", "Ptr", g, "Float", sx, "Float", sy, "Int", 0) ; MatrixOrderPrepend
+
 ; ── Imagens (ícones .png já existentes em icons\) ──────
 Gdip_LoadImage(path) {
     static cache := Map()
@@ -187,6 +231,36 @@ Gdip_DrawImage(g, pImg, x, y, w, h) {
         return
     DllCall("gdiplus\GdipDrawImageRectI", "Ptr", g, "Ptr", pImg,
         "Int", Round(x), "Int", Round(y), "Int", Round(w), "Int", Round(h))
+}
+
+; Desenha um ícone monocromático (ex.: PNG preto com fundo transparente)
+; recolorido para "argb" — zera o RGB original via ColorMatrix e soma a
+; cor alvo, preservando o alfa (contorno anti-aliased) do PNG de origem.
+; Usado para reaproveitar ícones prontos baixados em preto no tema escuro.
+Gdip_DrawImageTinted(g, pImg, x, y, w, h, argb) {
+    if (!pImg)
+        return
+    r  := ((argb >> 16) & 0xFF) / 255.0
+    gg := ((argb >> 8)  & 0xFF) / 255.0
+    b  := (argb & 0xFF) / 255.0
+
+    vals := [0,0,0,0,0, 0,0,0,0,0, 0,0,0,0,0, 0,0,0,1,0, r,gg,b,0,1]
+    m := Buffer(25 * 4, 0)
+    for i, v in vals
+        NumPut("Float", v, m, (i - 1) * 4)
+
+    DllCall("gdiplus\GdipCreateImageAttributes", "Ptr*", &ia := 0)
+    DllCall("gdiplus\GdipSetImageAttributesColorMatrix",
+        "Ptr", ia, "Int", 0, "Int", 1, "Ptr", m, "Ptr", 0, "Int", 0)
+
+    DllCall("gdiplus\GdipGetImageWidth",  "Ptr", pImg, "UInt*", &srcW := 0)
+    DllCall("gdiplus\GdipGetImageHeight", "Ptr", pImg, "UInt*", &srcH := 0)
+    DllCall("gdiplus\GdipDrawImageRectRectI", "Ptr", g, "Ptr", pImg,
+        "Int", Round(x), "Int", Round(y), "Int", Round(w), "Int", Round(h),
+        "Int", 0, "Int", 0, "Int", srcW, "Int", srcH,
+        "Int", 2, "Ptr", ia, "Ptr", 0, "Ptr", 0) ; UnitPixel
+
+    DllCall("gdiplus\GdipDisposeImageAttributes", "Ptr", ia)
 }
 
 ; Pré-renderiza um ícone no tamanho exato em que será usado, uma única vez,
@@ -221,9 +295,13 @@ Gdip_Font(size, bold := false) {
 Gdip_StringFormat(center := true) {
     static fCenter := 0
     static fLeft := 0
+    ; 0x1000 NoWrap + 0x4000 NoClip — sem NoClip, o GDI+ corta qualquer
+    ; parte do glifo que ultrapasse o retângulo passado a Gdip_DrawText;
+    ; símbolos como "×"/"↺" costumam ultrapassar sua caixa nominal, e
+    ; isso ficou visível ao aumentar a escala das telas de configuração.
     if (center) {
         if (!fCenter) {
-            DllCall("gdiplus\GdipCreateStringFormat", "Int", 0x1000, "Int", 0, "Ptr*", &f := 0)
+            DllCall("gdiplus\GdipCreateStringFormat", "Int", 0x5000, "Int", 0, "Ptr*", &f := 0)
             DllCall("gdiplus\GdipSetStringFormatAlign",     "Ptr", f, "Int", 1) ; Center
             DllCall("gdiplus\GdipSetStringFormatLineAlign", "Ptr", f, "Int", 1) ; Center
             fCenter := f
@@ -231,13 +309,39 @@ Gdip_StringFormat(center := true) {
         return fCenter
     } else {
         if (!fLeft) {
-            DllCall("gdiplus\GdipCreateStringFormat", "Int", 0x1000, "Int", 0, "Ptr*", &f := 0)
+            DllCall("gdiplus\GdipCreateStringFormat", "Int", 0x5000, "Int", 0, "Ptr*", &f := 0)
             DllCall("gdiplus\GdipSetStringFormatAlign",     "Ptr", f, "Int", 0) ; Near
             DllCall("gdiplus\GdipSetStringFormatLineAlign", "Ptr", f, "Int", 1) ; Center
             fLeft := f
         }
         return fLeft
     }
+}
+
+; Mede o retângulo que "text" ocupa nessa fonte, sem desenhar nada —
+; usado pelo banner de notificações (lib\hint.ahk) pra dimensionar a
+; janela ao texto em vez de usar uma largura fixa pra tudo.
+Gdip_MeasureText(text, size, bold := true, maxW := 4000) {
+    global _gdipHDCScreen
+    if (!_gdipHDCScreen)
+        _gdipHDCScreen := DllCall("GetDC", "Ptr", 0, "Ptr")
+
+    DllCall("gdiplus\GdipCreateFromHDC", "Ptr", _gdipHDCScreen, "Ptr*", &g := 0)
+    font := Gdip_Font(size, bold)
+    fmt  := Gdip_StringFormat(false)
+
+    rc := Buffer(16, 0)
+    NumPut("Float", maxW, rc, 8)
+    NumPut("Float", 1000, rc, 12)
+
+    out := Buffer(16, 0)
+    DllCall("gdiplus\GdipMeasureString", "Ptr", g, "WStr", text, "Int", -1,
+        "Ptr", font, "Ptr", rc, "Ptr", fmt, "Ptr", out, "Int*", &chars := 0, "Int*", &lines := 0)
+
+    w := NumGet(out, 8, "Float")
+    h := NumGet(out, 12, "Float")
+    DllCall("gdiplus\GdipDeleteGraphics", "Ptr", g)
+    return [w, h]
 }
 
 Gdip_DrawText(g, text, size, bold, argb, x, y, w, h, center := true) {

@@ -34,7 +34,7 @@ ExecutarComboRevive() {
     }
 
     if !sucesso {
-        ShowHint("COMBO REVIVE: Defina a posição do Revive primeiro!", 1800)
+        ShowHint("COMBO REVIVE: Defina a posição do Revive primeiro!", 1800, "danger")
         return
     }
 

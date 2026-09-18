@@ -3,7 +3,7 @@
 ; =====================================================
 ;
 ; Lê duas configurações de [Geral] no INI:
-;   sleepCombo   → tempo de espera entre cada tecla (padrão 92ms)
+;   sleepCombo   → tempo de espera entre cada tecla (padrão 550ms)
 ;   usarPrefixoF → "true"  → envia {F1}, {F2} ...
 ;                  "false" → envia {1},  {2}  ...
 

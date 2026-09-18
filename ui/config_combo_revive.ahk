@@ -1,148 +1,75 @@
 ; =====================================================
-; ui\config_combo_revive.ahk — Config Combo Revive
+; ui\config_combo_revive.ahk — Config Combo Revive (GDI+)
 ; =====================================================
 
 AbrirConfigComboRevive() {
-    global cfgAberta
-    global txtTeclaInicialCR, txtTeclaFinalCR, txtHotkeyComboCR, txtToggleCR
-
-    if (cfgAberta)
-        return
-    cfgAberta := true
-
-    IW  := 260
-    pad := 14
-    W   := IW + pad * 2
-
-    cfg := GetCfg("comboRevive")
-
-    cfgGui := Gui("-Caption +ToolWindow +AlwaysOnTop")
-    cfgGui.BackColor := T()["BG"]
-    cfgGui.MarginX   := 0
-    cfgGui.MarginY   := 0
-    cfgGui.OnEvent("Escape", (*) => _FecharConfigCR(cfgGui))
-    cfgGui.OnEvent("Close",  (*) => (cfgAberta := false))
-    OnMessage(0x201, DragJanela)
-
-    _CabecalhoConfig(cfgGui, W, IW, pad, "CONFIG: COMBO REVIVE", T()["STRIPE1"],
-        (*) => ResetarConfigCR(),
-        (*) => _FecharConfigCR(cfgGui))
-
-    y := 46
-
-    ; ── Combo ────────────────────────────────────────
-    txtTeclaInicialCR := _CampoConfig(cfgGui, pad, y, IW, "BOTÃO INICIAL", "[ " cfg["teclaInicial"] " ]")
-    y += 40
-    _BtnConfig(cfgGui, pad, y, IW, "DEFINIR BOTÃO INICIAL",
-        (*) => CapturarTecla("comboRevive", "teclaInicial", txtTeclaInicialCR, "BOTÃO INICIAL"))
-
-    y += 36 , _Sep(cfgGui, y, W) , y += 10
-
-    txtTeclaFinalCR := _CampoConfig(cfgGui, pad, y, IW, "BOTÃO FINAL", "[ " cfg["teclaFinal"] " ]")
-    y += 40
-    _BtnConfig(cfgGui, pad, y, IW, "DEFINIR BOTÃO FINAL",
-        (*) => CapturarTecla("comboRevive", "teclaFinal", txtTeclaFinalCR, "BOTÃO FINAL"))
-
-    y += 36 , _Sep(cfgGui, y, W) , y += 10
-
-    txtHotkeyComboCR := _CampoConfig(cfgGui, pad, y, IW, "TECLA DO MACRO",
-        "[ " StrUpper(cfg["teclaHotkey"]) " ]")
-    y += 40
-    _BtnConfig(cfgGui, pad, y, IW, "DEFINIR TECLA MACRO",
-        (*) => CapturarTecla("comboRevive", "teclaHotkey", txtHotkeyComboCR, "TECLA MACRO"))
-
-    y += 36 , _Sep(cfgGui, y, W) , y += 10
-
-    ; ── Full Attack / Defense ────────────────────────
-    faGlobal := cfg["fullAttack"]
-    fdGlobal := cfg["fullDefense"]
-    usaAtk   := cfg["usarFullAtk"] = "true"
-    usaDef   := cfg["usarFullDef"] = "true"
-
-    lbFA := cfgGui.AddText("x" pad " y" y " w" IW " c" T()["MUTED"] "",
-        "FULL ATTACK (TECLA GLOBAL: [ " StrUpper(faGlobal) " ])")
-    lbFA.SetFont(GF() " Bold")
-    y += 22
-
-    rAtkSim := cfgGui.AddRadio("x" pad       " y" y " w16 h18 Group" (usaAtk  ? " Checked" : ""))
-    rAtkNao := cfgGui.AddRadio("x" (pad+130) " y" y " w16 h18"       (!usaAtk ? " Checked" : ""))
-    lAS := cfgGui.AddText("x" (pad+20)  " y" (y+1) " w100 h16 c" T()["TEXT"] " Background" T()["BG"] "", "ATIVAR")
-    lAS.SetFont(GF())
-    lAN := cfgGui.AddText("x" (pad+150) " y" (y+1) " w100 h16 c" T()["TEXT"] " Background" T()["BG"] "", "DESATIVAR")
-    lAN.SetFont(GF())
-    rAtkSim.OnEvent("Click", (*) => SalvarCfg("comboRevive", "usarFullAtk", "true"))
-    rAtkNao.OnEvent("Click", (*) => SalvarCfg("comboRevive", "usarFullAtk", "false"))
-
-    y += 28 , _Sep(cfgGui, y, W) , y += 10
-
-    lbFD := cfgGui.AddText("x" pad " y" y " w" IW " c" T()["MUTED"] "",
-        "FULL DEFENSE (TECLA GLOBAL: [ " StrUpper(fdGlobal) " ])")
-    lbFD.SetFont(GF() " Bold")
-    y += 22
-
-    rDefSim := cfgGui.AddRadio("x" pad       " y" y " w16 h18 Group" (usaDef  ? " Checked" : ""))
-    rDefNao := cfgGui.AddRadio("x" (pad+130) " y" y " w16 h18"       (!usaDef ? " Checked" : ""))
-    lDS := cfgGui.AddText("x" (pad+20)  " y" (y+1) " w100 h16 c" T()["TEXT"] " Background" T()["BG"] "", "ATIVAR")
-    lDS.SetFont(GF())
-    lDN := cfgGui.AddText("x" (pad+150) " y" (y+1) " w100 h16 c" T()["TEXT"] " Background" T()["BG"] "", "DESATIVAR")
-    lDN.SetFont(GF())
-    rDefSim.OnEvent("Click", (*) => SalvarCfg("comboRevive", "usarFullDef", "true"))
-    rDefNao.OnEvent("Click", (*) => SalvarCfg("comboRevive", "usarFullDef", "false"))
-
-    y += 28 , _Sep(cfgGui, y, W) , y += 10
-
-    ; ── Delay Combo (ms) ─────────────────────────────
-    lbl := cfgGui.AddText("x" pad " y" y " w" IW " h18 Center c" T()["MUTED"] " +0x200",
-        "DELAY APÓS REVIVE (MS)")
-    lbl.SetFont(GF() " Bold")
-    y += 22
-
-    editDelay := cfgGui.AddEdit(
-        "x" pad " y" y " w" IW " h26 Center Number c" T()["TEXT"] " Background" T()["BG2"] " -E0x200",
-        cfg["delayCombo"])
-    editDelay.SetFont(GF() " Bold")
-    editDelay.OnEvent("Change", (ctrl, *) => SalvarCfg("comboRevive", "delayCombo", ctrl.Value))
-
-    y += 34 , _SepDest(cfgGui, y, W) , y += 10
-
-    y := CriarRadioShowMini(cfgGui, pad, y, IW, "comboRevive")
-
-    _Sep(cfgGui, y, W) , y += 10
-
-    ; ── Toggle Hotkey ────────────────────────────────
-    txtToggleCR := _CampoConfig(cfgGui, pad, y, IW, "HOTKEY LIGAR/DESLIGAR",
-        "[ " _ComboDisplay(cfg["toggleHotkey"]) " ]")
-    y += 40
-    _BtnConfig(cfgGui, pad, y, IW, "DEFINIR HOTKEY TOGGLE",
-        (*) => CapturarCombo("comboRevive", "toggleHotkey", txtToggleCR, "HOTKEY TOGGLE"))
-
-    y += 38
-    cfgGui.AddText("x0 y" y " w" W " h12 Background" T()["BG"] "")
-    cfgGui.Show("w" W " Center")
+    _GCfg_Abrir(288, 308, _DesenharConfigComboRevive)
 }
 
-_FecharConfigCR(cfgGui) {
-    global cfgAberta
-    cfgAberta := false
+_DesenharConfigComboRevive(g, w, h, hoverId) {
+    boxes := []
+    cfg := GetCfg("comboRevive")
+
+    Gdip_SetClipRoundRect(g, 0, 0, w, h, 14)
+    bodyBrush := Gdip_BrushSolid(Gdip_Argb(255, T()["BG"]))
+    Gdip_FillRect(g, bodyBrush, 0, 0, w, h)
+    Gdip_DeleteBrush(bodyBrush)
+
+    hH := _GCfg_Header(g, boxes, w, "CONFIG: COMBO REVIVE", T()["STRIPE1"],
+        (*) => ResetarConfigCR(),
+        (*) => _FecharConfigCR(),
+        hoverId)
+
+    pad  := 14
+    colW := (w - pad*2 - 10) // 2
+    col2 := pad + colW + 10
+    y := hH + 10
+
+    _GCfg_Field(g, boxes, "inicial", pad, y, colW, "BOTÃO INICIAL", cfg["teclaInicial"],
+        (*) => (CapturarTecla("comboRevive", "teclaInicial", 0, "BOTÃO INICIAL"), _GCfg_Redraw()), hoverId)
+    _GCfg_Field(g, boxes, "final", col2, y, colW, "BOTÃO FINAL", cfg["teclaFinal"],
+        (*) => (CapturarTecla("comboRevive", "teclaFinal", 0, "BOTÃO FINAL"), _GCfg_Redraw()), hoverId)
+    y += 44 + 8
+
+    _GCfg_Field(g, boxes, "hkmacro", pad, y, colW, "TECLA DO MACRO", StrUpper(cfg["teclaHotkey"]),
+        (*) => (CapturarTecla("comboRevive", "teclaHotkey", 0, "TECLA MACRO"), _GCfg_Redraw()), hoverId)
+    _GCfg_Field(g, boxes, "toggle", col2, y, colW, "LIGAR/DESLIGAR", _ComboDisplay(cfg["toggleHotkey"]),
+        (*) => (CapturarCombo("comboRevive", "toggleHotkey", 0, "HOTKEY TOGGLE"), _GCfg_Redraw()), hoverId)
+    y += 44 + 8
+
+    usaAtk := cfg["usarFullAtk"] = "true"
+    usaDef := cfg["usarFullDef"] = "true"
+    _GCfg_Toggle(g, boxes, "atk", pad, y, colW, "FULL ATTACK", "ATIVAR", "DESATIVAR", usaAtk,
+        (*) => SalvarCfg("comboRevive", "usarFullAtk", "true"),
+        (*) => SalvarCfg("comboRevive", "usarFullAtk", "false"), hoverId)
+    _GCfg_Toggle(g, boxes, "def", col2, y, colW, "FULL DEFENSE", "ATIVAR", "DESATIVAR", usaDef,
+        (*) => SalvarCfg("comboRevive", "usarFullDef", "true"),
+        (*) => SalvarCfg("comboRevive", "usarFullDef", "false"), hoverId)
+    y += 44 + 8
+
+    y += _GCfg_Slider(g, boxes, "delay", pad, y, w - pad*2, "DELAY APÓS REVIVE", cfg["delayCombo"],
+        100, 2000, 10, "ms", (v) => SalvarCfg("comboRevive", "delayCombo", v), hoverId) + 8
+
+    _GCfg_ShowInMini(g, boxes, pad, y, w - pad*2, "comboRevive", hoverId)
+
+    Gdip_ResetClip(g)
+    borderPen := Gdip_Pen(Gdip_Argb(255, T()["SEP"]), 1)
+    Gdip_DrawRoundRect(g, borderPen, 0.5, 0.5, w - 1, h - 1, 14)
+    Gdip_DeletePen(borderPen)
+
+    return boxes
+}
+
+_FecharConfigCR() {
     AtualizarHotkeyCombo()
-    cfgGui.Destroy()
+    _GCfg_Fechar()
 }
 
 ResetarConfigCR() {
     _CriarGuiConfirmacao(
         "RESETAR COMBO REVIVE?",
         "Esta ação não pode ser desfeita.",
-        (g, *) => (ResetarSecao("comboRevive"), _LimparCamposCR(), g.Destroy(), ShowHint("RESETADO!", 1000)),
+        (g, *) => (ResetarSecao("comboRevive"), g.Destroy(), _GCfg_Redraw(), ShowHint("RESETADO!", 1000, "success")),
         (g, *) => g.Destroy()
     )
-}
-
-_LimparCamposCR() {
-    global txtTeclaInicialCR, txtTeclaFinalCR, txtHotkeyComboCR, txtToggleCR
-    try {
-        txtTeclaInicialCR.Value := "[ N/A ]"
-        txtTeclaFinalCR.Value   := "[ N/A ]"
-        txtHotkeyComboCR.Value  := "[ N/A ]"
-        txtToggleCR.Value       := "[ N/A ]"
-    }
 }

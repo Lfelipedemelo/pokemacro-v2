@@ -80,15 +80,16 @@ macro_modular/
 │   └── cooldown.png
 │
 ├── lib\                         ← Utilitários internos (não edite)
-│   ├── globals.ahk              ← Estado global, mapa de macros e sistema de temas
+│   ├── globals.ahk              ← Estado global, mapa de macros e tema de cores
 │   ├── config.ahk               ← Leitura/escrita do config.ini
+│   ├── gdip.ahk                 ← Wrapper GDI+ usado para desenhar a HUD
 │   ├── hint.ahk                 ← Notificações flutuantes na tela
-│   ├── window.ahk               ← Drag e posição da janela
+│   ├── window.ahk               ← Drag das telas de configuração
 │   └── input.ahk                ← Captura de teclas e posição do mouse
 │
 ├── ui\                          ← Telas da interface gráfica
-│   ├── slot.ahk                 ← Componente de botão de macro
-│   ├── gui_main.ahk             ← Barra principal com todos os macros
+│   ├── slot.ahk                 ← Estado visual (ativo/inativo) e toggle dos macros
+│   ├── mini_menu.ahk            ← HUD flutuante — interface principal (Ctrl+F12)
 │   ├── config_combo.ahk         ← Tela de configuração dos Combos
 │   ├── config_revive.ahk        ← Tela de configuração do Revive
 │   ├── config_combo_revive.ahk  ← Tela de configuração do Combo Revive
@@ -109,68 +110,55 @@ macro_modular/
 
 ### Abrindo e fechando a interface
 
-- Pressione **Ctrl+F12** para abrir ou fechar a barra de macros.
-- Você também pode fechar clicando no botão **X** no canto superior direito da barra.
-- A interface é flutuante e pode ser **arrastada** para qualquer posição da tela. A posição é salva automaticamente.
+- Pressione **Ctrl+F12** para abrir ou fechar a HUD flutuante.
+- Você também pode fechar clicando no botão **✕** dentro da própria barra.
+- A HUD pode ser **arrastada** para qualquer posição da tela. A posição é salva automaticamente.
 
 ### Ativando um macro
 
-1. Clique no **slot** do macro desejado na barra principal.
-2. O slot ficará com a cor de destaque do tema quando ativo.
+1. Clique no **ícone** do macro desejado na barra da HUD.
+2. O ícone ganha um anel/brilho na cor de destaque do tema quando ativo.
 3. Clique novamente para **desativar**.
 
 > 💡 **Exclusividade entre Combos:** Combo Principal, Combo Secundário e Combo Revive são mutuamente exclusivos — ativar um desliga automaticamente os outros.
 
-> 💡 **Miniatura de tecla:** Cada slot exibe a tecla do macro configurada em letras pequenas, para que você saiba qual botão pressionar sem precisar abrir as configurações.
+> 💡 **Dica de tecla:** Passe o mouse sobre um ícone da barra para ver em um tooltip o nome do macro e a tecla configurada para ele.
 
 ### Configurando um macro
 
-1. Clique no botão **⚙ CFG** ao lado do macro desejado.
-2. A tela de configuração será aberta.
-3. Configure cada opção conforme descrito nas seções abaixo.
-4. Feche com o botão **X** — as configurações são salvas automaticamente.
+1. Clique na seta **▾** da barra para expandir o painel-resumo.
+2. Clique no botão **⚙** ao lado do macro desejado.
+3. A tela de configuração será aberta.
+4. Configure cada opção conforme descrito nas seções abaixo.
+5. Feche com o botão **X** — as configurações são salvas automaticamente.
 
 ---
 
 ## Interface Principal
 
+A interface é uma **HUD flutuante compacta**, desenhada com GDI+ (cantos arredondados, hover animado e transições suaves). Ela tem uma barra sempre visível e um painel-resumo opcional que expande abaixo dela.
+
 ```
-┌──────────────────────────────────┐
-│ ✦ POKÉMACRO ✦           ↑  ⚙  X │  ← Título | Compacto | Config | Fechar
-├──────────────────────────────────┤
-│  [ícone COMBO PRINC.]  [F3-F8]   │
-│  COMBO PRINC.             ⚙ CFG  │
-├──────────────────────────────────┤
-│  [ícone COMBO SEC.]              │
-│  COMBO SEC.               ⚙ CFG  │
-├──────────────────────────────────┤
-│  [ícone COMBO REVIVE]            │
-│  COMBO REVIVE             ⚙ CFG  │
-├──────────────────────────────────┤
-│  [ícone REVIVE]                  │
-│  REVIVE                   ⚙ CFG  │
-├──────────────────────────────────┤
-│  [ícone COOLDOWN]                │
-│  COOLDOWN                 ⚙ CFG  │
-├──────────────────────────────────┤
-│         CTRL+F12  FECHAR         │
-└──────────────────────────────────┘
+┌────────────────────────────────────────────┐
+│ (◉)(◉)(◉)(◉)(◉)  │  ⚙   ▾   ✕              │  ← barra: ícones dos macros | geral | expandir | fechar
+├────────────────────────────────────────────┤
+│  RESUMO RÁPIDO                              │
+│  [ícone] Combo Principal              ⚙  ●  │
+│  [ícone] Combo Secundário             ⚙  ○  │
+│  [ícone] Reviver                      ⚙  ○  │
+│  [ícone] Combo Revive                 ⚙  ○  │
+│  [ícone] Cooldown                     ⚙  ○  │
+└────────────────────────────────────────────┘
 ```
 
-| Botão | Função |
-|-------|--------|
-| Slot (ícone/texto) | Ativa/desativa o macro |
-| Miniatura `[TECLA]` | Indica qual tecla ativa o macro |
-| ⚙ CFG | Abre a tela de configuração do macro |
-| ↑ / ↓ | Alterna entre modo normal e modo compacto |
-| ⚙ (topo direito) | Abre as Configurações Gerais |
-| X (topo direito) | Fecha a interface |
-
-### Modo Compacto
-
-Clique no botão **↑** no canto superior direito para ativar o modo compacto.  
-Neste modo os slots exibem apenas o nome do macro em texto, sem ícones, ocupando muito menos espaço na tela.  
-Clique em **↓** para voltar ao modo normal com ícones.
+| Elemento | Função |
+|----------|--------|
+| Ícone do macro (barra) | Ativa/desativa o macro. Hover mostra tooltip com nome + tecla configurada |
+| ⚙ (barra, topo direito) | Abre as Configurações Gerais |
+| ▾ (barra, topo direito) | Expande/recolhe o painel-resumo |
+| ✕ (barra, topo direito) | Fecha a HUD |
+| Linha do painel-resumo | Clique na linha ativa/desativa o macro; o ponto à direita indica o estado |
+| ⚙ (linha do painel-resumo) | Abre a tela de configuração daquele macro específico |
 
 ---
 
@@ -200,13 +188,13 @@ Clique em **↓** para voltar ao modo normal com ícones.
 
 **Como configurar passo a passo:**
 
-1. Abra a configuração do Combo Principal (botão ⚙ CFG).
+1. Abra a configuração do Combo Principal (expanda o painel na HUD e clique no ⚙ da linha do Combo Principal).
 2. Clique em **▶ DEFINIR BOTÃO INICIAL** e pressione a tecla da sua primeira habilidade.
 3. Clique em **▶ DEFINIR BOTÃO FINAL** e pressione a tecla da sua última habilidade.
 4. Clique em **▶ DEFINIR TECLA MACRO** e pressione a tecla/botão que vai disparar o combo.
 5. Se quiser Full Attack/Defense, vá em [Configurações Gerais](#configurações-gerais) e defina as teclas globais, depois ative-as aqui com o radio **ATIVAR**.
 6. Feche a configuração.
-7. Na barra principal, clique no slot do **Combo Principal** para ativá-lo.
+7. Na barra da HUD, clique no ícone do **Combo Principal** para ativá-lo.
 8. No jogo, pressione a tecla configurada — o combo será executado automaticamente.
 
 > **Exemplo:** Habilidades de F3 a F8.  
@@ -248,12 +236,12 @@ Funciona exatamente igual ao **Combo Principal**, mas é uma configuração sepa
 
 **Como configurar passo a passo:**
 
-1. Abra a configuração do Revive (botão ⚙ CFG).
+1. Abra a configuração do Revive (expanda o painel na HUD e clique no ⚙ da linha do Reviver).
 2. Clique em **▶ DEFINIR POSIÇÃO** e depois clique com o botão esquerdo do mouse **sobre o Pokémon** que você quer reviver no jogo.
 3. Clique em **▶ DEFINIR HOTKEY** e pressione a tecla que você usa para confirmar/usar o item de revive.
 4. Clique em **▶ DEFINIR TECLA MACRO** e pressione a tecla/botão que vai disparar o macro.
 5. Ajuste o **Delay** se necessário (padrão: 40ms).
-6. Feche e ative o macro na barra principal.
+6. Feche e ative o macro na barra da HUD.
 
 > **Dica:** Use um botão extra do mouse (XButton1 ou XButton2) como Tecla do Macro para maior praticidade.
 
@@ -317,42 +305,12 @@ Funciona exatamente igual ao **Combo Principal**, mas é uma configuração sepa
 
 ## Configurações Gerais
 
-Acessado pelo botão **⚙** no canto superior direito da barra principal.  
+Acessado pelo botão **⚙** na barra da HUD (ao lado da seta de expandir e do ✕).  
 Estas configurações são **globais** — afetam todos os macros do sistema.
 
 ---
 
-### 1. Fonte da Interface
-
-Troca a fonte de todos os textos da interface simultaneamente.
-
-| Opção | Aparência |
-|-------|-----------|
-| **Courier New** | Padrão, estilo terminal clássico |
-| **Consolas** | Moderna, boa legibilidade |
-| **Lucida Console** | Espaçada, fácil de ler em telas menores |
-| **Fixedsys** | Estilo retrô, pixels quadrados |
-
-> Ao selecionar uma fonte, a interface fecha e reabre automaticamente com a nova fonte aplicada.
-
----
-
-### 2. Tema de Cores
-
-Altera o esquema de cores de toda a interface simultaneamente.
-
-| Tema | Descrição |
-|------|-----------|
-| **Pokédex Vermelho** | Tema padrão — vermelho, amarelo e azul clássico Pokémon |
-| **Night Blue** | Tons de azul escuro, inspirado na noite |
-| **Gold** | Preto e dourado, elegante |
-| **Minimal** | Cinza escuro, discreto e limpo |
-
-> Ao selecionar um tema, a interface fecha e reabre automaticamente com as novas cores aplicadas.
-
----
-
-### 3. Delay Entre Teclas do Combo (ms)
+### 1. Delay Entre Teclas do Combo (ms)
 
 Controla o **intervalo em milissegundos** entre cada tecla enviada nos macros de Combo.
 
@@ -364,7 +322,7 @@ Controla o **intervalo em milissegundos** entre cada tecla enviada nos macros de
 
 ---
 
-### 4. Usar Prefixo [F] nas Teclas
+### 2. Usar Prefixo [F] nas Teclas
 
 Define como as teclas do combo são enviadas ao jogo.
 
@@ -379,7 +337,7 @@ Define como as teclas do combo são enviadas ao jogo.
 
 ---
 
-### 5. Modo Legado (Revive)
+### 3. Modo Legado (Revive)
 
 Altera o comportamento dos macros de **Revive** e **Combo Revive**.
 
@@ -390,7 +348,7 @@ Altera o comportamento dos macros de **Revive** e **Combo Revive**.
 
 ---
 
-### 6. Tecla Full Attack (Global)
+### 4. Tecla Full Attack (Global)
 
 Define a tecla enviada **antes** de iniciar qualquer combo (quando Full Attack está ativado na configuração do combo).
 
@@ -399,7 +357,7 @@ Define a tecla enviada **antes** de iniciar qualquer combo (quando Full Attack e
 
 ---
 
-### 7. Tecla Full Defense (Global)
+### 5. Tecla Full Defense (Global)
 
 Define a tecla enviada **após** o término de qualquer combo ou ao iniciar o Cooldown (quando Full Defense está ativado).
 
@@ -451,7 +409,7 @@ Ao confirmar, **apaga todas as configurações** daquele macro e retorna tudo pa
 
 **O macro não está funcionando. O que verificar?**
 
-1. Verifique se o macro está **ativado** (slot com cor de destaque na barra principal).
+1. Verifique se o macro está **ativado** (ícone com anel/brilho de destaque na barra da HUD).
 2. Verifique se a janela do jogo está em **foco** (em primeiro plano).
 3. Verifique se a **Tecla do Macro** está configurada (não deve estar como `N/A`).
 4. Verifique se o processo do jogo é `pxgme.exe` — o sistema monitora especificamente este processo.
@@ -483,15 +441,7 @@ Ao confirmar, **apaga todas as configurações** daquele macro e retorna tudo pa
 **A interface sumiu da tela.**
 
 - Pressione **Ctrl+F12** para reabrir.
-- Se a posição foi salva fora da tela (monitor desconectado), delete a seção `[Janela]` do arquivo `config.ini` com um editor de texto.
-
----
-
-**A interface ficou muito grande na tela. Como reduzir?**
-
-- Clique no botão **↑** no canto superior direito para ativar o **modo compacto**.  
-  Neste modo os slots exibem apenas o nome do macro em texto, sem ícones.
-- Clique em **↓** para voltar ao modo normal.
+- Se a posição foi salva fora da tela (monitor desconectado), delete a seção `[MiniMenu]` do arquivo `config.ini` com um editor de texto.
 
 ---
 
@@ -502,16 +452,6 @@ O sistema está configurado para detectar a janela `pxgme.exe`. Para usar em out
 JanelaAtiva() => WinActive("ahk_exe pxgme.exe")
 ```
 Substitua `pxgme.exe` pelo nome do executável do seu jogo.
-
----
-
-**Como alterar o visual da interface?**
-
-Abra as **Configurações Gerais** (botão ⚙ na barra de título) e:
-- Troque a **Fonte** entre Courier New, Consolas, Lucida Console e Fixedsys.
-- Troque o **Tema de Cores** entre Pokédex Vermelho, Night Blue, Gold e Minimal.
-
-Qualquer alteração é aplicada imediatamente ao fechar e reabrir a interface.
 
 ---
 

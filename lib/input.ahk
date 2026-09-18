@@ -9,6 +9,11 @@ CapturarTecla(configSection, configKey, uiText := 0, label := "Tecla") {
 
     ShowHint("Pressione tecla ou botão do mouse (ESC cancela)", 999999)
 
+    ; Aguarda soltar o botão que abriu a captura (evita capturar o próprio clique)
+    while GetKeyState("LButton", "P")
+        Sleep(10)
+    Sleep(150)
+
     ih := InputHook("L0 E")
     ih.KeyOpt("{Escape}", "N")
     ih.KeyOpt("{All}", "E")
@@ -21,7 +26,7 @@ CapturarTecla(configSection, configKey, uiText := 0, label := "Tecla") {
 
         if GetKeyState("Escape", "P") {
             ih.Stop()
-            ShowHint("Cancelado", 1200)
+            ShowHint("Cancelado", 1200, "warn")
             return
         }
 
@@ -48,7 +53,7 @@ CapturarTecla(configSection, configKey, uiText := 0, label := "Tecla") {
     ih.Stop()
 
     if (!tecla) {
-        ShowHint("Nenhuma tecla detectada", 1000)
+        ShowHint("Nenhuma tecla detectada", 1000, "warn")
         return
     }
 
@@ -60,7 +65,7 @@ CapturarTecla(configSection, configKey, uiText := 0, label := "Tecla") {
     if IsObject(uiText)
         uiText.Value := label ": [ " StrUpper(tecla) " ]"
 
-    ShowHint(label " salvo: " StrUpper(tecla), 1200)
+    ShowHint(label " salvo: " StrUpper(tecla), 1200, "success")
 }
 
 ; Aguarda um clique do mouse e salva as coordenadas no INI.
@@ -78,7 +83,7 @@ CapturarPosicaoMouse(secao, objetoTexto, chaveX := "clickX", chaveY := "clickY")
         Sleep(10)
 
         if GetKeyState("Escape", "P") {
-            ShowHint("Cancelado", 1200)
+            ShowHint("Cancelado", 1200, "warn")
             return
         }
 
@@ -94,7 +99,7 @@ CapturarPosicaoMouse(secao, objetoTexto, chaveX := "clickX", chaveY := "clickY")
     if IsSet(objetoTexto) && IsObject(objetoTexto)
         objetoTexto.Value := "Posição: [ " posX ", " posY " ]"
 
-    ShowHint("Posição salva: " posX ", " posY, 1200)
+    ShowHint("Posição salva: " posX ", " posY, 1200, "success")
 }
 
 ; Captura UMA tecla de teclado OU um botão de mouse (sem modificadores).
@@ -135,14 +140,14 @@ CapturarCombo(configSection, configKey, uiText := 0, label := "Hotkey") {
 
         if GetKeyState("Escape", "P") {
             ih.Stop()
-            ShowHint("Cancelado", 1200)
+            ShowHint("Cancelado", 1200, "warn")
             return
         }
 
         if (ih.InProgress = 0) {
             k := ih.EndKey
             if (k = "Escape") {
-                ShowHint("Cancelado", 1200)
+                ShowHint("Cancelado", 1200, "warn")
                 return
             }
             if (k != "") {
@@ -163,7 +168,7 @@ CapturarCombo(configSection, configKey, uiText := 0, label := "Hotkey") {
     }
 
     if (resultado = "") {
-        ShowHint("Nenhuma tecla detectada", 1000)
+        ShowHint("Nenhuma tecla detectada", 1000, "warn")
         return
     }
 
@@ -173,7 +178,7 @@ CapturarCombo(configSection, configKey, uiText := 0, label := "Hotkey") {
     if IsObject(uiText)
         uiText.Value := label ": [ " StrUpper(resultado) " ]"
 
-    ShowHint(label ": " StrUpper(resultado), 1500)
+    ShowHint(label ": " StrUpper(resultado), 1500, "success")
 }
 
 _OnComboKey(ih, vk, sc) {
