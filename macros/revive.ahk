@@ -17,7 +17,7 @@ _EnviarSequenciaRevive(cfgRev, modoLegado) {
     if (cfgRev["x"] = "N/A" || cfgRev["y"] = "N/A")
         return false
 
-    delay := IsNumber(cfgRev["delayRevive"]) ? Integer(cfgRev["delayRevive"]) : 40
+    delay := IsNumber(cfgRev["delayRevive"]) ? Integer(cfgRev["delayRevive"]) : 50
 
     Critical("On")
     try {

@@ -32,7 +32,7 @@ _DesenharConfigRevive(g, w, h, hoverId) {
     y += 44 + 8
 
     y += _GCfg_Slider(g, boxes, "delay", pad, y, w - pad*2, "DELAY ENTRE CLIQUES", cfg["delayRevive"],
-        10, 200, 1, "ms", (v) => SalvarCfg("Revive", "delayRevive", v), hoverId) + 8
+        0, 300, 1, "ms", (v) => SalvarCfg("Revive", "delayRevive", v), hoverId) + 8
 
     _GCfg_Field(g, boxes, "hkmacro", pad, y, colW, "TECLA DO MACRO", StrUpper(cfg["teclaHotkey"]),
         (*) => (CapturarTecla("Revive", "teclaHotkey", 0, "TECLA MACRO REVIVE"), _GCfg_Redraw()), hoverId)

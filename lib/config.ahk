@@ -10,7 +10,7 @@ GetCfg(tipo) {
 
     return Map(
         ; --- Revive ---
-        "delayRevive",         IniRead(configFile, tipo,      "delayRevive",      "40"),
+        "delayRevive",         IniRead(configFile, tipo,      "delayRevive",      "50"),
         "x",                   IniRead(configFile, tipo,      "xRevive",          "N/A"),
         "y",                   IniRead(configFile, tipo,      "yRevive",          "N/A"),
         "teclaInputRevive",    IniRead(configFile, tipo,      "teclaInputRevive", "N/A"),
