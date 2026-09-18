@@ -18,7 +18,31 @@ GetModoLegado() {
 }
 
 AbrirConfigGeral() {
-    _GCfg_Abrir(288, 204, _DesenharConfigGeral)
+    _GCfg_Abrir(288, 424, _DesenharConfigGeral)
+}
+
+; ── Macros que podem ser exibidos/ocultados na HUD (Ctrl+F12) ──
+; Mesma seção/chave "showInMini" usada pelo toggle "EXIBIR NO MINI MENU"
+; de cada tela de macro (_GCfg_ShowInMini em lib\gdip_config.ahk) — este
+; painel só dá um lugar único para ver e mexer nos 5 de uma vez.
+_ConfigGeral_MacrosVisiveis() {
+    return [
+        Map("secao", "comboPrincipal",  "label", "COMBO PRINCIPAL"),
+        Map("secao", "comboSecundario", "label", "COMBO SECUNDÁRIO"),
+        Map("secao", "Revive",          "label", "REVIVER"),
+        Map("secao", "comboRevive",     "label", "COMBO REVIVE"),
+        Map("secao", "Cooldown",        "label", "COOLDOWN"),
+    ]
+}
+
+; Cartão de alternância "exibir na HUD" para um macro específico. idBase
+; inclui a seção para não colidir com o hover dos outros cartões da
+; lista (todos usariam "showmini" se reaproveitassem _GCfg_ShowInMini).
+_GCfg_VisibilidadeItem(g, boxes, x, y, w, secao, label, hoverId) {
+    atual := GetShowInMini(secao)
+    return _GCfg_Toggle(g, boxes, "vis_" secao, x, y, w, label, "SIM", "NÃO", atual,
+        (*) => (SalvarCfg(secao, "showInMini", "true"),  _RecriarMini(), _GCfg_Redraw()),
+        (*) => (SalvarCfg(secao, "showInMini", "false"), _RecriarMini(), _GCfg_Redraw()), hoverId)
 }
 
 _DesenharConfigGeral(g, w, h, hoverId) {
@@ -58,6 +82,22 @@ _DesenharConfigGeral(g, w, h, hoverId) {
     fdVal := IniRead(configFile, "Geral", "fullDefense", "N/A")
     _GCfg_Field(g, boxes, "fd", col2, y, colW, "FULL DEFENSE", StrUpper(fdVal),
         (*) => (CapturarTecla("Geral", "fullDefense", 0, "FULL DEFENSE"), _GCfg_Redraw()), hoverId)
+    y += 44 + 8
+
+    Gdip_DrawText(g, "MACROS EXIBIDOS NA INTERFACE", 9, true, Gdip_Argb(255, T()["MUTED"]), pad, y, w - pad*2, 14, false)
+    y += 20
+
+    itens := _ConfigGeral_MacrosVisiveis()
+    _GCfg_VisibilidadeItem(g, boxes, pad,  y, colW, itens[1]["secao"], itens[1]["label"], hoverId)
+    _GCfg_VisibilidadeItem(g, boxes, col2, y, colW, itens[2]["secao"], itens[2]["label"], hoverId)
+    y += 44 + 8
+
+    _GCfg_VisibilidadeItem(g, boxes, pad,  y, colW, itens[3]["secao"], itens[3]["label"], hoverId)
+    _GCfg_VisibilidadeItem(g, boxes, col2, y, colW, itens[4]["secao"], itens[4]["label"], hoverId)
+    y += 44 + 8
+
+    _GCfg_VisibilidadeItem(g, boxes, pad, y, w - pad*2, itens[5]["secao"], itens[5]["label"], hoverId)
+    y += 44
 
     Gdip_ResetClip(g)
     borderPen := Gdip_Pen(Gdip_Argb(255, T()["SEP"]), 1)

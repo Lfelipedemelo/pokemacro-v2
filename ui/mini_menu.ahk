@@ -8,7 +8,7 @@
 ; realce animado + tooltip, estado ativo com anel de brilho pulsante,
 ; e um painel-resumo que expande/recolhe com transição de altura.
 ;
-; É a interface principal do app: abre/fecha com Ctrl+F12 (main.ahk).
+; É a interface principal do app: abre/fecha com Ctrl+F12 (pokemacro.ahk).
 ; O painel expandido (chevron) mostra um botão ⚙ por macro que abre a
 ; tela de configuração específica daquele macro.
 ;

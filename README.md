@@ -57,7 +57,7 @@
 
 1. Baixe ou clone este repositório para uma pasta de sua escolha.
 2. Certifique-se de que a pasta `icons\` existe e contém os arquivos `.png` dos macros.
-3. Dê um duplo clique em **`main.ahk`** para iniciar o sistema.
+3. Dê um duplo clique em **`pokemacro.ahk`** para iniciar o sistema.
 4. A interface aparecerá na tela. Se não aparecer, pressione **Ctrl+F12**.
 
 > O arquivo `config.ini` é criado automaticamente na primeira vez que você salva qualquer configuração. Não é necessário criá-lo manualmente.
@@ -69,7 +69,7 @@
 ```
 macro_modular/
 │
-├── main.ahk                     ← Ponto de entrada — execute este arquivo
+├── pokemacro.ahk                ← Ponto de entrada — execute este arquivo
 ├── config.ini                   ← Gerado automaticamente com suas configurações
 │
 ├── icons\                       ← Ícones PNG exibidos na interface
@@ -472,12 +472,12 @@ Este é o método mais simples e não requer permissões de administrador.
 1. Pressione **Win + R** para abrir o menu Executar.
 2. Digite `shell:startup` e pressione **Enter**.
 3. Uma pasta do Windows Explorer será aberta — esta é a **pasta de inicialização automática**.
-4. Volte até a pasta onde está o `main.ahk` do PokéMacro.
-5. Segure **Ctrl + Shift** e **arraste** o arquivo `main.ahk` para a pasta de inicialização.  
+4. Volte até a pasta onde está o `pokemacro.ahk` do PokéMacro.
+5. Segure **Ctrl + Shift** e **arraste** o arquivo `pokemacro.ahk` para a pasta de inicialização.  
    *(Isso cria um atalho — não mova o arquivo original)*
 6. Pronto. Na próxima vez que o Windows iniciar, o PokéMacro abrirá automaticamente.
 
-> 💡 **Dica:** Para verificar se funcionou, pressione **Win + R**, digite `shell:startup` e confirme que o atalho do `main.ahk` está lá.
+> 💡 **Dica:** Para verificar se funcionou, pressione **Win + R**, digite `shell:startup` e confirme que o atalho do `pokemacro.ahk` está lá.
 
 ---
 
@@ -490,7 +490,7 @@ Recomendado se o Método 1 não funcionar ou se você quiser que o macro inicie 
 3. Dê um nome como `PokéMacro` e clique em **Avançar**.
 4. Em **Gatilho**, selecione **Ao fazer logon** e clique em **Avançar**.
 5. Em **Ação**, selecione **Iniciar um programa** e clique em **Avançar**.
-6. Clique em **Procurar** e selecione o arquivo `main.ahk` na pasta do PokéMacro.
+6. Clique em **Procurar** e selecione o arquivo `pokemacro.ahk` na pasta do PokéMacro.
 7. No campo **Iniciar em**, coloque o caminho completo da pasta do PokéMacro  
    *(ex: `C:\Users\SeuUsuario\Documents\macro_modular`)*
 8. Clique em **Avançar** e depois em **Concluir**.
@@ -501,7 +501,7 @@ Recomendado se o Método 1 não funcionar ou se você quiser que o macro inicie 
 
 ### Removendo a inicialização automática
 
-**Método 1:** Abra `shell:startup` pelo Win+R e delete o atalho do `main.ahk`.
+**Método 1:** Abra `shell:startup` pelo Win+R e delete o atalho do `pokemacro.ahk`.
 
 **Método 2:** Abra o Agendador de Tarefas (`taskschd.msc`), localize a tarefa `PokéMacro` na lista, clique com o botão direito e selecione **Excluir**.
 
