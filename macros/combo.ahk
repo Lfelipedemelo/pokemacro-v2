@@ -36,6 +36,8 @@ ExecutarCombo(tipo) {
             interromperCombo := false
             break
         }
+        if !WinActive("ahk_exe pxgme.exe")
+            break
 
         Sleep(20)
 
@@ -45,7 +47,11 @@ ExecutarCombo(tipo) {
 
         fatia := Max(1, sleepMs // 10)
         Loop 10 {
-            if (interromperCombo)
+            if (interromperCombo) {
+                interromperCombo := false
+                break 2
+            }
+            if !WinActive("ahk_exe pxgme.exe")
                 break 2
             Sleep(fatia)
         }

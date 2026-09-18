@@ -125,23 +125,25 @@ ProcessarPressionamento(thisHotkey) {
     if (!ehInterrompivel)
         _macroExecutando := true
 
-    if      (macros["comboPrincipal"]  && GetCfg("comboPrincipal")["teclaHotkey"]  = teclaPura)
-        ExecutarCombo("comboPrincipal")
-    else if (macros["comboSecundario"] && GetCfg("comboSecundario")["teclaHotkey"] = teclaPura)
-        ExecutarCombo("comboSecundario")
-    else if (ehComboRevive)
-        ExecutarComboRevive()
-    else if (ehRevive)
-        ExecutarRevive()
-    else if (ehCooldown) {
-        if (executandoCooldown) {
-            executandoCooldown := false
-            ShowHint("CANCELADO", 1000)
-        } else {
-            ExecutarMacroCooldown()
+    try {
+        if      (macros["comboPrincipal"]  && GetCfg("comboPrincipal")["teclaHotkey"]  = teclaPura)
+            ExecutarCombo("comboPrincipal")
+        else if (macros["comboSecundario"] && GetCfg("comboSecundario")["teclaHotkey"] = teclaPura)
+            ExecutarCombo("comboSecundario")
+        else if (ehComboRevive)
+            ExecutarComboRevive()
+        else if (ehRevive)
+            ExecutarRevive()
+        else if (ehCooldown) {
+            if (executandoCooldown) {
+                executandoCooldown := false
+                ShowHint("CANCELADO", 1000)
+            } else {
+                ExecutarMacroCooldown()
+            }
         }
+    } finally {
+        if (!ehInterrompivel)
+            _macroExecutando := false
     }
-
-    if (!ehInterrompivel)
-        _macroExecutando := false
 }

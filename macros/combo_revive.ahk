@@ -7,7 +7,7 @@
 ; usando as configs de [comboRevive].
 
 ExecutarComboRevive() {
-    global macros, interromperCombo
+    global macros, interromperCombo, _reviveOcupado
 
     if !macros["comboRevive"]
         return
@@ -18,39 +18,25 @@ ExecutarComboRevive() {
     ; ── 1. Executa o Revive ──────────────────────────
     interromperCombo := false
 
+    ; Reentrância: se já existe uma sequência de revive em andamento
+    ; (deste Combo Revive ou do Revive avulso), ignora esta chamada em
+    ; vez de disparar uma segunda sequência por cima da primeira.
+    if (_reviveOcupado)
+        return
+
     cfgRev := GetCfg("Revive")
 
-    if (cfgRev["x"] = "N/A" || cfgRev["y"] = "N/A") {
+    _reviveOcupado := true
+    try {
+        sucesso := _EnviarSequenciaRevive(cfgRev, modoLegado)
+    } finally {
+        _reviveOcupado := false
+    }
+
+    if !sucesso {
         ShowHint("COMBO REVIVE: Defina a posição do Revive primeiro!", 1800)
         return
     }
-
-    delay := IsNumber(cfgRev["delayRevive"]) ? Integer(cfgRev["delayRevive"]) : 40
-
-    MouseGetPos(&xAtual, &yAtual)
-    MouseMove(cfgRev["x"], cfgRev["y"], 0)
-
-    if (modoLegado = "true") {
-        Click("Right")
-        Sleep(delay)
-        if (cfgRev["teclaInputRevive"] != "N/A") {
-            SendEvent("{" cfgRev["teclaInputRevive"] " down}")
-            SendEvent("{" cfgRev["teclaInputRevive"] " up}")
-        }
-        Click("Right")
-    } else {
-        SendEvent("{Ctrl down}{1 down}")
-        SendEvent("{1 up}{Ctrl up}")
-        Sleep(delay)
-        if (cfgRev["teclaInputRevive"] != "N/A") {
-            SendEvent("{" cfgRev["teclaInputRevive"] " down}")
-            SendEvent("{" cfgRev["teclaInputRevive"] " up}")
-        }
-        SendEvent("{Ctrl down}{1 down}")
-        SendEvent("{1 up}{Ctrl up}")
-    }
-
-    MouseMove(xAtual, yAtual, 0)
 
     ; ── 2. Aguarda o delay entre revive e combo ──────
     Sleep(cfg["delayCombo"])
@@ -79,6 +65,8 @@ ExecutarComboRevive() {
             interromperCombo := false
             break
         }
+        if !WinActive("ahk_exe pxgme.exe")
+            break
 
         Sleep(20)
 
@@ -88,7 +76,11 @@ ExecutarComboRevive() {
 
         fatia := Max(1, sleepMs // 10)
         Loop 10 {
-            if (interromperCombo)
+            if (interromperCombo) {
+                interromperCombo := false
+                break 2
+            }
+            if !WinActive("ahk_exe pxgme.exe")
                 break 2
             Sleep(fatia)
         }
