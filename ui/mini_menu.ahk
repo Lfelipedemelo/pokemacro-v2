@@ -27,6 +27,8 @@ global _hudHoverId    := ""
 global _hudHoverT     := Map()
 global _hudBoxes      := []
 global _hudVisibleCache := 0   ; cache de _HudVisibleItems() — ver comentário lá
+global _hudEventHook    := 0   ; handle do hook de EVENT_SYSTEM_FOREGROUND (ver _HudRegistrarHook)
+global _hudEventCb      := 0   ; ponteiro do callback, criado uma única vez
 
 ; ── Tecla configurada de cada macro, para o tooltip da barra ──
 _KeyHint(tipo) {
@@ -112,7 +114,8 @@ _HudAbrir() {
 
     _HudRedraw()
     SetTimer(_HudPulseTick, 80)
-    SetTimer(_HudVisibilidade, 100)
+    _HudVisibilidade()      ; aplica visibilidade inicial
+    _HudRegistrarHook()     ; e depois só reavalia quando a janela ativa mudar
 }
 
 _HudFechar() {
@@ -122,7 +125,7 @@ _HudFechar() {
     _HudSalvarPos()
     SetTimer(_HudPulseTick, 0)
     SetTimer(_HudFxTick, 0)
-    SetTimer(_HudVisibilidade, 0)
+    _HudRemoverHook()
     try miniGui.Destroy()
     miniGui := 0
 }
@@ -159,16 +162,17 @@ _HudSalvarPos() {
 }
 
 ; Oculta a HUD quando o jogo não está em foco (mesmo comportamento de antes).
-_HudVisibilidade() {
+; Recebe o hwnd da janela que acabou de virar ativa (via _HudOnForegroundChange);
+; se vier vazio (chamada manual, ex. ao abrir a HUD), descobre a janela ativa na hora.
+_HudVisibilidade(hwndAtivo := 0) {
     global miniGui, _macroExecutando, executandoCooldown
-    if !miniGui {
-        SetTimer(_HudVisibilidade, 0)
+    if !miniGui
         return
-    }
     if (_macroExecutando || executandoCooldown)
         return
     try {
-        hwndAtivo := WinGetID("A")
+        if (!hwndAtivo)
+            hwndAtivo := WinGetID("A")
         exeAtivo  := WinGetProcessName("ahk_id " hwndAtivo)
         visivel   := (exeAtivo = "pxgme.exe" || exeAtivo = "AutoHotkey64.exe" || exeAtivo = "AutoHotkey.exe")
         if visivel
@@ -176,6 +180,34 @@ _HudVisibilidade() {
         else
             WinHide("ahk_id " miniGui.Hwnd)
     }
+}
+
+; ── Detecção de troca de janela ativa (sem polling) ────────
+; Antes isso rodava num SetTimer de 100ms pra sempre, reavaliando a janela
+; ativa mesmo quando nada mudava. O Windows já notifica exatamente quando o
+; foreground muda (EVENT_SYSTEM_FOREGROUND), então usamos um WinEventHook:
+; zero custo enquanto o jogador não troca de janela, e reação imediata
+; (sem até 100ms de atraso) quando troca.
+_HudRegistrarHook() {
+    global _hudEventHook, _hudEventCb
+    if (_hudEventHook)
+        return
+    if (!_hudEventCb)
+        _hudEventCb := CallbackCreate(_HudOnForegroundChange, "", 7)
+    ; SetWinEventHook(eventMin, eventMax, hmodWinEventProc, pfnWinEventProc, idProcess, idThread, dwFlags)
+    _hudEventHook := DllCall("SetWinEventHook", "UInt", 0x3, "UInt", 0x3, "Ptr", 0, "Ptr", _hudEventCb, "UInt", 0, "UInt", 0, "UInt", 0, "Ptr")
+}
+
+_HudRemoverHook() {
+    global _hudEventHook
+    if (_hudEventHook) {
+        DllCall("UnhookWinEvent", "Ptr", _hudEventHook)
+        _hudEventHook := 0
+    }
+}
+
+_HudOnForegroundChange(hHook, event, hwnd, idObject, idChild, idThread, msEventTime) {
+    _HudVisibilidade(hwnd)
 }
 
 ; ── Entrada do mouse / clique ───────────────────────────
