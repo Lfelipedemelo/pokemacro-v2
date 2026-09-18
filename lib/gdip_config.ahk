@@ -43,7 +43,16 @@ global _gcfgDragBox := 0
 ; formas, textos e traços crescem juntos sem precisar mexer em cada
 ; tela (ui\config_*.ahk). Coordenadas de mouse (físicas) são convertidas
 ; de volta para lógicas antes do hit-test — ver _GCfg_WM_MouseMove/LButtonDown.
-global _GCFG_SCALE := 1.35
+;
+; _GCFG_SCALE_BASE (1.35) é o zoom fixo que essas telas sempre tiveram.
+; O multiplicador "TAMANHO DA INTERFACE" (pequeno/normal/grande, tela de
+; Configurações Gerais) fica em cima dele — normal = 1.0x, ou seja, o
+; tamanho de sempre. Como essas telas só redesenham por interação (hover/
+; clique/drag), não a cada frame, escalar o Graphics inteiro aqui não
+; tem custo de fps — diferente da HUD (ui\mini_menu.ahk), que anima a
+; 60fps e por isso escala do outro jeito (ver _HUD_SCALE lá).
+global _GCFG_SCALE_BASE := 1.35
+global _GCFG_SCALE      := _GCFG_SCALE_BASE * EscalaFator()
 
 ; ── Abrir / fechar ─────────────────────────────────────
 ; Se outra tela de config já estiver aberta, fecha-a primeiro — só uma
@@ -208,6 +217,35 @@ _GCfg_WM_Move(wParam, lParam, msg, hwnd) {
     if (y > 32767)
         y -= 65536
     _gcfgX := x, _gcfgY := y
+}
+
+; ── Escala da interface (chamado pela tela de Configurações Gerais) ──
+; Fecha e reabre a tela de config atual no novo tamanho/posição. Não pode
+; rodar direto de dentro de AplicarEscalaInterface porque essa função é
+; chamada pelo próprio onClick do cartão de escala — destruir a janela
+; ainda dentro do despacho de mensagens dela (_GCfg_WM_LButtonDown) dá
+; erro de reentrância, o mesmo cuidado do botão fechar da HUD (ver
+; ui\mini_menu.ahk, case "close"). Por isso o SetTimer(..., -1) abaixo.
+_GCfg_ReaplicarEscala() {
+    global _gcfgGui, _gcfgW, _gcfgH, _gcfgDraw
+    if (!_gcfgGui || !_gcfgDraw)
+        return
+    _GCfg_Abrir(_gcfgW, _gcfgH, _gcfgDraw)
+}
+
+AplicarEscalaInterface(nome) {
+    global configFile, _GCFG_SCALE, _GCFG_SCALE_BASE, _HUD_SCALE, _gcfgGui, miniGui
+
+    IniWrite(nome, configFile, "Geral", "escalaInterface")
+    fator := EscalaFator(nome)
+
+    _GCFG_SCALE := _GCFG_SCALE_BASE * fator
+    _HUD_SCALE  := fator
+
+    if (miniGui)
+        _HudRedraw()
+    if (_gcfgGui)
+        SetTimer(_GCfg_ReaplicarEscala, -1)
 }
 
 ; ── Slider ──────────────────────────────────────────────

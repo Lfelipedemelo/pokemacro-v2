@@ -18,7 +18,25 @@ GetModoLegado() {
 }
 
 AbrirConfigGeral() {
-    _GCfg_Abrir(288, 424, _DesenharConfigGeral)
+    _GCfg_Abrir(288, 476, _DesenharConfigGeral)
+}
+
+; ── Tamanho da interface (HUD + telas de config) ──
+; Mapeamento simples índice (pílula de 3 opções) <-> nome salvo no INI.
+_ConfigGeral_EscalaIdx(nome) {
+    switch nome {
+        case "pequeno": return 1
+        case "grande":  return 3
+        default:        return 2
+    }
+}
+
+_ConfigGeral_EscalaNome(idx) {
+    switch idx {
+        case 1:  return "pequeno"
+        case 3:  return "grande"
+        default: return "normal"
+    }
 }
 
 ; ── Macros que podem ser exibidos/ocultados na HUD (Ctrl+F12) ──
@@ -73,6 +91,13 @@ _DesenharConfigGeral(g, w, h, hoverId) {
     _GCfg_Toggle(g, boxes, "legado", col2, y, colW, "MODO LEGADO", "ATIVO", "INATIVO", modoLegado = "true",
         (*) => IniWrite("true",  configFile, "Geral", "modoLegado"),
         (*) => IniWrite("false", configFile, "Geral", "modoLegado"), hoverId)
+    y += 44 + 8
+
+    ; "Normal" é o tamanho de sempre da HUD e das telas de config — ver
+    ; AplicarEscalaInterface (lib\gdip_config.ahk) e _HUD_SCALE (ui\mini_menu.ahk).
+    _GCfg_Segmented(g, boxes, "escala", pad, y, w - pad*2, "TAMANHO DA INTERFACE",
+        ["PEQUENO", "NORMAL", "GRANDE"], _ConfigGeral_EscalaIdx(GetEscalaInterface()),
+        (idx) => AplicarEscalaInterface(_ConfigGeral_EscalaNome(idx)), hoverId)
     y += 44 + 8
 
     faVal := IniRead(configFile, "Geral", "fullAttack", "N/A")

@@ -30,6 +30,18 @@ global _hudVisibleCache := 0   ; cache de _HudVisibleItems() — ver comentário
 global _hudEventHook    := 0   ; handle do hook de EVENT_SYSTEM_FOREGROUND (ver _HudRegistrarHook)
 global _hudEventCb      := 0   ; ponteiro do callback, criado uma única vez
 
+; Fator de escala da HUD ("TAMANHO DA INTERFACE" em Configurações Gerais,
+; ver EscalaFator em lib\globals.ahk). Diferente das telas de config
+; (lib\gdip_config.ahk), que escalam o Graphics inteiro com uma
+; transformação, aqui multiplicamos as constantes de layout ANTES de
+; desenhar (ver _HudRedraw): a HUD anima a até 60fps (_HudFxTick), e um
+; ícone cacheado (Gdip_ScaledIcon) já nasce no tamanho final pedido —
+; com transformação de canvas ele seria desenhado nesse tamanho e DEPOIS
+; esticado de novo pelo GDI+ (HighQualityBicubic) a cada frame. Mudando
+; o tamanho pedido ao cache em vez disso, o recorte caro roda uma única
+; vez por tamanho (na primeira vez que a escala muda), não por frame.
+global _HUD_SCALE       := EscalaFator()
+
 ; ── Tecla configurada de cada macro, para o tooltip da barra ──
 _KeyHint(tipo) {
     cfg := GetCfg(tipo)
@@ -394,7 +406,10 @@ _HudIconImg(nome, size) {
 }
 
 _HudDrawMiniBtn(g, kind, cx, cy, d, hoverT, expandido := false) {
-    r := d / 2 + hoverT * 1.5
+    global _HUD_SCALE
+    scale := _HUD_SCALE
+
+    r := d / 2 + hoverT * 1.5 * scale
     bg := Gdip_LerpArgb(255, "0x16131b", "0x2a2632", hoverT)
     brush := Gdip_BrushSolid(bg)
     Gdip_FillEllipse(g, brush, cx - r, cy - r, r * 2, r * 2)
@@ -403,9 +418,9 @@ _HudDrawMiniBtn(g, kind, cx, cy, d, hoverT, expandido := false) {
     col := Gdip_LerpArgb(255, "0x65636d", "0xe8e6ec", hoverT)
     if (kind = "close")
         col := Gdip_LerpArgb(255, "0x65636d", "0xff8484", hoverT)
-    pen := Gdip_Pen(col, 1.6)
+    pen := Gdip_Pen(col, 1.6 * scale)
 
-    s := d * 0.22
+    armLen := d * 0.22
     switch kind {
         case "gear":
             ; Ícone de engrenagem pronto (icons\gear.png, recolorido para
@@ -416,20 +431,20 @@ _HudDrawMiniBtn(g, kind, cx, cy, d, hoverT, expandido := false) {
             Gdip_DrawImage(g, Gdip_ScaledIcon(A_ScriptDir "\icons\gear.png", iconSz),
                 cx - iconSz / 2, cy - iconSz / 2, iconSz, iconSz)
         case "chevron":
-            y1 := expandido ? cy + s * 0.5 : cy - s * 0.3
-            y2 := expandido ? cy - s * 0.3 : cy + s * 0.5
-            Gdip_DrawLine(g, pen, cx - s, y1, cx, y2)
-            Gdip_DrawLine(g, pen, cx, y2, cx + s, y1)
+            y1 := expandido ? cy + armLen * 0.5 : cy - armLen * 0.3
+            y2 := expandido ? cy - armLen * 0.3 : cy + armLen * 0.5
+            Gdip_DrawLine(g, pen, cx - armLen, y1, cx, y2)
+            Gdip_DrawLine(g, pen, cx, y2, cx + armLen, y1)
         case "close":
-            Gdip_DrawLine(g, pen, cx - s, cy - s, cx + s, cy + s)
-            Gdip_DrawLine(g, pen, cx - s, cy + s, cx + s, cy - s)
+            Gdip_DrawLine(g, pen, cx - armLen, cy - armLen, cx + armLen, cy + armLen)
+            Gdip_DrawLine(g, pen, cx - armLen, cy + armLen, cx + armLen, cy - armLen)
     }
     Gdip_DeletePen(pen)
 }
 
 ; ── Desenho principal ────────────────────────────────────
 _HudRedraw() {
-    global miniGui, _hudX, _hudY, _hudExpandT, _hudExpanded, _hudHoverT, _hudBoxes, macros
+    global miniGui, _hudX, _hudY, _hudExpandT, _hudExpanded, _hudHoverT, _hudBoxes, macros, _HUD_SCALE
     Critical "On"
 
     if (!miniGui) {
@@ -440,10 +455,11 @@ _HudRedraw() {
 
     accent := T()["ACCENT"]
     items  := _HudVisibleItems()
+    s      := _HUD_SCALE
 
-    PAD := 14, GAP := 10, BTN_D := 36, MINI_D := 22, SEP_H := 22
-    BAR_H := 58
-    ICON_BAR_SZ := 34, ICON_ROW_SZ := 20
+    PAD := Round(14*s), GAP := Round(10*s), BTN_D := Round(36*s), MINI_D := Round(22*s), SEP_H := Round(22*s)
+    BAR_H := Round(58*s)
+    ICON_BAR_SZ := Round(34*s), ICON_ROW_SZ := Round(20*s)
 
     cx := PAD
     barCY := BAR_H // 2
@@ -454,7 +470,7 @@ _HudRedraw() {
     for m in items {
         hk := "bar_" m["id"]
         hv := _hudHoverT.Has(hk) ? _hudHoverT[hk] : 0
-        r  := BTN_D / 2 + hv * 2
+        r  := BTN_D / 2 + hv * 2 * s
         thisCx := cx + BTN_D / 2
         boxes.Push({ id: hk, kind: "macro", nome: m["nome"], cx: thisCx, cy: barCY, r: BTN_D / 2 + 3 })
         barIcons.Push({ m: m, cx: thisCx, cy: barCY, r: r, hoverT: hv })
@@ -482,7 +498,7 @@ _HudRedraw() {
 
     winW := cx + PAD
 
-    ROW_H := 28, ROW_GAP := 4, PANEL_PAD := 10, HEADER_H := 18
+    ROW_H := Round(28*s), ROW_GAP := Round(4*s), PANEL_PAD := Round(10*s), HEADER_H := Round(18*s)
     nRows := items.Length
     panelFullH := (nRows > 0) ? (PANEL_PAD * 2 + HEADER_H + nRows * ROW_H + (nRows - 1) * ROW_GAP) : 0
 
@@ -492,7 +508,7 @@ _HudRedraw() {
 
     winH := BAR_H + panelH
 
-    GEAR_D := 20
+    GEAR_D := Round(20*s)
 
     panelRows := []
     if (mostrarPainel) {
@@ -503,8 +519,8 @@ _HudRedraw() {
                 break
             rh := Min(ROW_H, avail)
             rowCy := py + rh / 2
-            dotCx := winW - PAD - 8
-            rowGearCx := dotCx - 10 - GEAR_D / 2
+            dotCx := winW - PAD - Round(8*s)
+            rowGearCx := dotCx - Round(10*s) - GEAR_D / 2
 
             ; botão de configurações fica acima na lista de boxes para ter
             ; prioridade no hit-test sobre a linha inteira (que também é clicável)
@@ -524,11 +540,11 @@ _HudRedraw() {
 
     ; fundo + borda
     bgBrush := Gdip_BrushSolid(Gdip_Argb(240, "0x0f0d12"))
-    Gdip_FillRoundRect(g, bgBrush, 0, 0, winW, winH, 16)
+    Gdip_FillRoundRect(g, bgBrush, 0, 0, winW, winH, 16*s)
     Gdip_DeleteBrush(bgBrush)
 
     borderPen := Gdip_Pen(Gdip_Argb(255, "0x241f2c"), 1)
-    Gdip_DrawRoundRect(g, borderPen, 0.5, 0.5, winW - 1, winH - 1, 16)
+    Gdip_DrawRoundRect(g, borderPen, 0.5, 0.5, winW - 1, winH - 1, 16*s)
     Gdip_DeletePen(borderPen)
 
     ; ícones da barra
@@ -545,7 +561,7 @@ _HudRedraw() {
             fase := Mod(A_TickCount, 1600) / 1600
             glowA := Round(30 + 30 * (0.5 + 0.5 * Sin(fase * 2 * 3.14159265)))
             glowBrush := Gdip_BrushSolid(Gdip_Argb(glowA, accent))
-            Gdip_FillEllipse(g, glowBrush, it.cx - it.r - 5, it.cy - it.r - 5, (it.r + 5) * 2, (it.r + 5) * 2)
+            Gdip_FillEllipse(g, glowBrush, it.cx - it.r - 5*s, it.cy - it.r - 5*s, (it.r + 5*s) * 2, (it.r + 5*s) * 2)
             Gdip_DeleteBrush(glowBrush)
         }
 
@@ -554,7 +570,7 @@ _HudRedraw() {
         Gdip_DeleteBrush(circBrush)
 
         ringArgb := ligado ? Gdip_Argb(255, accent) : Gdip_Argb(Round(50 + hoverT * 110), "0x4a4552")
-        ringPen := Gdip_Pen(ringArgb, ligado ? 2 : 1)
+        ringPen := Gdip_Pen(ringArgb, (ligado ? 2 : 1) * s)
         Gdip_DrawEllipse(g, ringPen, it.cx - it.r, it.cy - it.r, it.r * 2, it.r * 2)
         Gdip_DeletePen(ringPen)
 
@@ -564,15 +580,16 @@ _HudRedraw() {
         if (hoverT > 0.02) {
             hint := (m["nome"] = "cooldown") ? _KeyHintCooldown() : _KeyHint(m["nome"])
             label := m["label"] . (hint != "" ? "  ·  " hint : "")
-            tw := StrLen(label) * 6.4 + 20
+            tw := StrLen(label) * 6.4*s + 20*s
+            tipH := Round(22*s)
             tx := it.cx - tw / 2
-            ty := it.cy - it.r - 32
+            ty := it.cy - it.r - 32*s
 
             tipBg := Gdip_BrushSolid(Gdip_Argb(Round(235 * hoverT), "0x0a090c"))
-            Gdip_FillRoundRect(g, tipBg, tx, ty, tw, 22, 6)
+            Gdip_FillRoundRect(g, tipBg, tx, ty, tw, tipH, 6*s)
             Gdip_DeleteBrush(tipBg)
 
-            Gdip_DrawText(g, label, 10, true, Gdip_Argb(Round(255 * hoverT), "0xe8e6ec"), tx, ty, tw, 22, true)
+            Gdip_DrawText(g, label, 10*s, true, Gdip_Argb(Round(255 * hoverT), "0xe8e6ec"), tx, ty, tw, tipH, true)
         }
     }
 
@@ -593,8 +610,8 @@ _HudRedraw() {
         Gdip_DeletePen(sepPen2)
 
         if (ease > 0.4)
-            Gdip_DrawText(g, "RESUMO RÁPIDO", 9, true, Gdip_Argb(Round(190 * ((ease - 0.4) / 0.6)), "0x65636d"),
-                PAD, BAR_H + PANEL_PAD - 2, winW - PAD * 2, HEADER_H, false)
+            Gdip_DrawText(g, "RESUMO RÁPIDO", 9*s, true, Gdip_Argb(Round(190 * ((ease - 0.4) / 0.6)), "0x65636d"),
+                PAD, BAR_H + PANEL_PAD - 2*s, winW - PAD * 2, HEADER_H, false)
 
         for pr in panelRows {
             m := pr.m
@@ -603,30 +620,30 @@ _HudRedraw() {
 
             if (ligado) {
                 rowBg := Gdip_BrushSolid(Gdip_Argb(46, accent))
-                Gdip_FillRoundRect(g, rowBg, PAD, y, winW - PAD * 2, h, 8)
+                Gdip_FillRoundRect(g, rowBg, PAD, y, winW - PAD * 2, h, 8*s)
                 Gdip_DeleteBrush(rowBg)
             }
 
-            icoSz := 24
+            icoSz := Round(24*s)
             icoY := y + (h - icoSz) / 2
             icoBg := ligado ? Gdip_LerpArgb(255, "0x201e24", accent, 0.26) : Gdip_Argb(255, "0x201e24")
             icoBrush := Gdip_BrushSolid(icoBg)
-            Gdip_FillRoundRect(g, icoBrush, PAD + 4, icoY, icoSz, icoSz, 6)
+            Gdip_FillRoundRect(g, icoBrush, PAD + 4*s, icoY, icoSz, icoSz, 6*s)
             Gdip_DeleteBrush(icoBrush)
 
-            imgPad := 2
-            Gdip_DrawImage(g, _HudIconImg(m["nome"], ICON_ROW_SZ), PAD + 4 + imgPad, icoY + imgPad, ICON_ROW_SZ, ICON_ROW_SZ)
+            imgPad := 2*s
+            Gdip_DrawImage(g, _HudIconImg(m["nome"], ICON_ROW_SZ), PAD + 4*s + imgPad, icoY + imgPad, ICON_ROW_SZ, ICON_ROW_SZ)
 
-            labelX := PAD + 4 + icoSz + 10
-            labelW := pr.gearCx - GEAR_D / 2 - 8 - labelX
-            Gdip_DrawText(g, m["label"], 11, true,
+            labelX := PAD + 4*s + icoSz + 10*s
+            labelW := pr.gearCx - GEAR_D / 2 - 8*s - labelX
+            Gdip_DrawText(g, m["label"], 11*s, true,
                 ligado ? Gdip_Argb(255, "0xf2f0f5") : Gdip_Argb(255, "0xdcdae0"),
                 labelX, y, labelW, h, false)
 
             tCfg := _hudHoverT.Has("cfg_" m["id"]) ? _hudHoverT["cfg_" m["id"]] : 0
             _HudDrawMiniBtn(g, "gear", pr.gearCx, pr.cy, GEAR_D, tCfg)
 
-            dotR := 3
+            dotR := 3*s
             dotCy := pr.cy
             dotArgb := ligado ? Gdip_Argb(255, accent) : Gdip_Argb(255, "0x4b4855")
             dotBrush := Gdip_BrushSolid(dotArgb)
