@@ -7,6 +7,7 @@
 
 #Include lib\globals.ahk
 #Include lib\config.ahk
+#Include lib\gdip.ahk
 #Include lib\hint.ahk
 #Include lib\window.ahk
 #Include lib\input.ahk
