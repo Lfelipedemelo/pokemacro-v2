@@ -35,6 +35,15 @@ global _hudVisivel      := true  ; false enquanto a HUD está escondida (jogo fo
 global _hudDesenhando   := false ; trava de reentrância do _HudRedraw (ver comentário lá)
 global _hudRedrawPendente := false
 
+; Tooltip dos ícones da barra numa janela em camadas própria: desenhado no
+; canvas da HUD ele ficava cortado, porque o canvas tem exatamente o tamanho
+; da barra e o tooltip nasce acima dela (e, nas pontas, além das laterais).
+; A janela é WS_EX_TRANSPARENT (cliques passam direto) e NOACTIVATE.
+global _hudTipGui       := 0
+global _hudTipCanvas    := 0
+global _hudTipVisivel   := false
+global _hudTipMedidas   := Map()   ; cache rótulo → largura medida (Gdip_MeasureText cria um Graphics por chamada)
+
 ; Fator de escala da HUD ("TAMANHO DA INTERFACE" em Configurações Gerais,
 ; ver EscalaFator em lib\globals.ahk). Diferente das telas de config
 ; (lib\gdip_config.ahk), que escalam o Graphics inteiro com uma
@@ -46,12 +55,6 @@ global _hudRedrawPendente := false
 ; o tamanho pedido ao cache em vez disso, o recorte caro roda uma única
 ; vez por tamanho (na primeira vez que a escala muda), não por frame.
 global _HUD_SCALE       := EscalaFator()
-
-; ── Tecla configurada de cada macro, para o tooltip da barra ──
-_KeyHint(nome) {
-    hk := _TeclaExec(nome)
-    return (hk != "N/A" && hk != "") ? StrUpper(hk) : ""
-}
 
 ; ── Lista de macros exibidos na HUD ────────────────────
 _HudMacroList() {
@@ -119,6 +122,8 @@ _HudAbrir() {
     miniGui.Show("x" _hudX " y" _hudY " w10 h10 NoActivate Hide")
     WinShow("ahk_id " miniGui.Hwnd)
 
+    _HudTipCriar()
+
     OnMessage(0x200, _HudWM_MouseMove)  ; WM_MOUSEMOVE
     OnMessage(0x201, _HudWM_LButtonDown) ; WM_LBUTTONDOWN
     OnMessage(0x2A3, _HudWM_MouseLeave)  ; WM_MOUSELEAVE
@@ -144,6 +149,7 @@ _HudFechar() {
     SetTimer(_HudPulseTick, 0)
     SetTimer(_HudFxTick, 0)
     _HudRemoverHook()
+    _HudTipDestruir()
     try miniGui.Destroy()
     miniGui := 0
     if (_hudCanvas) {
@@ -209,6 +215,7 @@ _HudVisibilidade(hwndAtivo := 0) {
         } else {
             WinHide("ahk_id " miniGui.Hwnd)
             _hudVisivel := false
+            _HudTipEsconder()
         }
         ; Jogo em foco: confere (uma vez por processo) se ele roda como
         ; admin e o macro não. Via timer, fora do callback do hook.
@@ -629,6 +636,7 @@ _HudDesenharFrame() {
     Gdip_DeletePen(borderPen)
 
     ; ícones da barra
+    tipAlvo := 0
     for it in barIcons {
         m := it.m
         ligado := macros[m["nome"]]
@@ -658,20 +666,11 @@ _HudDesenharFrame() {
         Gdip_DrawImage(g, _HudIconImg(m["nome"], ICON_BAR_SZ),
             it.cx - ICON_BAR_SZ / 2, it.cy - ICON_BAR_SZ / 2, ICON_BAR_SZ, ICON_BAR_SZ)
 
-        if (hoverT > 0.02) {
-            hint := _KeyHint(m["nome"])
-            label := m["label"] . (hint != "" ? "  ·  " hint : "")
-            tw := StrLen(label) * 6.4*s + 20*s
-            tipH := Round(22*s)
-            tx := it.cx - tw / 2
-            ty := it.cy - it.r - 32*s
-
-            tipBg := Gdip_BrushSolid(Gdip_Argb(Round(235 * hoverT), "0x0a090c"))
-            Gdip_FillRoundRect(g, tipBg, tx, ty, tw, tipH, 6*s)
-            Gdip_DeleteBrush(tipBg)
-
-            Gdip_DrawText(g, label, 10*s, true, Gdip_Argb(Round(255 * hoverT), "0xe8e6ec"), tx, ty, tw, tipH, true)
-        }
+        ; Tooltip: só guarda o ícone com mais hover (durante a transição de
+        ; um ícone para outro, os dois estão com hoverT > 0) — o desenho
+        ; é feito na janela própria, ver _HudTipDesenhar.
+        if (hoverT > 0.02 && (!tipAlvo || hoverT > tipAlvo.hoverT))
+            tipAlvo := it
     }
 
     ; separador + botões auxiliares — só existem com o mouse sobre a barra.
@@ -750,4 +749,107 @@ _HudDesenharFrame() {
     }
 
     Gdip_PresentLayeredCanvas(canvas, hudHwnd, _hudX, _hudY)
+
+    if (tipAlvo)
+        _HudTipDesenhar(tipAlvo, vertical, winW, winH)
+    else
+        _HudTipEsconder()
+}
+
+; ── Tooltip dos ícones da barra (janela própria) ─────────
+_HudTipCriar() {
+    global _hudTipGui, _hudTipVisivel, miniGui
+    _hudTipVisivel := false
+    ; E0x80000 layered, E0x20 transparent (mouse atravessa), E0x08000000 noactivate
+    _hudTipGui := Gui("-Caption +ToolWindow +AlwaysOnTop +E0x80000 +E0x20 +E0x08000000 +Owner" miniGui.Hwnd)
+    _hudTipGui.Show("w10 h10 NoActivate Hide")
+}
+
+_HudTipDestruir() {
+    global _hudTipGui, _hudTipCanvas, _hudTipVisivel
+    try _hudTipGui.Destroy()
+    _hudTipGui := 0
+    _hudTipVisivel := false
+    if (_hudTipCanvas) {
+        Gdip_DestroyLayeredCanvas(_hudTipCanvas)
+        _hudTipCanvas := 0
+    }
+}
+
+_HudTipEsconder() {
+    global _hudTipGui, _hudTipVisivel
+    if (_hudTipGui && _hudTipVisivel) {
+        DllCall("ShowWindow", "Ptr", _hudTipGui.Hwnd, "Int", 0)   ; SW_HIDE
+        _hudTipVisivel := false
+    }
+}
+
+; Área de trabalho do monitor onde a HUD está (para o tooltip não sair da
+; tela nem ir parar em outro monitor). Devolve [esq, topo, dir, base].
+_HudAreaMonitor(hwnd) {
+    hMon := DllCall("MonitorFromWindow", "Ptr", hwnd, "UInt", 2, "Ptr")   ; MONITOR_DEFAULTTONEAREST
+    mi := Buffer(40, 0)
+    NumPut("UInt", 40, mi, 0)
+    DllCall("GetMonitorInfo", "Ptr", hMon, "Ptr", mi)
+    return [NumGet(mi, 20, "Int"), NumGet(mi, 24, "Int"), NumGet(mi, 28, "Int"), NumGet(mi, 32, "Int")]
+}
+
+; it: ícone da barra (coordenadas relativas à HUD). Barra horizontal: o
+; tooltip fica acima (ou abaixo, se não couber). Barra vertical: à esquerda
+; (ou à direita, se não couber) — acima de uma coluna estreita ele cobriria
+; os ícones vizinhos.
+_HudTipDesenhar(it, vertical, hudW, hudH) {
+    global _hudTipGui, _hudTipCanvas, _hudTipVisivel, _hudTipMedidas, _hudX, _hudY, _hudVisivel, miniGui, _HUD_SCALE
+    if (!_hudTipGui || !_hudVisivel)
+        return
+    s := _HUD_SCALE
+    m := it.m
+    hoverT := it.hoverT
+
+    label := m["label"]
+    fontSz := Round(12*s)
+    chave := label "|" fontSz
+    if !_hudTipMedidas.Has(chave)
+        _hudTipMedidas[chave] := Gdip_MeasureText(label, fontSz, true)[1]
+    tw := Round(_hudTipMedidas[chave] + 24*s)
+    th := Round(26*s)
+    gap := Round(6*s)
+
+    area := _HudAreaMonitor(miniGui.Hwnd)
+    if (vertical) {
+        tx := _hudX - tw - gap
+        if (tx < area[1])
+            tx := _hudX + hudW + gap
+        ty := Round(_hudY + it.cy - th / 2)
+    } else {
+        tx := Round(_hudX + it.cx - tw / 2)
+        ty := _hudY - th - gap
+        if (ty < area[2])
+            ty := _hudY + hudH + gap
+    }
+    tx := Max(area[1], Min(tx, area[3] - tw))
+    ty := Max(area[2], Min(ty, area[4] - th))
+
+    canvas := Gdip_ResizeCanvas(&_hudTipCanvas, tw, th)
+    g := canvas.pGraphics
+    ; AntiAliasGridFit (3) em vez do AntiAlias (4) padrão do canvas: encaixa
+    ; os glifos na grade de pixels, bem mais nítido em fonte pequena. Setado
+    ; a cada frame porque Gdip_ResizeCanvas pode recriar o canvas.
+    DllCall("gdiplus\GdipSetTextRenderingHint", "Ptr", g, "Int", 3)
+
+    tipBg := Gdip_BrushSolid(Gdip_Argb(Round(250 * hoverT), "0x0a090c"))
+    Gdip_FillRoundRect(g, tipBg, 0, 0, tw, th, 7*s)
+    Gdip_DeleteBrush(tipBg)
+
+    tipPen := Gdip_Pen(Gdip_Argb(Round(255 * hoverT), "0x3a3544"), 1)
+    Gdip_DrawRoundRect(g, tipPen, 0.5, 0.5, tw - 1, th - 1, 7*s)
+    Gdip_DeletePen(tipPen)
+
+    Gdip_DrawText(g, label, fontSz, true, Gdip_Argb(Round(255 * hoverT), "0xffffff"), 0, 0, tw, th, true)
+
+    Gdip_PresentLayeredCanvas(canvas, _hudTipGui.Hwnd, tx, ty)
+    if (!_hudTipVisivel) {
+        DllCall("ShowWindow", "Ptr", _hudTipGui.Hwnd, "Int", 4)   ; SW_SHOWNOACTIVATE
+        _hudTipVisivel := true
+    }
 }
