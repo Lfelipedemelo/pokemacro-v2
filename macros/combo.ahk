@@ -14,8 +14,14 @@ ExecutarCombo(tipo) {
         return
 
     interromperCombo := false
-    cfg := GetCfg(tipo)
+    _RodarSequenciaCombo(GetCfg(tipo))
+}
 
+; Sequência de combo compartilhada pelos combos Principal/Secundário e
+; pelo Combo Revive: Full Attack (opcional) → teclas de teclaInicial até
+; teclaFinal → Full Defense (opcional). Para se o combo for interrompido
+; (revive, macro desligado, pânico) ou se o jogo perder o foco.
+_RodarSequenciaCombo(cfg) {
     sleepMs := GetSleepCombo()
     usarF   := GetUsarPrefixoF()
 
@@ -26,39 +32,51 @@ ExecutarCombo(tipo) {
         return
     }
 
-    quantidade := numFinal - numInicial + 1
-
-    if (cfg["usarFullAtk"] = "true" && cfg["fullAttack"] != "N/A")
+    if (cfg["usarFullAtk"] = "true" && cfg["fullAttack"] != "N/A") {
         SendEvent("{" cfg["fullAttack"] "}")
+        if !EsperarInterrompivel(20)
+            return
+    }
 
-    Loop quantidade {
-        if (interromperCombo) {
-            interromperCombo := false
-            break
-        }
-        if !WinActive("ahk_exe pxgme.exe")
-            break
-
-        Sleep(20)
+    Loop (numFinal - numInicial + 1) {
+        if !_ComboPodeContinuar()
+            return
 
         numTecla := numInicial + A_Index - 1
-        tecla    := (usarF = "true") ? "{F" numTecla "}" : "{" numTecla "}"
-        SendEvent(tecla)
+        SendEvent((usarF = "true") ? "{F" numTecla "}" : "{" numTecla "}")
 
-        fatia := Max(1, sleepMs // 10)
-        Loop 10 {
-            if (interromperCombo) {
-                interromperCombo := false
-                break 2
-            }
-            if !WinActive("ahk_exe pxgme.exe")
-                break 2
-            Sleep(fatia)
-        }
+        if !EsperarInterrompivel(sleepMs)
+            return
     }
 
     if (cfg["usarFullDef"] = "true" && cfg["fullDefense"] != "N/A") {
         Sleep(200)
         SendEvent("{" cfg["fullDefense"] "}")
+    }
+}
+
+; false se o combo deve parar (pedido de interrupção ou jogo sem foco).
+; Consome o pedido de interrupção.
+_ComboPodeContinuar() {
+    global interromperCombo
+    if (interromperCombo) {
+        interromperCombo := false
+        return false
+    }
+    return JogoAtivo()
+}
+
+; Espera 'ms' com precisão (prazo por A_TickCount, não soma de Sleeps —
+; cada Sleep arredonda para cima, e antes 550ms viravam ~640ms reais),
+; checando interrupção a cada ~10ms. Devolve false se foi interrompido.
+EsperarInterrompivel(ms) {
+    fim := A_TickCount + ms
+    Loop {
+        if !_ComboPodeContinuar()
+            return false
+        resta := fim - A_TickCount
+        if (resta <= 0)
+            return true
+        Sleep(Min(resta, 10))
     }
 }

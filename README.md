@@ -81,14 +81,13 @@ macro_modular/
 │
 ├── lib\                         ← Utilitários internos (não edite)
 │   ├── globals.ahk              ← Estado global, mapa de macros e tema de cores
-│   ├── config.ahk               ← Leitura/escrita do config.ini
+│   ├── config.ahk               ← Leitura/escrita do config.ini (com cache) e perfis
 │   ├── gdip.ahk                 ← Wrapper GDI+ usado para desenhar a HUD
 │   ├── hint.ahk                 ← Notificações flutuantes na tela
-│   ├── window.ahk               ← Drag das telas de configuração
+│   ├── window.ahk               ← Helpers de janela, detecção do jogo e checagem de admin
 │   └── input.ahk                ← Captura de teclas e posição do mouse
 │
 ├── ui\                          ← Telas da interface gráfica
-│   ├── slot.ahk                 ← Estado visual (ativo/inativo) e toggle dos macros
 │   ├── mini_menu.ahk            ← HUD flutuante — interface principal (Ctrl+F12)
 │   ├── config_combo.ahk         ← Tela de configuração dos Combos
 │   ├── config_revive.ahk        ← Tela de configuração do Revive
@@ -97,7 +96,7 @@ macro_modular/
 │   └── config_geral.ahk         ← Configurações globais do sistema
 │
 └── macros\                      ← Lógica de execução dos macros
-    ├── hotkeys.ahk              ← Registro e despacho de hotkeys
+    ├── hotkeys.ahk              ← Estado dos macros, registro e despacho de hotkeys
     ├── combo.ahk                ← Lógica do Combo Principal/Secundário
     ├── revive.ahk               ← Lógica do Revive
     ├── combo_revive.ahk         ← Lógica do Combo Revive
@@ -184,6 +183,7 @@ A interface é uma **HUD flutuante compacta**, desenhada com GDI+ (cantos arredo
 | **Tecla do Macro** | Tecla ou botão do mouse que dispara o combo |
 | **Full Attack** | Ativa/desativa o envio da tecla de Full Attack (global) antes do combo |
 | **Full Defense** | Ativa/desativa o envio da tecla de Full Defense (global) após o combo |
+| **Delay Entre Teclas (ms)** | Intervalo entre cada tecla do combo — valor **compartilhado por todos os combos** (veja abaixo) |
 | **Hotkey Ligar/Desligar** | Tecla para ativar/desativar o macro sem abrir a interface |
 
 **Como configurar passo a passo:**
@@ -199,6 +199,17 @@ A interface é uma **HUD flutuante compacta**, desenhada com GDI+ (cantos arredo
 
 > **Exemplo:** Habilidades de F3 a F8.  
 > Botão Inicial: `3` → Botão Final: `8` → com prefixo F ativo, o macro envia F3, F4, F5, F6, F7, F8 em sequência.
+
+#### Delay Entre Teclas (ms)
+
+Controla o **intervalo em milissegundos** entre cada tecla enviada no combo. Aparece nas telas do **Combo Principal**, **Combo Secundário** e **Combo Revive**, mas é **um valor só**: mexer em uma tela altera para todos os combos (e resetar um combo não apaga esse valor).
+
+- **Valor menor** = combo mais rápido (ex: 400ms)
+- **Valor maior** = combo mais lento, mais seguro (ex: 700ms)
+- **Padrão:** 550ms (ajustável de 300 a 800ms)
+- O intervalo real entre as teclas é o valor configurado (com ~10ms de margem).
+
+> Ajuste conforme a latência do servidor. Em servidores com alta latência, aumente o delay para evitar que habilidades sejam perdidas.
 
 ---
 
@@ -268,6 +279,7 @@ Funciona exatamente igual ao **Combo Principal**, mas é uma configuração sepa
 | **Full Attack** | Ativa/desativa Full Attack antes do combo |
 | **Full Defense** | Ativa/desativa Full Defense após o combo |
 | **Delay Após Revive (ms)** | Tempo de espera entre o fim do revive e o início do combo |
+| **Delay Entre Teclas (ms)** | Intervalo entre as teclas do combo — compartilhado com os outros combos |
 | **Hotkey Ligar/Desligar** | Tecla para ativar/desativar o macro |
 
 > **Delay recomendado:** 500ms a 1500ms dependendo da velocidade do servidor.
@@ -310,19 +322,7 @@ Estas configurações são **globais** — afetam todos os macros do sistema.
 
 ---
 
-### 1. Delay Entre Teclas do Combo (ms)
-
-Controla o **intervalo em milissegundos** entre cada tecla enviada nos macros de Combo.
-
-- **Valor menor** = combo mais rápido (ex: 50ms)
-- **Valor maior** = combo mais lento, mais seguro (ex: 150ms)
-- **Padrão:** 92ms
-
-> Ajuste conforme a latência do servidor. Em servidores com alta latência, aumente o delay para evitar que habilidades sejam perdidas.
-
----
-
-### 2. Usar Prefixo [F] nas Teclas
+### 1. Usar Prefixo [F] nas Teclas
 
 Define como as teclas do combo são enviadas ao jogo.
 
@@ -337,7 +337,7 @@ Define como as teclas do combo são enviadas ao jogo.
 
 ---
 
-### 3. Modo Legado (Revive)
+### 2. Modo Legado (Revive)
 
 Altera o comportamento dos macros de **Revive** e **Combo Revive**.
 
@@ -348,7 +348,7 @@ Altera o comportamento dos macros de **Revive** e **Combo Revive**.
 
 ---
 
-### 4. Tecla Full Attack (Global)
+### 3. Tecla Full Attack (Global)
 
 Define a tecla enviada **antes** de iniciar qualquer combo (quando Full Attack está ativado na configuração do combo).
 
@@ -357,11 +357,29 @@ Define a tecla enviada **antes** de iniciar qualquer combo (quando Full Attack e
 
 ---
 
-### 5. Tecla Full Defense (Global)
+### 4. Tecla Full Defense (Global)
 
 Define a tecla enviada **após** o término de qualquer combo ou ao iniciar o Cooldown (quando Full Defense está ativado).
 
 - Compartilhada entre todos os macros que suportam Full Defense.
+
+---
+
+### 5. Perfis
+
+O cartão **PERFIL ATIVO** (topo da tela) guarda conjuntos diferentes de configuração dos macros — por exemplo, um perfil por Pokémon ou time.
+
+- **◀ ▶** troca de perfil (também dá pra trocar clicando no nome do perfil no painel expandido da HUD).
+- **+ NOVO** cria um perfil copiando as configurações dos macros do perfil atual.
+- **EXCLUIR** apaga o perfil ativo (o perfil **Padrão** não pode ser excluído).
+
+Cada perfil tem suas próprias teclas, posições e tempos dos 5 macros. As Configurações Gerais (delay, prefixo F, Full Attack/Defense, tamanho da interface etc.) valem para todos os perfis. Ao trocar de perfil, todos os macros são desligados.
+
+---
+
+### 6. Tecla de Pânico
+
+Uma tecla que **desliga todos os macros de uma vez** e interrompe o que estiver rodando (combo, cooldown). Só funciona com o jogo em foco.
 
 ---
 
@@ -385,21 +403,22 @@ Ao pressionar **▶ DEFINIR** em qualquer campo de tecla, o sistema aguarda voc�
 - Qualquer tecla do teclado (letras, números, F1-F12, etc.)
 - Botões extras do mouse: **XButton1**, **XButton2**, **MButton**
 
-> ⚠️ **LButton** e **RButton** não são capturáveis para evitar conflitos com o uso normal do mouse.
+> ⚠️ **LButton** e **RButton** são recusados na captura — virariam hotkey e o clique normal deixaria de chegar ao jogo.
 
 ### Prevenção de conflitos
 
 O sistema possui proteção avançada contra conflito de hotkeys:
 
+- **Tecla já usada:** ao definir uma hotkey (tecla do macro, ligar/desligar ou pânico) que já pertence a outra, o sistema avisa e não salva. A única exceção é a tecla do macro dos três combos, que pode ser a mesma (só um combo fica ligado por vez).
 - **Mesma tecla no macro e no jogo:** Se a Tecla do Macro for a mesma que uma ação do jogo (ex: `F3` é hotkey e primeira habilidade do combo), o sistema usa supressão de input — a tecla não é enviada ao jogo duas vezes.
 - **Re-entrada bloqueada:** Enquanto um combo está em execução, novas execuções do mesmo combo são bloqueadas.
 - **Revive interrompe Combo:** Pressionar a tecla do Revive ou Combo Revive durante a execução de um combo **interrompe o combo imediatamente** e executa o revive.
 - **Cancelamento do Cooldown:** Pressionar a hotkey do Cooldown durante a execução cancela o macro imediatamente.
 
-### Botão Reset (R)
+### Botão Reset (↺)
 
-Cada tela de configuração possui um botão **R** vermelho no canto superior direito.  
-Ao confirmar, **apaga todas as configurações** daquele macro e retorna tudo para `N/A`.
+Cada tela de configuração possui um botão **↺** vermelho no canto superior direito.  
+Ao confirmar, **apaga todas as configurações** daquele macro (no perfil ativo) e retorna tudo para `N/A`.
 
 > Use com cuidado — esta ação não pode ser desfeita.
 
@@ -413,12 +432,13 @@ Ao confirmar, **apaga todas as configurações** daquele macro e retorna tudo pa
 2. Verifique se a janela do jogo está em **foco** (em primeiro plano).
 3. Verifique se a **Tecla do Macro** está configurada (não deve estar como `N/A`).
 4. Verifique se o processo do jogo é `pxgme.exe` — o sistema monitora especificamente este processo.
+5. Se o jogo roda **como administrador**, o macro também precisa rodar assim (o Windows bloqueia as teclas enviadas por um programa sem privilégio). O macro detecta isso sozinho e oferece reiniciar como administrador.
 
 ---
 
 **As teclas do combo não estão chegando no jogo.**
 
-- Tente aumentar o **Delay Entre Teclas** nas Configurações Gerais.
+- Tente aumentar o **Delay Entre Teclas** na configuração de qualquer combo (vale para todos).
 - Verifique se a opção **Prefixo [F]** está correta para o seu jogo.
 
 ---

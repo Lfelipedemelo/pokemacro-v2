@@ -31,6 +31,9 @@ global _hudVisibleCache := 0   ; cache de _HudVisibleItems() — ver comentário
 global _hudCanvas       := 0   ; canvas GDI+ persistente entre frames (ver Gdip_ResizeCanvas em lib\gdip.ahk)
 global _hudEventHook    := 0   ; handle do hook de EVENT_SYSTEM_FOREGROUND (ver _HudRegistrarHook)
 global _hudEventCb      := 0   ; ponteiro do callback, criado uma única vez
+global _hudVisivel      := true  ; false enquanto a HUD está escondida (jogo fora de foco) — o pulso não redesenha
+global _hudDesenhando   := false ; trava de reentrância do _HudRedraw (ver comentário lá)
+global _hudRedrawPendente := false
 
 ; Fator de escala da HUD ("TAMANHO DA INTERFACE" em Configurações Gerais,
 ; ver EscalaFator em lib\globals.ahk). Diferente das telas de config
@@ -45,15 +48,8 @@ global _hudEventCb      := 0   ; ponteiro do callback, criado uma única vez
 global _HUD_SCALE       := EscalaFator()
 
 ; ── Tecla configurada de cada macro, para o tooltip da barra ──
-_KeyHint(tipo) {
-    cfg := GetCfg(tipo)
-    hk  := cfg["teclaHotkey"]
-    return (hk != "N/A" && hk != "") ? StrUpper(hk) : ""
-}
-
-_KeyHintCooldown() {
-    cfg := GetCfg("Cooldown")
-    hk  := cfg["hotkeyCooldown"]
+_KeyHint(nome) {
+    hk := _TeclaExec(nome)
     return (hk != "N/A" && hk != "") ? StrUpper(hk) : ""
 }
 
@@ -103,14 +99,15 @@ AbrirMiniMenu() {
 }
 
 _HudAbrir() {
-    global miniGui, _hudX, _hudY, _hudExpanded, _hudExpandT, _hudHoverId, _hudHoverT, _hudBarHover
+    global miniGui, _hudX, _hudY, _hudExpanded, _hudExpandT, _hudHoverId, _hudHoverT, _hudBarHover, _hudVisivel
 
     Gdip_EnsureStarted()
 
     _hudHoverId := ""
     _hudHoverT  := Map()
     _hudBarHover := false
-    _hudExpanded := (IniRead(configFile, "MiniMenu", "expandido", "1") = "1")
+    _hudVisivel  := true   ; nasce visível; _HudVisibilidade abaixo corrige
+    _hudExpanded := (CfgLer("MiniMenu", "expandido", "1") = "1")
     _hudExpandT  := _hudExpanded ? 1.0 : 0.0
     _HudAtualizarVisibleItems()
 
@@ -134,9 +131,15 @@ _HudAbrir() {
 }
 
 _HudFechar() {
-    global miniGui, _hudCanvas
+    global miniGui, _hudCanvas, _hudDesenhando
     if (!miniGui)
         return
+    ; Um frame interrompido (ex.: Ctrl+F12 no meio do desenho) ainda está
+    ; usando o canvas — adia o fechamento até ele terminar.
+    if (_hudDesenhando) {
+        SetTimer(_HudFechar, -15)
+        return
+    }
     _HudSalvarPos()
     SetTimer(_HudPulseTick, 0)
     SetTimer(_HudFxTick, 0)
@@ -161,22 +164,25 @@ _RecriarMini() {
 }
 
 _HudCarregarPos() {
-    global configFile
-    x := IniRead(configFile, "MiniMenu", "posX", "")
-    y := IniRead(configFile, "MiniMenu", "posY", "")
-    if (x = "" || y = "")
+    x := CfgLer("MiniMenu", "posX", "")
+    y := CfgLer("MiniMenu", "posY", "")
+    if !(IsInteger(x) && IsInteger(y))
         return [A_ScreenWidth - 420, 40]
-    return [Integer(x), Integer(y)]
+    ; Se a resolução/monitor mudou, não deixa a HUD nascer fora da área
+    ; visível. Usa a área virtual (todos os monitores), não só o principal,
+    ; para não puxar de volta uma HUD deixada num segundo monitor.
+    vx := SysGet(76), vy := SysGet(77), vw := SysGet(78), vh := SysGet(79)
+    return [Max(vx, Min(Integer(x), vx + vw - 80)), Max(vy, Min(Integer(y), vy + vh - 80))]
 }
 
 _HudSalvarPos() {
-    global miniGui, configFile
+    global miniGui
     if !miniGui
         return
     try {
         WinGetPos(&x, &y, , , "ahk_id " miniGui.Hwnd)
-        IniWrite(x, configFile, "MiniMenu", "posX")
-        IniWrite(y, configFile, "MiniMenu", "posY")
+        SalvarCfg("MiniMenu", "posX", x)
+        SalvarCfg("MiniMenu", "posY", y)
     }
 }
 
@@ -184,7 +190,7 @@ _HudSalvarPos() {
 ; Recebe o hwnd da janela que acabou de virar ativa (via _HudOnForegroundChange);
 ; se vier vazio (chamada manual, ex. ao abrir a HUD), descobre a janela ativa na hora.
 _HudVisibilidade(hwndAtivo := 0) {
-    global miniGui, _macroExecutando, executandoCooldown
+    global miniGui, _macroExecutando, executandoCooldown, _hudVisivel
     if !miniGui
         return
     if (_macroExecutando || executandoCooldown)
@@ -193,11 +199,21 @@ _HudVisibilidade(hwndAtivo := 0) {
         if (!hwndAtivo)
             hwndAtivo := WinGetID("A")
         exeAtivo  := WinGetProcessName("ahk_id " hwndAtivo)
-        visivel   := (exeAtivo = "pxgme.exe" || exeAtivo = "AutoHotkey64.exe" || exeAtivo = "AutoHotkey.exe")
-        if visivel
+        visivel   := (exeAtivo = JOGO_EXE || exeAtivo ~= "i)^AutoHotkey")
+        if visivel {
             WinShow("ahk_id " miniGui.Hwnd)
-        else
+            if !_hudVisivel {
+                _hudVisivel := true
+                _HudRedraw()   ; o pulso não redesenhou enquanto estava escondida
+            }
+        } else {
             WinHide("ahk_id " miniGui.Hwnd)
+            _hudVisivel := false
+        }
+        ; Jogo em foco: confere (uma vez por processo) se ele roda como
+        ; admin e o macro não. Via timer, fora do callback do hook.
+        if (exeAtivo = JOGO_EXE)
+            SetTimer(VerificarElevacaoJogo, -1)
     }
 }
 
@@ -230,23 +246,6 @@ _HudOnForegroundChange(hHook, event, hwnd, idObject, idChild, idThread, msEventT
 }
 
 ; ── Entrada do mouse / clique ───────────────────────────
-_HudArmarSaida(hwnd) {
-    tme := Buffer(A_PtrSize = 8 ? 24 : 16, 0)
-    NumPut("UInt", tme.Size, tme, 0)
-    NumPut("UInt", 2,        tme, 4)  ; TME_LEAVE
-    NumPut("Ptr",  hwnd,     tme, 8)
-    DllCall("TrackMouseEvent", "Ptr", tme)
-}
-
-_HudDecodeXY(lParam) {
-    x := lParam & 0xFFFF
-    y := (lParam >> 16) & 0xFFFF
-    if (x > 32767)
-        x -= 65536
-    if (y > 32767)
-        y -= 65536
-    return [x, y]
-}
 
 _HudHitTest(x, y) {
     global _hudBoxes
@@ -267,7 +266,7 @@ _HudWM_MouseMove(wParam, lParam, msg, hwnd) {
     global miniGui, _hudHoverId, _hudBarHover
     if (!miniGui || hwnd != miniGui.Hwnd)
         return
-    _HudArmarSaida(hwnd)
+    Win_ArmarMouseLeave(hwnd)
     ; WM_MOUSEMOVE só chega enquanto o cursor está sobre a janela da HUD,
     ; então essa borda (false → true) é o sinal de "entrou na barra" —
     ; usado para só então desenhar engrenagem/expandir/fechar. Redesenha
@@ -277,7 +276,7 @@ _HudWM_MouseMove(wParam, lParam, msg, hwnd) {
         _hudBarHover := true
         _HudRedraw()
     }
-    xy := _HudDecodeXY(lParam)
+    xy := Win_DecodeXY(lParam)
     box := _HudHitTest(xy[1], xy[2])
     novoId := box ? box.id : ""
     if (novoId != _hudHoverId) {
@@ -294,14 +293,9 @@ _HudWM_Move(wParam, lParam, msg, hwnd) {
     global miniGui, _hudX, _hudY
     if (!miniGui || hwnd != miniGui.Hwnd)
         return
-    x := lParam & 0xFFFF
-    y := (lParam >> 16) & 0xFFFF
-    if (x > 32767)
-        x -= 65536
-    if (y > 32767)
-        y -= 65536
-    _hudX := x
-    _hudY := y
+    xy := Win_DecodeXY(lParam)
+    _hudX := xy[1]
+    _hudY := xy[2]
 }
 
 _HudWM_MouseLeave(wParam, lParam, msg, hwnd) {
@@ -317,7 +311,7 @@ _HudWM_LButtonDown(wParam, lParam, msg, hwnd) {
     global miniGui
     if (!miniGui || hwnd != miniGui.Hwnd)
         return
-    xy := _HudDecodeXY(lParam)
+    xy := Win_DecodeXY(lParam)
     box := _HudHitTest(xy[1], xy[2])
     if (box)
         _HudActivar(box)
@@ -326,44 +320,22 @@ _HudWM_LButtonDown(wParam, lParam, msg, hwnd) {
 }
 
 _HudActivar(box) {
-    global _hudExpanded, configFile
+    global _hudExpanded
     switch box.kind {
         case "gear":    AbrirConfigGeral()
+        case "perfil":  ProximoPerfil()
         case "chevron":
             _hudExpanded := !_hudExpanded
-            IniWrite(_hudExpanded ? "1" : "0", configFile, "MiniMenu", "expandido")
+            SalvarCfg("MiniMenu", "expandido", _hudExpanded ? "1" : "0")
             _HudStartFx()
         ; Fechar é adiado para fora do handler de WM_LBUTTONDOWN: destruir a
         ; janela enquanto ainda se está dentro do próprio despacho de
         ; mensagens dela causa erro (reentrância). Ctrl+F12 fecha direto
         ; porque roda numa thread de hotkey, sem esse problema.
         case "close":   SetTimer(_HudFechar, -1)
-        case "macro":   _HudToggleMacro(box.nome)
+        case "macro":   AlternarMacro(box.nome)
         case "cfg":     box.cfgFn()
     }
-}
-
-; ── Toggle de macro (mesma regra de exclusividade das outras telas) ──
-_HudToggleMacro(nome) {
-    global macros, uiRefs
-
-    macros[nome] := !macros[nome]
-
-    if (macros[nome] && (nome = "comboPrincipal" || nome = "comboSecundario" || nome = "comboRevive")) {
-        for outro in ["comboPrincipal", "comboSecundario", "comboRevive"] {
-            if (outro != nome && macros[outro]) {
-                macros[outro] := false
-                if uiRefs.Has(outro)
-                    try AtualizarVisual(uiRefs[outro], false)
-            }
-        }
-    }
-
-    if uiRefs.Has(nome)
-        try AtualizarVisual(uiRefs[nome], macros[nome])
-
-    AtualizarHotkeyCombo()
-    _HudRedraw()
 }
 
 ; ── Animação ─────────────────────────────────────────────
@@ -406,7 +378,9 @@ _HudFxTick() {
 }
 
 _HudPulseTick() {
-    global macros
+    global macros, _hudVisivel
+    if !_hudVisivel
+        return
     if (macros["comboPrincipal"] || macros["comboSecundario"] || macros["revive"] || macros["comboRevive"] || macros["cooldown"])
         _HudRedraw()
 }
@@ -458,14 +432,34 @@ _HudDrawMiniBtn(g, kind, cx, cy, d, hoverT, expandido := false) {
 }
 
 ; ── Desenho principal ────────────────────────────────────
+; Sem Critical: com Critical ligado, uma hotkey de macro pressionada no
+; meio de um frame (o pulso redesenha ~12x/s com macro ligado) esperava o
+; frame terminar. Em vez disso, uma trava simples evita reentrância no
+; canvas compartilhado: um redesenho pedido enquanto outro está em
+; andamento (ex.: a hotkey interrompeu o frame e ligou um macro) é
+; reagendado para logo depois, então o estado novo nunca se perde.
 _HudRedraw() {
-    global miniGui, _hudX, _hudY, _hudExpandT, _hudExpanded, _hudHoverT, _hudBoxes, macros, _HUD_SCALE, _hudBarHover, _hudCanvas
-    Critical "On"
-
-    if (!miniGui) {
-        Critical "Off"
+    global _hudDesenhando, _hudRedrawPendente
+    if (_hudDesenhando) {
+        _hudRedrawPendente := true
         return
     }
+    _hudDesenhando := true
+    try
+        _HudDesenharFrame()
+    finally
+        _hudDesenhando := false
+    if (_hudRedrawPendente) {
+        _hudRedrawPendente := false
+        SetTimer(_HudRedraw, -1)
+    }
+}
+
+_HudDesenharFrame() {
+    global miniGui, _hudX, _hudY, _hudExpandT, _hudExpanded, _hudHoverT, _hudBoxes, macros, _HUD_SCALE, _hudBarHover, _hudCanvas
+
+    if (!miniGui)
+        return
     hudHwnd := miniGui.Hwnd
 
     accent := T()["ACCENT"]
@@ -586,6 +580,17 @@ _HudRedraw() {
 
     GEAR_D := Round(20*s)
 
+    ; Perfil ativo no cabeçalho do painel — clicável (troca para o
+    ; próximo) quando existe mais de um perfil.
+    perfilTxt := "", perfilW := 0
+    temVariosPerfis := PerfisLista().Length > 1
+    if (mostrarPainel && (temVariosPerfis || PerfilAtivo() != "")) {
+        perfilTxt := StrUpper(PerfilNomeExibicao()) (temVariosPerfis ? "  ▸" : "")
+        perfilW   := Round((StrLen(perfilTxt) * 6 + 12) * s)
+        if (temVariosPerfis)
+            boxes.Push({ id: "perfil", kind: "perfil", x: winW - PAD - perfilW, y: barSectionH + PANEL_PAD - 2*s, w: perfilW, h: HEADER_H })
+    }
+
     panelRows := []
     if (mostrarPainel) {
         py := barSectionH + PANEL_PAD + HEADER_H
@@ -654,7 +659,7 @@ _HudRedraw() {
             it.cx - ICON_BAR_SZ / 2, it.cy - ICON_BAR_SZ / 2, ICON_BAR_SZ, ICON_BAR_SZ)
 
         if (hoverT > 0.02) {
-            hint := (m["nome"] = "cooldown") ? _KeyHintCooldown() : _KeyHint(m["nome"])
+            hint := _KeyHint(m["nome"])
             label := m["label"] . (hint != "" ? "  ·  " hint : "")
             tw := StrLen(label) * 6.4*s + 20*s
             tipH := Round(22*s)
@@ -691,9 +696,19 @@ _HudRedraw() {
         Gdip_DrawLine(g, sepPen2, PAD * 0.5, barSectionH, winW - PAD * 0.5, barSectionH)
         Gdip_DeletePen(sepPen2)
 
-        if (ease > 0.4)
-            Gdip_DrawText(g, "RESUMO RÁPIDO", 9*s, true, Gdip_Argb(Round(190 * ((ease - 0.4) / 0.6)), "0x65636d"),
-                PAD, barSectionH + PANEL_PAD - 2*s, winW - PAD * 2, HEADER_H, false)
+        if (ease > 0.4) {
+            alphaHdr := (ease - 0.4) / 0.6
+            resumoW := winW - PAD * 2 - perfilW
+            if (resumoW > 60*s)   ; barra curta (poucos ícones): o perfil tem prioridade
+                Gdip_DrawText(g, "RESUMO RÁPIDO", 9*s, true, Gdip_Argb(Round(190 * alphaHdr), "0x65636d"),
+                    PAD, barSectionH + PANEL_PAD - 2*s, resumoW, HEADER_H, false)
+            if (perfilTxt != "") {
+                tPerfil := _hudHoverT.Has("perfil") ? _hudHoverT["perfil"] : 0
+                corPerfil := Gdip_LerpArgb(Round(230 * alphaHdr), T()["ACCENT2"], "0xe8e6ec", tPerfil)
+                Gdip_DrawText(g, perfilTxt, 9*s, true, corPerfil,
+                    winW - PAD - perfilW, barSectionH + PANEL_PAD - 2*s, perfilW, HEADER_H, true)
+            }
+        }
 
         for pr in panelRows {
             m := pr.m
@@ -735,5 +750,4 @@ _HudRedraw() {
     }
 
     Gdip_PresentLayeredCanvas(canvas, hudHwnd, _hudX, _hudY)
-    Critical "Off"
 }

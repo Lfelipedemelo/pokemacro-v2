@@ -2,11 +2,36 @@
 ; lib\input.ahk — Captura de teclas e posições do mouse
 ; =====================================================
 
+; Botões que nunca podem virar tecla de macro: seriam capturados pelo
+; hook e o clique normal do mouse deixaria de chegar ao jogo.
+_BotaoProibido(tecla) {
+    return (tecla = "LButton" || tecla = "RButton")
+}
+
+; Grava uma tecla capturada. Se (secao, chave) for uma hotkey (executar,
+; ligar/desligar ou pânico), antes checa conflito com as outras hotkeys e,
+; depois de salvar, re-registra todas — sem isso a tecla nova só passava
+; a valer depois de outra ação qualquer re-registrar as hotkeys.
+; Devolve true se salvou.
+_SalvarTeclaCapturada(secao, chave, tecla, label) {
+    ehHotkey := HotkeySlotExiste(secao, chave)
+    if (ehHotkey) {
+        conflito := ConflitoDeTecla(secao, chave, tecla)
+        if (conflito != "") {
+            ShowHint(StrUpper(tecla) " já é usada em " conflito, 2200, "danger")
+            return false
+        }
+    }
+    SalvarCfg(secao, chave, tecla)
+    if (ehHotkey)
+        AtualizarHotkeyCombo()
+    ShowHint(label ": " StrUpper(tecla), 1300, "success")
+    return true
+}
+
 ; Aguarda o usuário pressionar uma tecla/botão do mouse e salva no INI.
 ; Se 'uiText' for um objeto de controle, atualiza seu valor visual.
 CapturarTecla(configSection, configKey, uiText := 0, label := "Tecla") {
-    global configFile
-
     ShowHint("Pressione tecla ou botão do mouse (ESC cancela)", 999999)
 
     ; Aguarda soltar o botão que abriu a captura (evita capturar o próprio clique)
@@ -42,7 +67,7 @@ CapturarTecla(configSection, configKey, uiText := 0, label := "Tecla") {
             break
         }
 
-        for btn in ["LButton", "RButton", "XButton1", "XButton2"] {
+        for btn in ["LButton", "RButton", "MButton", "XButton1", "XButton2"] {
             if GetKeyState(btn, "P") {
                 tecla := btn
                 break 2
@@ -56,21 +81,22 @@ CapturarTecla(configSection, configKey, uiText := 0, label := "Tecla") {
         ShowHint("Nenhuma tecla detectada", 1000, "warn")
         return
     }
+    if _BotaoProibido(tecla) {
+        while GetKeyState(tecla, "P")
+            Sleep(10)
+        ShowHint("Clique esquerdo/direito não pode ser usado", 1800, "warn")
+        return
+    }
 
-    IniWrite(tecla, configFile, configSection, configKey)
-
-    if (configKey = "teclaHotkey")
-        AtualizarHotkeyCombo()
+    if !_SalvarTeclaCapturada(configSection, configKey, tecla, label)
+        return
 
     if IsObject(uiText)
         uiText.Value := label ": [ " StrUpper(tecla) " ]"
-
-    ShowHint(label " salvo: " StrUpper(tecla), 1200, "success")
 }
 
 ; Aguarda um clique do mouse e salva as coordenadas no INI.
 CapturarPosicaoMouse(secao, objetoTexto, chaveX := "clickX", chaveY := "clickY") {
-    global configFile
     CoordMode("Mouse", "Screen")
 
     ShowHint("Clique no local desejado (ESC cancela)", 999999)
@@ -93,8 +119,8 @@ CapturarPosicaoMouse(secao, objetoTexto, chaveX := "clickX", chaveY := "clickY")
         }
     }
 
-    IniWrite(posX, configFile, secao, chaveX)
-    IniWrite(posY, configFile, secao, chaveY)
+    SalvarCfg(secao, chaveX, posX)
+    SalvarCfg(secao, chaveY, posY)
 
     if IsSet(objetoTexto) && IsObject(objetoTexto)
         objetoTexto.Value := "Posição: [ " posX ", " posY " ]"
@@ -106,8 +132,6 @@ CapturarPosicaoMouse(secao, objetoTexto, chaveX := "clickX", chaveY := "clickY")
 ; Usado para hotkeys de toggle — simples e confiável.
 ; Exemplos: "F5", "XButton1", "q", "F12"
 CapturarCombo(configSection, configKey, uiText := 0, label := "Hotkey") {
-    global configFile
-
     ShowHint("Pressione UMA tecla ou botão do mouse (ESC cancela)", 999999)
 
     ; Aguarda soltar tudo antes de começar
@@ -172,13 +196,11 @@ CapturarCombo(configSection, configKey, uiText := 0, label := "Hotkey") {
         return
     }
 
-    IniWrite(resultado, configFile, configSection, configKey)
-    AtualizarHotkeyCombo()
+    if !_SalvarTeclaCapturada(configSection, configKey, resultado, label)
+        return
 
     if IsObject(uiText)
         uiText.Value := label ": [ " StrUpper(resultado) " ]"
-
-    ShowHint(label ": " StrUpper(resultado), 1500, "success")
 }
 
 _OnComboKey(ih, vk, sc) {

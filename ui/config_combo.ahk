@@ -2,8 +2,22 @@
 ; ui\config_combo.ahk — Config de Combo (GDI+)
 ; =====================================================
 
+; Delay entre teclas do combo — um valor só, compartilhado por todos os
+; combos (principal, secundário e combo revive). Fica em [Geral] e não
+; na seção do combo para que mexer numa tela valha para todas e o
+; "resetar" de um combo não apague o valor dos outros.
+GetSleepCombo() {
+    return _CfgInt("Geral", "sleepCombo", 550)
+}
+
+; Slider do delay entre teclas, reaproveitado pelas telas de combo.
+_GCfg_SliderSleepCombo(g, boxes, x, y, w, hoverId) {
+    return _GCfg_Slider(g, boxes, "sleep", x, y, w, "DELAY ENTRE TECLAS (TODOS OS COMBOS)", GetSleepCombo(),
+        300, 800, 1, "ms", (v) => SalvarCfg("Geral", "sleepCombo", v), hoverId)
+}
+
 AbrirConfigCombo(tipo) {
-    _GCfg_Abrir(288, 256, _DesenharConfigCombo.Bind(tipo))
+    _GCfg_Abrir(288, 308, _DesenharConfigCombo.Bind(tipo))
 }
 
 _DesenharConfigCombo(tipo, g, w, h, hoverId) {
@@ -17,7 +31,7 @@ _DesenharConfigCombo(tipo, g, w, h, hoverId) {
 
     hH := _GCfg_Header(g, boxes, w, "CONFIG: " StrUpper(tipo), T()["STRIPE3"],
         (*) => ResetarConfiguracoes(tipo),
-        (*) => _FecharConfigCombo(),
+        (*) => _GCfg_Fechar(),
         hoverId)
 
     pad  := 14
@@ -47,6 +61,8 @@ _DesenharConfigCombo(tipo, g, w, h, hoverId) {
         (*) => SalvarCfg(tipo, "usarFullDef", "false"), hoverId)
     y += 44 + 8
 
+    y += _GCfg_SliderSleepCombo(g, boxes, pad, y, w - pad*2, hoverId) + 8
+
     _GCfg_ShowInMini(g, boxes, pad, y, w - pad*2, tipo, hoverId)
 
     Gdip_ResetClip(g)
@@ -57,44 +73,10 @@ _DesenharConfigCombo(tipo, g, w, h, hoverId) {
     return boxes
 }
 
-_FecharConfigCombo() {
-    AtualizarHotkeyCombo()
-    _GCfg_Fechar()
-}
-
 ResetarConfiguracoes(tipo) {
-    _CriarGuiConfirmacao(
+    _GCfg_Confirmar(
         "RESETAR " StrUpper(tipo) "?",
         "Esta ação não pode ser desfeita.",
-        (g, *) => (ResetarSecao(tipo), g.Destroy(), _GCfg_Redraw(), ShowHint("RESETADO!", 1000, "success")),
-        (g, *) => g.Destroy()
+        (*) => (ResetarSecao(tipo), ShowHint("RESETADO!", 1000, "success"))
     )
-}
-
-; ── Helpers compartilhados de confirmação (ainda nativos) ────────────
-; Continua com controles Win32 normais — é um popup pequeno e raro,
-; não precisa do tratamento GDI+ das telas principais.
-_CriarGuiConfirmacao(titulo, subtitulo, cbSim, cbNao) {
-    g := Gui("-Caption +ToolWindow +AlwaysOnTop")
-    g.BackColor := T()["BG"]
-    g.MarginX   := 0
-    g.MarginY   := 0
-
-    g.AddText("x0 y0 w320 h8 Background" T()["DANGER"])
-    lblTitulo := g.AddText("x10 y16 w300 h28 Center c" T()["ACCENT"] " +0x200", titulo)
-    lblTitulo.SetFont(GF() " Bold")
-    lblSub := g.AddText("x10 y50 w300 h20 Center c" T()["MUTED"] " +0x200", subtitulo)
-    lblSub.SetFont(GF())
-    g.AddText("x0 y76 w320 h1 Background" T()["SEP"])
-
-    bS := g.AddText("x15 y86 w135 h32 Center Background0x550000 Border c" T()["ACCENT"] " +0x200", "▶ SIM, RESETAR")
-    bS.SetFont(GF() " Bold")
-    bS.OnEvent("Click", (ctrl, *) => cbSim(g))
-
-    bN := g.AddText("x170 y86 w135 h32 Center Background" T()["BG2"] " Border c" T()["MUTED"] " +0x200", "✖ NÃO")
-    bN.SetFont(GF() " Bold")
-    bN.OnEvent("Click", (ctrl, *) => cbNao(g))
-
-    g.Show("w320 Center")
-    return g
 }

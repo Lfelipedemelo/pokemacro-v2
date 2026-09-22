@@ -3,7 +3,7 @@
 ; =====================================================
 
 AbrirConfigComboRevive() {
-    _GCfg_Abrir(288, 308, _DesenharConfigComboRevive)
+    _GCfg_Abrir(288, 360, _DesenharConfigComboRevive)
 }
 
 _DesenharConfigComboRevive(g, w, h, hoverId) {
@@ -17,7 +17,7 @@ _DesenharConfigComboRevive(g, w, h, hoverId) {
 
     hH := _GCfg_Header(g, boxes, w, "CONFIG: COMBO REVIVE", T()["STRIPE1"],
         (*) => ResetarConfigCR(),
-        (*) => _FecharConfigCR(),
+        (*) => _GCfg_Fechar(),
         hoverId)
 
     pad  := 14
@@ -50,6 +50,8 @@ _DesenharConfigComboRevive(g, w, h, hoverId) {
     y += _GCfg_Slider(g, boxes, "delay", pad, y, w - pad*2, "DELAY APÓS REVIVE", cfg["delayCombo"],
         100, 2000, 10, "ms", (v) => SalvarCfg("comboRevive", "delayCombo", v), hoverId) + 8
 
+    y += _GCfg_SliderSleepCombo(g, boxes, pad, y, w - pad*2, hoverId) + 8
+
     _GCfg_ShowInMini(g, boxes, pad, y, w - pad*2, "comboRevive", hoverId)
 
     Gdip_ResetClip(g)
@@ -60,16 +62,10 @@ _DesenharConfigComboRevive(g, w, h, hoverId) {
     return boxes
 }
 
-_FecharConfigCR() {
-    AtualizarHotkeyCombo()
-    _GCfg_Fechar()
-}
-
 ResetarConfigCR() {
-    _CriarGuiConfirmacao(
+    _GCfg_Confirmar(
         "RESETAR COMBO REVIVE?",
         "Esta ação não pode ser desfeita.",
-        (g, *) => (ResetarSecao("comboRevive"), g.Destroy(), _GCfg_Redraw(), ShowHint("RESETADO!", 1000, "success")),
-        (g, *) => g.Destroy()
+        (*) => (ResetarSecao("comboRevive"), ShowHint("RESETADO!", 1000, "success"))
     )
 }

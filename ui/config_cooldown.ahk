@@ -72,10 +72,9 @@ _DesenharConfigCooldown(g, w, h, hoverId) {
 }
 
 ResetarCooldown() {
-    _CriarGuiConfirmacao(
+    _GCfg_Confirmar(
         "RESETAR COOLDOWN?",
         "Isso limpará hotkey, pokémon e tempos.",
-        (g, *) => (ResetarSecao("Cooldown"), g.Destroy(), _GCfg_Redraw(), ShowHint("COOLDOWN RESETADO!", 1000, "success")),
-        (g, *) => g.Destroy()
+        (*) => (ResetarSecao("Cooldown"), ShowHint("COOLDOWN RESETADO!", 1000, "success"))
     )
 }

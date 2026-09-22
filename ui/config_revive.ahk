@@ -51,10 +51,9 @@ _DesenharConfigRevive(g, w, h, hoverId) {
 }
 
 ResetarConfigRevive() {
-    _CriarGuiConfirmacao(
+    _GCfg_Confirmar(
         "RESETAR REVIVE?",
         "Isso limpará posição, teclas e delay.",
-        (g, *) => (ResetarSecao("Revive"), g.Destroy(), _GCfg_Redraw(), ShowHint("REVIVE RESETADO!", 1000, "success")),
-        (g, *) => g.Destroy()
+        (*) => (ResetarSecao("Revive"), ShowHint("REVIVE RESETADO!", 1000, "success"))
     )
 }

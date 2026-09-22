@@ -1,6 +1,8 @@
 #Requires AutoHotkey v2.0
+#SingleInstance Force
 #MaxThreadsPerHotkey 2
 
+SetWorkingDir(A_ScriptDir)
 TraySetIcon(A_ScriptDir "\icons\logo.png")
 
 ; =====================================================
@@ -15,7 +17,6 @@ TraySetIcon(A_ScriptDir "\icons\logo.png")
 #Include lib\window.ahk
 #Include lib\input.ahk
 
-#Include ui\slot.ahk
 #Include ui\mini_menu.ahk
 #Include ui\config_combo.ahk
 #Include ui\config_revive.ahk
@@ -40,6 +41,7 @@ SetDefaultMouseSpeed(0)
 
 AtualizarHotkeyCombo()
 AbrirMiniMenu()
+VerificarElevacaoJogo()
 
 ; =====================================================
 ; HOTKEY GLOBAL — Ctrl+F12 abre/fecha a interface (HUD)

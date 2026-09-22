@@ -67,7 +67,7 @@ ExecutarRevive() {
     if (_reviveOcupado)
         return
 
-    cfg        := GetCfg("revive")
+    cfg        := GetCfg("Revive")
     modoLegado := GetModoLegado()
 
     _reviveOcupado := true

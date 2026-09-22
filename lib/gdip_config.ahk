@@ -40,6 +40,8 @@ global _gcfgBoxes   := []
 global _gcfgHoverId := ""
 global _gcfgDraw    := 0
 global _gcfgDragBox := 0
+global _gcfgConfirm := 0   ; confirmação aberta por cima da tela ({titulo, sub, onSim, textoSim}) ou 0
+global _gcfgEdit    := 0   ; chip de slider sendo editado pelo teclado (ver _GCfg_EditarValorSlider) ou 0
 
 ; Fator de escala aplicado a todas as telas de configuração. Widgets
 ; continuam desenhando em coordenadas "lógicas" (as mesmas de sempre);
@@ -63,10 +65,12 @@ global _GCFG_SCALE      := _GCFG_SCALE_BASE * EscalaFator()
 ; fica visível por vez, mas clicar num botão de config sempre leva a
 ; ele (em vez de ficar sem efeito porque "já tinha algo aberto").
 _GCfg_Abrir(w, h, drawFn) {
-    global _gcfgGui, _gcfgW, _gcfgH, _gcfgX, _gcfgY, _gcfgBoxes, _gcfgHoverId, _gcfgDraw, _gcfgDragBox, _GCFG_SCALE, configFile
+    global _gcfgGui, _gcfgW, _gcfgH, _gcfgX, _gcfgY, _gcfgBoxes, _gcfgHoverId, _gcfgDraw, _gcfgDragBox, _GCFG_SCALE, _gcfgConfirm, _gcfgEdit
 
     if (_gcfgGui)
         _GCfg_Fechar()
+    _gcfgConfirm := 0
+    _gcfgEdit    := 0
 
     Gdip_EnsureStarted()
 
@@ -77,9 +81,9 @@ _GCfg_Abrir(w, h, drawFn) {
     ; só existe uma por vez, ver comentário no topo do arquivo) foi
     ; fechada. Clampado contra o tamanho atual da tela pra não deixar a
     ; janela presa fora da área visível se a resolução/monitor mudou.
-    savedX := IniRead(configFile, "Geral", "configPosX", "")
-    savedY := IniRead(configFile, "Geral", "configPosY", "")
-    if (savedX != "" && savedY != "") {
+    savedX := CfgLer("Geral", "configPosX", "")
+    savedY := CfgLer("Geral", "configPosY", "")
+    if (IsInteger(savedX) && IsInteger(savedY)) {
         _gcfgX := Max(0, Min(Integer(savedX), A_ScreenWidth  - physW))
         _gcfgY := Max(0, Min(Integer(savedY), A_ScreenHeight - physH))
     } else {
@@ -100,25 +104,30 @@ _GCfg_Abrir(w, h, drawFn) {
     OnMessage(0x202, _GCfg_WM_LButtonUp)   ; WM_LBUTTONUP
     OnMessage(0x2A3, _GCfg_WM_MouseLeave)  ; WM_MOUSELEAVE
     OnMessage(0x0003, _GCfg_WM_Move)       ; WM_MOVE
+    OnMessage(0x0100, _GCfg_WM_KeyDown)    ; WM_KEYDOWN (edição do valor de slider)
+    OnMessage(0x0102, _GCfg_WM_Char)       ; WM_CHAR    (idem)
+    OnMessage(0x0006, _GCfg_WM_Activate)   ; WM_ACTIVATE
 
     _GCfg_Redraw()
     return true
 }
 
 _GCfg_Fechar() {
-    global _gcfgGui, _gcfgDragBox, _gcfgX, _gcfgY, configFile
+    global _gcfgGui, _gcfgDragBox, _gcfgX, _gcfgY, _gcfgConfirm
     if (!_gcfgGui)
         return
-    IniWrite(_gcfgX, configFile, "Geral", "configPosX")
-    IniWrite(_gcfgY, configFile, "Geral", "configPosY")
+    _GCfg_ConfirmarEdicao()   ; fechar com um valor digitado e não confirmado salva ele
+    SalvarCfg("Geral", "configPosX", _gcfgX)
+    SalvarCfg("Geral", "configPosY", _gcfgY)
     _gcfgDragBox := 0
+    _gcfgConfirm := 0
     try _gcfgGui.Destroy()
     _gcfgGui := 0
 }
 
 ; ── Desenho ────────────────────────────────────────────
 _GCfg_Redraw() {
-    global _gcfgGui, _gcfgW, _gcfgH, _gcfgX, _gcfgY, _gcfgBoxes, _gcfgDraw, _gcfgHoverId, _GCFG_SCALE
+    global _gcfgGui, _gcfgW, _gcfgH, _gcfgX, _gcfgY, _gcfgBoxes, _gcfgDraw, _gcfgHoverId, _GCFG_SCALE, _gcfgConfirm
     if (!_gcfgGui || !_gcfgDraw)
         return
     Critical "On"
@@ -126,30 +135,91 @@ _GCfg_Redraw() {
     canvas := Gdip_NewLayeredCanvas(physW, physH)
     Gdip_ScaleTransform(canvas.pGraphics, _GCFG_SCALE, _GCFG_SCALE)
     _gcfgBoxes := _gcfgDraw.Call(canvas.pGraphics, _gcfgW, _gcfgH, _gcfgHoverId)
+    ; Com uma confirmação aberta, ela cobre a tela e só os botões dela
+    ; recebem clique (ver _GCfg_Confirmar).
+    if (_gcfgConfirm)
+        _gcfgBoxes := _GCfg_DesenharConfirmacao(canvas.pGraphics, _gcfgW, _gcfgH, _gcfgHoverId)
     Gdip_PresentLayeredCanvas(canvas, _gcfgGui.Hwnd, _gcfgX, _gcfgY)
     Gdip_DestroyLayeredCanvas(canvas)
     Critical "Off"
 }
 
+; ── Confirmação (sobreposta à tela de config aberta) ────
+; Substitui a antiga janelinha nativa (Gui com controles Win32, fora do
+; tema e com cantos quadrados): a confirmação é desenhada por cima da
+; própria tela atual, com o mesmo visual GDI+. onSim é chamado só se o
+; usuário confirmar; "Não" apenas fecha a sobreposição.
+_GCfg_Confirmar(titulo, subtitulo, onSim, textoSim := "SIM, RESETAR") {
+    global _gcfgConfirm, _gcfgHoverId, _gcfgGui
+    if (!_gcfgGui)
+        return
+    _gcfgConfirm := { titulo: titulo, sub: subtitulo, onSim: onSim, textoSim: textoSim }
+    _gcfgHoverId := ""
+    _GCfg_Redraw()
+}
+
+_GCfg_ResponderConfirmacao(sim, *) {
+    global _gcfgConfirm, _gcfgHoverId
+    pedido := _gcfgConfirm
+    _gcfgConfirm := 0
+    _gcfgHoverId := ""
+    if (sim && pedido)
+        pedido.onSim.Call()
+}
+
+_GCfg_DesenharConfirmacao(g, w, h, hoverId) {
+    global _gcfgConfirm
+    c := _gcfgConfirm
+    boxes := []
+
+    Gdip_SetClipRoundRect(g, 0, 0, w, h, 14)
+    veu := Gdip_BrushSolid(Gdip_Argb(215, "0x0a0c10"))
+    Gdip_FillRect(g, veu, 0, 0, w, h)
+    Gdip_DeleteBrush(veu)
+    Gdip_ResetClip(g)
+
+    cw := w - 36, chh := 128
+    cx := (w - cw) / 2, cy := (h - chh) / 2
+
+    card := Gdip_BrushSolid(Gdip_Argb(255, T()["BG2"]))
+    Gdip_FillRoundRect(g, card, cx, cy, cw, chh, 10)
+    Gdip_DeleteBrush(card)
+
+    Gdip_SetClipRoundRect(g, cx, cy, cw, chh, 10)
+    faixa := Gdip_BrushSolid(Gdip_Argb(255, T()["DANGER"]))
+    Gdip_FillRect(g, faixa, cx, cy, cw, 3)
+    Gdip_DeleteBrush(faixa)
+    Gdip_ResetClip(g)
+
+    bordaPen := Gdip_Pen(Gdip_Argb(255, T()["SEP"]), 1)
+    Gdip_DrawRoundRect(g, bordaPen, cx, cy, cw, chh, 10)
+    Gdip_DeletePen(bordaPen)
+
+    Gdip_DrawText(g, c.titulo, 11, true, Gdip_Argb(255, T()["TEXT"]), cx + 10, cy + 14, cw - 20, 22, true)
+    Gdip_DrawText(g, c.sub,     9, false, Gdip_Argb(255, T()["MUTED"]), cx + 10, cy + 40, cw - 20, 18, true)
+
+    bw := (cw - 30) / 2, bh := 30, by := cy + chh - bh - 14
+    bxSim := cx + 10, bxNao := bxSim + bw + 10
+    hovSim := (hoverId = "conf_sim"), hovNao := (hoverId = "conf_nao")
+
+    br := Gdip_BrushSolid(Gdip_Argb(255, hovSim ? "0x5a2525" : "0x3d1f1f"))
+    Gdip_FillRoundRect(g, br, bxSim, by, bw, bh, 7)
+    Gdip_DeleteBrush(br)
+    Gdip_DrawText(g, c.textoSim, 9, true, Gdip_Argb(255, "0xff8484"), bxSim, by, bw, bh, true)
+
+    br := Gdip_BrushSolid(Gdip_Argb(255, hovNao ? T()["BG3"] : T()["BG"]))
+    Gdip_FillRoundRect(g, br, bxNao, by, bw, bh, 7)
+    Gdip_DeleteBrush(br)
+    Gdip_DrawText(g, "NÃO", 9, true, Gdip_Argb(255, hovNao ? T()["TEXT"] : T()["MUTED"]), bxNao, by, bw, bh, true)
+
+    boxes.Push({ id: "conf_sim", x: bxSim, y: by, w: bw, h: bh, onClick: _GCfg_ResponderConfirmacao.Bind(true) })
+    boxes.Push({ id: "conf_nao", x: bxNao, y: by, w: bw, h: bh, onClick: _GCfg_ResponderConfirmacao.Bind(false) })
+    ; véu inteiro por último: bloqueia clique/arraste no resto da tela
+    boxes.Push({ id: "conf_veu", x: 0, y: 0, w: w, h: h })
+    return boxes
+}
+
 ; ── Entrada do mouse ───────────────────────────────────
-_GCfg_ArmarSaida(hwnd) {
-    tme := Buffer(A_PtrSize = 8 ? 24 : 16, 0)
-    NumPut("UInt", tme.Size, tme, 0)
-    NumPut("UInt", 2,        tme, 4)  ; TME_LEAVE
-    NumPut("Ptr",  hwnd,     tme, 8)
-    DllCall("TrackMouseEvent", "Ptr", tme)
-}
-
-_GCfg_DecodeXY(lParam) {
-    x := lParam & 0xFFFF
-    y := (lParam >> 16) & 0xFFFF
-    if (x > 32767)
-        x -= 65536
-    if (y > 32767)
-        y -= 65536
-    return [x, y]
-}
-
 _GCfg_HitTest(x, y) {
     global _gcfgBoxes
     for b in _gcfgBoxes {
@@ -163,8 +233,8 @@ _GCfg_WM_MouseMove(wParam, lParam, msg, hwnd) {
     global _gcfgGui, _gcfgHoverId, _gcfgDragBox, _GCFG_SCALE
     if (!_gcfgGui || hwnd != _gcfgGui.Hwnd)
         return
-    _GCfg_ArmarSaida(hwnd)
-    xy := _GCfg_DecodeXY(lParam)
+    Win_ArmarMouseLeave(hwnd)
+    xy := Win_DecodeXY(lParam)
     mx := xy[1] / _GCFG_SCALE, my := xy[2] / _GCFG_SCALE   ; físico → lógico
 
     if (_gcfgDragBox) {
@@ -185,12 +255,17 @@ _GCfg_WM_MouseMove(wParam, lParam, msg, hwnd) {
 }
 
 _GCfg_WM_LButtonDown(wParam, lParam, msg, hwnd) {
-    global _gcfgGui, _gcfgDragBox, _GCFG_SCALE
+    global _gcfgGui, _gcfgDragBox, _GCFG_SCALE, _gcfgEdit
     if (!_gcfgGui || hwnd != _gcfgGui.Hwnd)
         return
-    xy := _GCfg_DecodeXY(lParam)
+    xy := Win_DecodeXY(lParam)
     mx := xy[1] / _GCFG_SCALE, my := xy[2] / _GCFG_SCALE   ; físico → lógico
     box := _GCfg_HitTest(mx, my)
+
+    ; Clique fora do chip em edição confirma o valor digitado antes de
+    ; tratar o clique normalmente.
+    if (_gcfgEdit && !(box && box.id = _gcfgEdit.id "_valor"))
+        _GCfg_ConfirmarEdicao()
 
     if (!box) {
         DragJanela()   ; clique fora de qualquer cartão: arrasta a janela pelo fundo
@@ -203,8 +278,13 @@ _GCfg_WM_LButtonDown(wParam, lParam, msg, hwnd) {
         return
     }
 
-    if (box.HasOwnProp("onClick"))
+    ; Redesenha depois de todo clique: antes, alternâncias que só salvavam
+    ; o valor (ex.: FULL ATTACK ativar/desativar) só apareciam na tela
+    ; quando o mouse saía da pílula e o hover mudava.
+    if (box.HasOwnProp("onClick")) {
         box.onClick.Call()
+        _GCfg_Redraw()
+    }
 }
 
 _GCfg_WM_LButtonUp(wParam, lParam, msg, hwnd) {
@@ -228,13 +308,8 @@ _GCfg_WM_Move(wParam, lParam, msg, hwnd) {
     global _gcfgGui, _gcfgX, _gcfgY
     if (!_gcfgGui || hwnd != _gcfgGui.Hwnd)
         return
-    x := lParam & 0xFFFF
-    y := (lParam >> 16) & 0xFFFF
-    if (x > 32767)
-        x -= 65536
-    if (y > 32767)
-        y -= 65536
-    _gcfgX := x, _gcfgY := y
+    xy := Win_DecodeXY(lParam)
+    _gcfgX := xy[1], _gcfgY := xy[2]
 }
 
 ; ── Escala da interface (chamado pela tela de Configurações Gerais) ──
@@ -252,9 +327,9 @@ _GCfg_ReaplicarEscala() {
 }
 
 AplicarEscalaInterface(nome) {
-    global configFile, _GCFG_SCALE, _GCFG_SCALE_BASE, _HUD_SCALE, _gcfgGui, miniGui
+    global _GCFG_SCALE, _GCFG_SCALE_BASE, _HUD_SCALE, _gcfgGui, miniGui
 
-    IniWrite(nome, configFile, "Geral", "escalaInterface")
+    SalvarCfg("Geral", "escalaInterface", nome)
     fator := EscalaFator(nome)
 
     _GCFG_SCALE := _GCFG_SCALE_BASE * fator
@@ -279,6 +354,174 @@ _GCfg_SliderSetFromX(box, mx) {
     box.value := val
     box.onChange.Call(val)
     _GCfg_Redraw()
+}
+
+; Estado de edição do chip do slider "id", ou 0 se não é ele que está em edição.
+_GCfg_EdicaoDoSlider(id) {
+    global _gcfgEdit
+    return (_gcfgEdit && _gcfgEdit.id = id) ? _gcfgEdit : 0
+}
+
+; Chip em edição: número digitado + unidade, centralizados como o chip
+; normal. Valor recém-aberto aparece "selecionado" (fundo realçado — o
+; primeiro dígito substitui tudo); depois, um cursor piscando no fim do
+; número. Borda na cor de destaque para deixar claro que está editando.
+_GCfg_DesenharChipEmEdicao(g, ed, unit, x, y, w, h) {
+    borda := Gdip_Pen(Gdip_Argb(255, T()["ACCENT"]), 1)
+    Gdip_DrawRoundRect(g, borda, x + 0.5, y + 0.5, w - 1, h - 1, 5)
+    Gdip_DeletePen(borda)
+
+    ; Gdip_MeasureText inclui uma folga de ~1/6 em de cada lado do texto;
+    ; "pad" desconta isso para o realce e o cursor encostarem nos dígitos.
+    pad := 1.5
+    numW  := (ed.texto = "") ? 0 : Gdip_MeasureText(ed.texto, 9, true)[1] - pad * 2
+    fullW := Gdip_MeasureText(ed.texto " " unit, 9, true)[1]
+    tx := x + (w - fullW) / 2
+
+    Gdip_DrawText(g, ed.texto " " unit, 9, true, Gdip_Argb(255, T()["ACCENT"]), tx, y, fullW + 4, h, false)
+    ; Selecionado: fundo de destaque e o número por cima em cor clara
+    ; (mesma posição — o número é o começo da string desenhada acima).
+    if (ed.selecionado && numW > 0) {
+        sel := Gdip_BrushSolid(Gdip_Argb(255, T()["ACCENT2"]))
+        Gdip_FillRoundRect(g, sel, tx + pad - 2, y + 3, numW + 4, h - 6, 3)
+        Gdip_DeleteBrush(sel)
+        Gdip_DrawText(g, ed.texto, 9, true, Gdip_Argb(255, T()["TEXT"]), tx, y, numW + pad * 2 + 4, h, false)
+    }
+
+    if (ed.cursor && !ed.selecionado) {
+        cx := tx + pad + numW + 0.5
+        caneta := Gdip_Pen(Gdip_Argb(255, T()["TEXT"]), 1)
+        Gdip_DrawLine(g, caneta, cx, y + 4, cx, y + h - 4)
+        Gdip_DeletePen(caneta)
+    }
+}
+
+; ── Edição do valor de um slider pelo teclado ───────────
+; Clicar no chip de valor de um _GCfg_Slider transforma o chip num campo
+; de texto desenhado no próprio canvas (sem janela nativa). A janela de
+; config é ativada para receber o teclado (WM_CHAR): dígitos digitam,
+; Backspace apaga, Enter confirma, Esc cancela. Clicar fora do chip ou a
+; janela perder o foco também confirma. O primeiro dígito substitui o
+; valor inteiro (ele começa "selecionado", como num campo normal).
+_GCfg_EditarValorSlider(id, atual, vMin, vMax, step, onChange, *) {
+    global _gcfgEdit, _gcfgGui
+    if (_gcfgEdit && _gcfgEdit.id = id)
+        return
+    _GCfg_ConfirmarEdicao()
+    _gcfgEdit := { id: id, texto: String(atual), selecionado: true, cursor: true,
+        min: vMin, max: vMax, step: step, onChange: onChange }
+    try WinActivate("ahk_id " _gcfgGui.Hwnd)
+    SetTimer(_GCfg_PiscarCursor, 530)
+}
+
+_GCfg_PiscarCursor() {
+    global _gcfgEdit
+    if (!_gcfgEdit) {
+        SetTimer(_GCfg_PiscarCursor, 0)
+        return
+    }
+    _gcfgEdit.cursor := !_gcfgEdit.cursor
+    _GCfg_Redraw()
+}
+
+; Encerra a edição sem salvar.
+_GCfg_CancelarEdicao() {
+    global _gcfgEdit
+    if (!_gcfgEdit)
+        return
+    _gcfgEdit := 0
+    SetTimer(_GCfg_PiscarCursor, 0)
+    _GCfg_Redraw()
+}
+
+; Encerra a edição salvando o número digitado — ajustado para dentro da
+; faixa do slider e arredondado ao passo dele. Campo vazio = cancela.
+_GCfg_ConfirmarEdicao() {
+    global _gcfgEdit
+    e := _gcfgEdit
+    if (!e)
+        return
+    _gcfgEdit := 0
+    SetTimer(_GCfg_PiscarCursor, 0)
+    if (e.texto != "") {
+        digitado := Integer(e.texto)
+        val := Round(digitado / e.step) * e.step
+        val := Max(e.min, Min(e.max, val))
+        e.onChange.Call(val)
+        if (val != digitado)
+            ShowHint("AJUSTADO PARA " val " (" e.min "–" e.max ")", 1500, "warn")
+    }
+    _GCfg_Redraw()
+}
+
+; Enter/Esc/Backspace vêm pelo WM_KEYDOWN: numa janela Gui o AHK passa
+; as teclas pelo IsDialogMessage, que come Enter/Esc antes de virarem
+; WM_CHAR. Devolver 0 aqui impede esse processamento padrão.
+_GCfg_WM_KeyDown(wParam, lParam, msg, hwnd) {
+    global _gcfgGui, _gcfgEdit
+    if (!_gcfgGui || hwnd != _gcfgGui.Hwnd || !_gcfgEdit)
+        return
+    e := _gcfgEdit
+    switch wParam {
+        case 0x0D: _GCfg_ConfirmarEdicao()   ; Enter
+        case 0x1B: _GCfg_CancelarEdicao()    ; Esc
+        case 0x08:                           ; Backspace
+            e.texto := e.selecionado ? "" : SubStr(e.texto, 1, -1)
+            e.selecionado := false
+            _GCfg_EdicaoDigitou()
+        default: return
+    }
+    return 0
+}
+
+; Dígitos (teclado normal ou numérico) chegam já traduzidos como WM_CHAR.
+_GCfg_WM_Char(wParam, lParam, msg, hwnd) {
+    global _gcfgGui, _gcfgEdit
+    if (!_gcfgGui || hwnd != _gcfgGui.Hwnd || !_gcfgEdit)
+        return
+    e := _gcfgEdit
+    ch := Chr(wParam)
+    if !(ch ~= "^\d$")
+        return 0
+    if (e.selecionado)
+        e.texto := "", e.selecionado := false
+    if (StrLen(e.texto) < StrLen(String(e.max)))
+        e.texto .= ch
+    _GCfg_EdicaoDigitou()
+    return 0
+}
+
+; Depois de cada tecla: cursor visível e piscada reiniciada, como num
+; campo de texto normal.
+_GCfg_EdicaoDigitou() {
+    global _gcfgEdit
+    _gcfgEdit.cursor := true
+    SetTimer(_GCfg_PiscarCursor, 530)
+    _GCfg_Redraw()
+}
+
+_GCfg_WM_Activate(wParam, lParam, msg, hwnd) {
+    global _gcfgGui, _gcfgEdit
+    ; Ao sair do app com a tela aberta e ativa, o AHK destrói a janela e
+    ; só depois chega este WM_ACTIVATE — ler .Hwnd de uma Gui destruída
+    ; lança erro e a saída travava. Daí o try.
+    try guiHwnd := _gcfgGui ? _gcfgGui.Hwnd : 0
+    catch
+        return
+    if (!guiHwnd || hwnd != guiHwnd)
+        return
+    if ((wParam & 0xFFFF) = 0 && _gcfgEdit)   ; WA_INACTIVE
+        _GCfg_ConfirmarEdicao()
+}
+
+; A tela de config é AlwaysOnTop — sem isso a caixa de texto (InputBox)
+; podia nascer escondida atrás dela.
+_GCfg_InputNoTopo(titulo) {
+    alvo := titulo " ahk_pid " DllCall("GetCurrentProcessId")
+    try {
+        WinSetAlwaysOnTop(1, alvo)
+        WinActivate(alvo)
+    }
 }
 
 ; ── Widgets ─────────────────────────────────────────────
@@ -486,14 +729,23 @@ _GCfg_Slider(g, boxes, id, x, y, w, label, value, vMin, vMax, step, unit, onChan
     Gdip_FillEllipse(g, knobBrush, knobCx - knobR, knobCy - knobR, knobR * 2, knobR * 2)
     Gdip_DeleteBrush(knobBrush)
 
-    chipX := trackX + trackW + 6
-    chipBrush := Gdip_BrushSolid(Gdip_Argb(255, T()["BG"]))
-    Gdip_FillRoundRect(g, chipBrush, chipX, y + 20, chipW, 20, 5)
+    ; Chip do valor: clicável, vira um campo para digitar o número à mão
+    ; (ver _GCfg_EditarValorSlider). Clareia no hover para indicar isso.
+    chipX := trackX + trackW + 6, chipY := y + 20, chipH := 20
+    ed := _GCfg_EdicaoDoSlider(id)
+    chipHov := (hoverId = id "_valor")
+    chipBrush := Gdip_BrushSolid(Gdip_Argb(255, (chipHov || ed) ? T()["BG3"] : T()["BG"]))
+    Gdip_FillRoundRect(g, chipBrush, chipX, chipY, chipW, chipH, 5)
     Gdip_DeleteBrush(chipBrush)
-    Gdip_DrawText(g, value " " unit, 9, true, Gdip_Argb(255, T()["ACCENT"]), chipX, y + 20, chipW, 20, true)
+    if (ed)
+        _GCfg_DesenharChipEmEdicao(g, ed, unit, chipX, chipY, chipW, chipH)
+    else
+        Gdip_DrawText(g, value " " unit, 9, true, Gdip_Argb(255, T()["ACCENT"]), chipX, chipY, chipW, chipH, true)
 
     boxes.Push({ id: id, kind: "slider", x: trackX, y: y + 16, w: trackW, h: 28,
         min: vMin, max: vMax, step: step, value: value, onChange: onChange })
+    boxes.Push({ id: id "_valor", x: chipX, y: chipY, w: chipW, h: chipH,
+        onClick: _GCfg_EditarValorSlider.Bind(id, value, vMin, vMax, step, onChange) })
 
     return ch
 }
@@ -545,6 +797,6 @@ _GCfg_MiniSlider(g, boxes, id, x, y, w, titulo, value, vMin, vMax, step, unit, o
 _GCfg_ShowInMini(g, boxes, x, y, w, secao, hoverId) {
     atual := GetShowInMini(secao)
     return _GCfg_Toggle(g, boxes, "showmini", x, y, w, "EXIBIR NO MINI MENU", "SIM", "NÃO", atual,
-        (*) => SalvarCfg(secao, "showInMini", "true"),
-        (*) => SalvarCfg(secao, "showInMini", "false"), hoverId)
+        (*) => (SalvarCfg(secao, "showInMini", "true"),  _RecriarMini()),
+        (*) => (SalvarCfg(secao, "showInMini", "false"), _RecriarMini()), hoverId)
 }

@@ -1,8 +1,107 @@
 ; =====================================================
-; macros\hotkeys.ahk — Registro de hotkeys e dispatch
+; macros\hotkeys.ahk — Estado dos macros, registro de hotkeys e dispatch
 ; =====================================================
 
 global _macroExecutando := false
+
+; ─── Estado dos macros (único lugar que liga/desliga) ─────
+; HUD, hotkeys de toggle e tecla de pânico passam todos por aqui, então
+; a regra de exclusividade entre combos e o redesenho da HUD valem igual
+; para qualquer origem.
+DefinirMacro(nome, ligado) {
+    global macros, interromperCombo, executandoCooldown, COMBOS_EXCLUSIVOS
+
+    macros[nome] := ligado
+
+    if (ligado && _EhComboExclusivo(nome)) {
+        for outro in COMBOS_EXCLUSIVOS {
+            if (outro != nome && macros[outro]) {
+                macros[outro] := false
+                interromperCombo := true   ; para o combo do outro, se estiver rodando
+            }
+        }
+    }
+
+    ; Desligar também para o que estiver rodando daquele macro.
+    if (!ligado) {
+        if _EhComboExclusivo(nome)
+            interromperCombo := true
+        if (nome = "cooldown")
+            executandoCooldown := false
+    }
+
+    _HudRedraw()
+}
+
+AlternarMacro(nome) {
+    global macros
+    DefinirMacro(nome, !macros[nome])
+    return macros[nome]
+}
+
+_EhComboExclusivo(nome) {
+    global COMBOS_EXCLUSIVOS
+    for c in COMBOS_EXCLUSIVOS
+        if (c = nome)
+            return true
+    return false
+}
+
+; ─── Tecla de pânico: desliga tudo e para o que estiver rodando ──
+DesligarTodosMacros(avisar := true) {
+    global macros, interromperCombo, executandoCooldown
+    for nome in macros
+        macros[nome] := false
+    interromperCombo   := true
+    executandoCooldown := false
+    _HudRedraw()
+    if (avisar)
+        ShowHint("TODOS OS MACROS DESLIGADOS", 1400, "warn")
+}
+
+; ─── Hotkeys configuráveis ────────────────────────────────
+; Lista de todas as teclas que viram hotkey, com rótulo para mensagens de
+; conflito. tipo: "exec" (executa o macro), "toggle" ou "panico".
+_HotkeySlots() {
+    global MACROS_INFO
+    slots := []
+    for nome, info in MACROS_INFO {
+        slots.Push({ secao: info.secao, chave: info.exec,         tipo: "exec",   macro: nome, label: info.label })
+        slots.Push({ secao: info.secao, chave: "toggleHotkey",    tipo: "toggle", macro: nome, label: info.label " (LIGAR/DESLIGAR)" })
+    }
+    slots.Push({ secao: "Geral", chave: "teclaPanico", tipo: "panico", macro: "", label: "TECLA DE PÂNICO" })
+    return slots
+}
+
+HotkeySlotExiste(secao, chave) {
+    for s in _HotkeySlots()
+        if (s.secao = secao && s.chave = chave)
+            return true
+    return false
+}
+
+; Devolve o rótulo da hotkey que já usa 'tecla', ou "" se estiver livre.
+; Única exceção permitida: a tecla de executar dos três combos pode ser a
+; mesma, já que só um deles fica ligado por vez (o despachante sabe qual).
+ConflitoDeTecla(secao, chave, tecla) {
+    atual := 0
+    for s in _HotkeySlots()
+        if (s.secao = secao && s.chave = chave)
+            atual := s
+    if !atual
+        return ""
+
+    for s in _HotkeySlots() {
+        if (s.secao = atual.secao && s.chave = atual.chave)
+            continue
+        if (CfgLer(s.secao, s.chave, "") != tecla)
+            continue
+        if (s.tipo = "exec" && atual.tipo = "exec" && _EhComboExclusivo(s.macro) && _EhComboExclusivo(atual.macro))
+            continue
+        return s.label
+    }
+    return ""
+}
 
 _MontarChaveHk(tecla) {
     if (tecla = "N/A" || tecla = "")
@@ -11,139 +110,118 @@ _MontarChaveHk(tecla) {
     return prefixo . tecla
 }
 
+_TeclaExec(nome) {
+    global MACROS_INFO
+    info := MACROS_INFO[nome]
+    return CfgLer(info.secao, info.exec, "")
+}
+
+; Re-registra todas as hotkeys a partir do INI. Só precisa rodar quando
+; uma tecla muda (captura, reset, troca de perfil) — ligar/desligar um
+; macro NÃO exige re-registro, porque os critérios de HotIf consultam
+; macros[] na hora do pressionamento.
+;
+; Os critérios (funções de HotIf) são criados uma única vez e reusados:
+; o AHK identifica a variante de uma hotkey pelo objeto do critério, e
+; desligar uma hotkey só funciona com o MESMO critério ativo. Antes cada
+; chamada criava closures novas — o "Off" nunca achava a variante, e
+; teclas antigas continuavam capturadas (e acumulando) pela sessão toda.
 AtualizarHotkeyCombo() {
-    global macros, _macroExecutando
-    static hotkeysRegistradas := Map()
+    global MACROS_INFO
+    static registradas := []
+    static critExec := 0, critJogo := 0
 
-    for hk, _ in hotkeysRegistradas {
-        try Hotkey(hk, "Off")
-        try Hotkey(hk, "Delete")
+    if !critExec {
+        critExec := Map()
+        for nome, info in MACROS_INFO
+            critExec[nome] := _CriterioExec.Bind(nome)
+        critJogo := (*) => JogoAtivo()
     }
-    hotkeysRegistradas.Clear()
 
-    JanelaAtiva()   => WinActive("ahk_exe pxgme.exe")
-    PodeExecutar()  => JanelaAtiva() && !_macroExecutando
+    for r in registradas {
+        HotIf(r.crit)
+        try Hotkey(r.chave, "Off")
+    }
+    registradas := []
 
-    ; ── Registra hotkey de execução (requer janela ativa e macro ligado) ──
-    ; interrompivel=true: ignora _macroExecutando (permite interromper combo)
-    RegistrarExecucao(chave, nomeMacro, interrompivel := false) {
-        if (chave = "")
-            return
+    pedidos := []
+    for nome, info in MACROS_INFO {
+        pedidos.Push({ chave: _MontarChaveHk(CfgLer(info.secao, info.exec, "")), crit: critExec[nome], cb: ProcessarPressionamento })
+        pedidos.Push({ chave: _MontarChaveHk(CfgLer(info.secao, "toggleHotkey", "")), crit: critJogo, cb: ToggleMacroPorHotkey.Bind(nome) })
+    }
+    pedidos.Push({ chave: _MontarChaveHk(CfgLer("Geral", "teclaPanico", "")), crit: critJogo, cb: (*) => DesligarTodosMacros() })
+
+    for p in pedidos {
+        if (p.chave = "")
+            continue
+        HotIf(p.crit)
         try {
-            if (interrompivel)
-                HotIf(((n, *) => JanelaAtiva() && macros[n]).Bind(nomeMacro))
-            else
-                HotIf(((n, *) => PodeExecutar() && macros[n]).Bind(nomeMacro))
-            Hotkey(chave, ProcessarPressionamento, "On")
-            hotkeysRegistradas[chave] := true
+            Hotkey(p.chave, p.cb, "On")
+            registradas.Push({ chave: p.chave, crit: p.crit })
         }
     }
-
-    ; ── Registra hotkey de toggle (restrita à janela do jogo) ──
-    RegistrarToggle(chave, nomeMacro) {
-        if (chave = "")
-            return
-        try {
-            HotIf((*) => JanelaAtiva())
-            Hotkey(chave, ((n, *) => ToggleMacroPorHotkey(n)).Bind(nomeMacro), "On")
-            hotkeysRegistradas[chave] := true
-        }
-    }
-
-    ; ── Combos Principal e Secundário ──
-    for tipo in ["comboPrincipal", "comboSecundario"] {
-        cfg := GetCfg(tipo)
-        RegistrarExecucao(_MontarChaveHk(cfg["teclaHotkey"]),  tipo)
-        RegistrarToggle(  _MontarChaveHk(cfg["toggleHotkey"]), tipo)
-    }
-
-    ; ── Revive ── (interrompível: funciona mesmo durante combo)
-    cfgR := GetCfg("Revive")
-    RegistrarExecucao(_MontarChaveHk(cfgR["teclaHotkey"]),        "revive", true)
-    RegistrarToggle(  _MontarChaveHk(cfgR["toggleHotkeyRevive"]), "revive")
-
-    ; ── Combo Revive ── (interrompível: funciona mesmo durante combo)
-    cfgCR := GetCfg("comboRevive")
-    RegistrarExecucao(_MontarChaveHk(cfgCR["teclaHotkey"]),  "comboRevive", true)
-    RegistrarToggle(  _MontarChaveHk(cfgCR["toggleHotkey"]), "comboRevive")
-
-    ; ── Cooldown ── (interrompível: a mesma hotkey cancela durante execução)
-    cfgC := GetCfg("Cooldown")
-    RegistrarExecucao(_MontarChaveHk(cfgC["hotkeyCooldown"]),       "cooldown", true)
-    RegistrarToggle(  _MontarChaveHk(cfgC["toggleHotkeyCooldown"]), "cooldown")
 
     HotIf()
 }
 
+; Critério da hotkey de execução: jogo em foco, macro ligado e — para os
+; que não são interrompíveis (combos principal/secundário) — nenhum outro
+; macro em andamento.
+_CriterioExec(nome, *) {
+    global macros, MACROS_INFO, _macroExecutando
+    return JogoAtivo() && macros[nome] && (MACROS_INFO[nome].interrompivel || !_macroExecutando)
+}
+
 ; ─── Toggle via hotkey ────────────────────────────────────
-ToggleMacroPorHotkey(nome) {
-    global macros, uiRefs
-
-    macros[nome] := !macros[nome]
-
-    ; Exclusividade entre os três combos
-    if (macros[nome] && (nome = "comboPrincipal" || nome = "comboSecundario" || nome = "comboRevive")) {
-        for outro in ["comboPrincipal", "comboSecundario", "comboRevive"] {
-            if (outro != nome && macros[outro]) {
-                macros[outro] := false
-                if (uiRefs.Has(outro))
-                    AtualizarVisual(uiRefs[outro], false)
-            }
-        }
-    }
-
-    if (uiRefs.Has(nome)) {
-        try AtualizarVisual(uiRefs[nome], macros[nome])
-    }
-
-    ShowHint(StrUpper(nome) ": " (macros[nome] ? "LIGADO" : "DESLIGADO"), 1200, macros[nome] ? "success" : "info")
-    AtualizarHotkeyCombo()
+ToggleMacroPorHotkey(nome, *) {
+    global MACROS_INFO
+    ligado := AlternarMacro(nome)
+    ShowHint(MACROS_INFO[nome].label ": " (ligado ? "LIGADO" : "DESLIGADO"), 1200, ligado ? "success" : "info")
 }
 
 ; ─── Despachante central ─────────────────────────────────
 ProcessarPressionamento(thisHotkey) {
-    global macros, executandoCooldown, _macroExecutando
+    global macros, executandoCooldown, _macroExecutando, MACROS_ORDEM, MACROS_INFO
 
-    ; Remove prefixos para obter a tecla pura
-    teclaPura := thisHotkey
-    for p in ["$", "~", "*"]
-        teclaPura := StrReplace(teclaPura, p, "")
+    teclaPura := RegExReplace(thisHotkey, "^[$~*]+")
 
-    ; Identifica qual macro esta tecla deve disparar
-    ehRevive      := macros["revive"]     && GetCfg("Revive")["teclaHotkey"]         = teclaPura
-    ehComboRevive := macros["comboRevive"] && GetCfg("comboRevive")["teclaHotkey"]   = teclaPura
-    ehCooldown    := macros["cooldown"]   && GetCfg("Cooldown")["hotkeyCooldown"]    = teclaPura
+    alvo := ""
+    for nome in MACROS_ORDEM {
+        if (macros[nome] && _TeclaExec(nome) = teclaPura) {
+            alvo := nome
+            break
+        }
+    }
+    if (alvo = "")
+        return
 
-    ; Revive, ComboRevive e Cooldown (cancelamento) não são bloqueados pela flag
-    ehInterrompivel := ehRevive || ehComboRevive || ehCooldown
-
-    if (!ehInterrompivel) {
+    ; Revive, Combo Revive e Cooldown (cancelamento) não são bloqueados
+    ; pela flag de execução — funcionam mesmo durante um combo.
+    interrompivel := MACROS_INFO[alvo].interrompivel
+    if (!interrompivel) {
         if (_macroExecutando)
             return
+        _macroExecutando := true
     }
 
-    if (!ehInterrompivel)
-        _macroExecutando := true
-
     try {
-        if      (macros["comboPrincipal"]  && GetCfg("comboPrincipal")["teclaHotkey"]  = teclaPura)
-            ExecutarCombo("comboPrincipal")
-        else if (macros["comboSecundario"] && GetCfg("comboSecundario")["teclaHotkey"] = teclaPura)
-            ExecutarCombo("comboSecundario")
-        else if (ehComboRevive)
-            ExecutarComboRevive()
-        else if (ehRevive)
-            ExecutarRevive()
-        else if (ehCooldown) {
-            if (executandoCooldown) {
-                executandoCooldown := false
-                ShowHint("CANCELADO", 1000, "warn")
-            } else {
-                ExecutarMacroCooldown()
-            }
+        switch alvo {
+            case "comboPrincipal", "comboSecundario":
+                ExecutarCombo(alvo)
+            case "comboRevive":
+                ExecutarComboRevive()
+            case "revive":
+                ExecutarRevive()
+            case "cooldown":
+                if (executandoCooldown) {
+                    executandoCooldown := false
+                    ShowHint("CANCELADO", 1000, "warn")
+                } else {
+                    ExecutarMacroCooldown()
+                }
         }
     } finally {
-        if (!ehInterrompivel)
+        if (!interrompivel)
             _macroExecutando := false
     }
 }

@@ -5,6 +5,12 @@
 ExecutarMacroCooldown() {
     global executandoCooldown
 
+    ; Sem posição configurada, o clique iria para o canto (0, 0) da tela.
+    if (CfgLer("Cooldown", "clickX", "") = "" || CfgLer("Cooldown", "clickY", "") = "") {
+        ShowHint("COOLDOWN: Defina a posição primeiro!", 1800, "danger")
+        return
+    }
+
     executandoCooldown := true
     cfg     := GetCfg("Cooldown")
     idAtual := cfg["pokemonInicial"]
@@ -15,7 +21,13 @@ ExecutarMacroCooldown() {
         SendEvent("{" cfg["fullDefense"] "}")
 
     Loop {
-        if (!executandoCooldown || idAtual < 1)
+        if (!executandoCooldown || idAtual < 1 || !cfg.Has("tempo" idAtual))
+            break
+        ; Nunca clica fora do jogo: se o jogador deu alt-tab durante a
+        ; espera, segura o próximo clique até o jogo voltar ao foco.
+        while (executandoCooldown && !JogoAtivo())
+            Sleep(100)
+        if (!executandoCooldown)
             break
 
         MouseMove(cfg["clickX"], cfg["clickY"], 0)
