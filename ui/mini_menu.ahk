@@ -114,9 +114,12 @@ _HudAbrir() {
     _hudX := pos[1]
     _hudY := pos[2]
 
-    miniGui := Gui("-Caption +ToolWindow +AlwaysOnTop +E0x80000")
+    ; E0x08000000 (WS_EX_NOACTIVATE): clicar num ícone liga/desliga o macro
+    ; sem tirar o foco do jogo — antes a HUD virava a janela ativa e as
+    ; hotkeys só voltavam a funcionar depois de clicar no jogo de novo.
+    miniGui := Gui("-Caption +ToolWindow +AlwaysOnTop +E0x80000 +E0x08000000")
     miniGui.Show("x" _hudX " y" _hudY " w10 h10 NoActivate Hide")
-    WinShow("ahk_id " miniGui.Hwnd)
+    Win_MostrarSemAtivar(miniGui.Hwnd)
 
     _HudTipCriar()
 
@@ -203,7 +206,7 @@ _HudVisibilidade(hwndAtivo := 0) {
         exeAtivo  := WinGetProcessName("ahk_id " hwndAtivo)
         visivel   := (exeAtivo = JOGO_EXE || exeAtivo ~= "i)^AutoHotkey")
         if visivel {
-            WinShow("ahk_id " miniGui.Hwnd)
+            Win_MostrarSemAtivar(miniGui.Hwnd)
             if !_hudVisivel {
                 _hudVisivel := true
                 _HudRedraw()   ; o pulso não redesenhou enquanto estava escondida
@@ -319,7 +322,7 @@ _HudWM_LButtonDown(wParam, lParam, msg, hwnd) {
     if (box)
         _HudActivar(box)
     else
-        DragJanela()   ; clique fora de qualquer ícone: arrasta a barra pelo fundo
+        DragJanela(hwnd)   ; clique fora de qualquer ícone: arrasta a barra pelo fundo
 }
 
 _HudActivar(box) {

@@ -10,10 +10,19 @@ JogoAtivo() {
     return WinActive("ahk_exe " JOGO_EXE)
 }
 
-; Arrasta a janela ativa como se o clique fosse na barra de título
-; (WM_NCLBUTTONDOWN com HTCAPTION).
-DragJanela(*) {
-    PostMessage(0xA1, 2,,, "A")
+; Arrasta a janela 'hwnd' como se o clique fosse na barra de título
+; (WM_NCLBUTTONDOWN com HTCAPTION). Recebe o hwnd em vez de usar a janela
+; ativa: a HUD não se ativa ao ser clicada (WS_EX_NOACTIVATE), então a
+; ativa ali é o jogo — e a mensagem iria para ele.
+DragJanela(hwnd) {
+    PostMessage(0xA1, 2,,, "ahk_id " hwnd)
+}
+
+; Mostra uma janela sem ativá-la (SW_SHOWNOACTIVATE). WinShow usa SW_SHOW,
+; que pode tirar o foco do jogo — e com o jogo fora de foco as hotkeys dos
+; macros param e o combo em andamento é interrompido.
+Win_MostrarSemAtivar(hwnd) {
+    DllCall("ShowWindow", "Ptr", hwnd, "Int", 4)
 }
 
 ; Pede ao Windows um WM_MOUSELEAVE quando o cursor sair da janela.

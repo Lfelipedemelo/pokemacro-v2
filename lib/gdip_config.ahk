@@ -42,6 +42,7 @@ global _gcfgDraw    := 0
 global _gcfgDragBox := 0
 global _gcfgConfirm := 0   ; confirmação aberta por cima da tela ({titulo, sub, onSim, textoSim}) ou 0
 global _gcfgEdit    := 0   ; chip de slider sendo editado pelo teclado (ver _GCfg_EditarValorSlider) ou 0
+global _gcfgCanvas  := 0   ; canvas GDI+ reaproveitado entre redesenhos (ver _GCfg_Redraw)
 
 ; Fator de escala aplicado a todas as telas de configuração. Widgets
 ; continuam desenhando em coordenadas "lógicas" (as mesmas de sempre);
@@ -80,12 +81,15 @@ _GCfg_Abrir(w, h, drawFn) {
     ; Reabre no mesmo lugar onde a última tela de config (qualquer uma —
     ; só existe uma por vez, ver comentário no topo do arquivo) foi
     ; fechada. Clampado contra o tamanho atual da tela pra não deixar a
-    ; janela presa fora da área visível se a resolução/monitor mudou.
+    ; janela presa fora da área visível se a resolução/monitor mudou. Usa a
+    ; área virtual (todos os monitores), como a HUD — clampar só pelo
+    ; monitor principal puxava de volta uma tela deixada no segundo monitor.
     savedX := CfgLer("Geral", "configPosX", "")
     savedY := CfgLer("Geral", "configPosY", "")
     if (IsInteger(savedX) && IsInteger(savedY)) {
-        _gcfgX := Max(0, Min(Integer(savedX), A_ScreenWidth  - physW))
-        _gcfgY := Max(0, Min(Integer(savedY), A_ScreenHeight - physH))
+        vx := SysGet(76), vy := SysGet(77), vw := SysGet(78), vh := SysGet(79)
+        _gcfgX := Max(vx, Min(Integer(savedX), vx + vw - physW))
+        _gcfgY := Max(vy, Min(Integer(savedY), vy + vh - physH))
     } else {
         _gcfgX := (A_ScreenWidth  - physW) // 2
         _gcfgY := (A_ScreenHeight - physH) // 2
@@ -113,7 +117,7 @@ _GCfg_Abrir(w, h, drawFn) {
 }
 
 _GCfg_Fechar() {
-    global _gcfgGui, _gcfgDragBox, _gcfgX, _gcfgY, _gcfgConfirm
+    global _gcfgGui, _gcfgDragBox, _gcfgX, _gcfgY, _gcfgConfirm, _gcfgCanvas
     if (!_gcfgGui)
         return
     _GCfg_ConfirmarEdicao()   ; fechar com um valor digitado e não confirmado salva ele
@@ -123,25 +127,41 @@ _GCfg_Fechar() {
     _gcfgConfirm := 0
     try _gcfgGui.Destroy()
     _gcfgGui := 0
+    if (_gcfgCanvas) {
+        Gdip_DestroyLayeredCanvas(_gcfgCanvas)
+        _gcfgCanvas := 0
+    }
 }
 
 ; ── Desenho ────────────────────────────────────────────
 _GCfg_Redraw() {
-    global _gcfgGui, _gcfgW, _gcfgH, _gcfgX, _gcfgY, _gcfgBoxes, _gcfgDraw, _gcfgHoverId, _GCFG_SCALE, _gcfgConfirm
+    global _gcfgGui, _gcfgW, _gcfgH, _gcfgX, _gcfgY, _gcfgBoxes, _gcfgDraw, _gcfgHoverId, _GCFG_SCALE, _gcfgConfirm, _gcfgCanvas
     if (!_gcfgGui || !_gcfgDraw)
         return
     Critical "On"
-    physW := Round(_gcfgW * _GCFG_SCALE), physH := Round(_gcfgH * _GCFG_SCALE)
-    canvas := Gdip_NewLayeredCanvas(physW, physH)
-    Gdip_ScaleTransform(canvas.pGraphics, _GCFG_SCALE, _GCFG_SCALE)
-    _gcfgBoxes := _gcfgDraw.Call(canvas.pGraphics, _gcfgW, _gcfgH, _gcfgHoverId)
-    ; Com uma confirmação aberta, ela cobre a tela e só os botões dela
-    ; recebem clique (ver _GCfg_Confirmar).
-    if (_gcfgConfirm)
-        _gcfgBoxes := _GCfg_DesenharConfirmacao(canvas.pGraphics, _gcfgW, _gcfgH, _gcfgHoverId)
-    Gdip_PresentLayeredCanvas(canvas, _gcfgGui.Hwnd, _gcfgX, _gcfgY)
-    Gdip_DestroyLayeredCanvas(canvas)
-    Critical "Off"
+    try {
+        physW := Round(_gcfgW * _GCFG_SCALE), physH := Round(_gcfgH * _GCFG_SCALE)
+        ; Canvas reaproveitado entre redesenhos (arrastar um slider redesenha a
+        ; cada movimento do mouse — recriar o DIB a cada vez era o custo maior).
+        ; Zera transformação e recorte antes do clear: o clear respeita o clip,
+        ; e a escala seria multiplicada de novo em cima da anterior.
+        if (_gcfgCanvas) {
+            Gdip_ResetClip(_gcfgCanvas.pGraphics)
+            DllCall("gdiplus\GdipResetWorldTransform", "Ptr", _gcfgCanvas.pGraphics)
+        }
+        canvas := Gdip_ResizeCanvas(&_gcfgCanvas, physW, physH)
+        Gdip_ScaleTransform(canvas.pGraphics, _GCFG_SCALE, _GCFG_SCALE)
+        _gcfgBoxes := _gcfgDraw.Call(canvas.pGraphics, _gcfgW, _gcfgH, _gcfgHoverId)
+        ; Com uma confirmação aberta, ela cobre a tela e só os botões dela
+        ; recebem clique (ver _GCfg_Confirmar).
+        if (_gcfgConfirm)
+            _gcfgBoxes := _GCfg_DesenharConfirmacao(canvas.pGraphics, _gcfgW, _gcfgH, _gcfgHoverId)
+        Gdip_PresentLayeredCanvas(canvas, _gcfgGui.Hwnd, _gcfgX, _gcfgY)
+    } finally {
+        ; Um erro no desenho não pode deixar o script inteiro em Critical
+        ; (as hotkeys dos macros ficariam presas atrás dele).
+        Critical "Off"
+    }
 }
 
 ; ── Confirmação (sobreposta à tela de config aberta) ────
@@ -268,7 +288,7 @@ _GCfg_WM_LButtonDown(wParam, lParam, msg, hwnd) {
         _GCfg_ConfirmarEdicao()
 
     if (!box) {
-        DragJanela()   ; clique fora de qualquer cartão: arrasta a janela pelo fundo
+        DragJanela(hwnd)   ; clique fora de qualquer cartão: arrasta a janela pelo fundo
         return
     }
 

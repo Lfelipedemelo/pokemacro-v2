@@ -49,8 +49,11 @@ _RodarSequenciaCombo(cfg) {
             return
     }
 
+    ; Espera interrompível: com Sleep puro, um alt-tab nesses 200ms mandava
+    ; o Full Defense para a outra janela.
     if (cfg["usarFullDef"] = "true" && cfg["fullDefense"] != "N/A") {
-        Sleep(200)
+        if !EsperarInterrompivel(200)
+            return
         SendEvent("{" cfg["fullDefense"] "}")
     }
 }

@@ -59,9 +59,12 @@ ShowHint(text, time := 1200, kind := "info") {
     x := (A_ScreenWidth  - w) // 2
     y := (A_ScreenHeight - h) // 2
 
-    _hintGui := Gui("-Caption +ToolWindow +AlwaysOnTop +E0x80000")
+    ; E0x20 (transparente ao mouse) + E0x08000000 (não ativa): o aviso
+    ; aparece no meio da tela durante o jogo — não pode tirar o foco dele
+    ; nem engolir cliques.
+    _hintGui := Gui("-Caption +ToolWindow +AlwaysOnTop +E0x80000 +E0x20 +E0x08000000")
     _hintGui.Show("x" x " y" y " w10 h10 NoActivate Hide")
-    WinShow("ahk_id " _hintGui.Hwnd)
+    Win_MostrarSemAtivar(_hintGui.Hwnd)
 
     canvas := Gdip_NewLayeredCanvas(w, h)
     g := canvas.pGraphics
