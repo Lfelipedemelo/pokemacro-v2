@@ -25,7 +25,7 @@ _DesenharConfigCooldown(g, w, h, hoverId) {
     col2 := pad + colW + 10
     y := hH + 10
 
-    _GCfg_Field(g, boxes, "hkcd", pad, y, colW, "HOTKEY COOLDOWN", StrUpper(cfg["hotkeyCooldown"]),
+    _GCfg_Field(g, boxes, "hkcd", pad, y, colW, "HOTKEY COOLDOWN", _ComboDisplay(cfg["hotkeyCooldown"]),
         (*) => (CapturarTecla("Cooldown", "hotkeyCooldown", 0, "HOTKEY COOLDOWN"), _GCfg_Redraw()), hoverId)
     _GCfg_Field(g, boxes, "pos", col2, y, colW, "POSIÇÃO", "[ " cfg["clickX"] ", " cfg["clickY"] " ]",
         (*) => (CapturarPosicaoMouse("Cooldown", 0), _GCfg_Redraw()), hoverId)

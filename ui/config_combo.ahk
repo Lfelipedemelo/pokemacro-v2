@@ -45,7 +45,7 @@ _DesenharConfigCombo(tipo, g, w, h, hoverId) {
         (*) => (CapturarTecla(tipo, "teclaFinal", 0, "BOTÃO FINAL"), _GCfg_Redraw()), hoverId)
     y += 44 + 8
 
-    _GCfg_Field(g, boxes, "hkmacro", pad, y, colW, "TECLA DO MACRO", StrUpper(cfg["teclaHotkey"]),
+    _GCfg_Field(g, boxes, "hkmacro", pad, y, colW, "TECLA DO MACRO", _ComboDisplay(cfg["teclaHotkey"]),
         (*) => (CapturarTecla(tipo, "teclaHotkey", 0, "TECLA MACRO"), _GCfg_Redraw()), hoverId)
     _GCfg_Field(g, boxes, "toggle", col2, y, colW, "LIGAR/DESLIGAR", _ComboDisplay(cfg["toggleHotkey"]),
         (*) => (CapturarCombo(tipo, "toggleHotkey", 0, "HOTKEY TOGGLE"), _GCfg_Redraw()), hoverId)

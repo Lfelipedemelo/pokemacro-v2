@@ -18,30 +18,59 @@ _SalvarTeclaCapturada(secao, chave, tecla, label) {
     if (ehHotkey) {
         conflito := ConflitoDeTecla(secao, chave, tecla)
         if (conflito != "") {
-            ShowHint(StrUpper(tecla) " já é usada em " conflito, 2200, "danger")
+            ShowHint(_ComboDisplay(tecla) " já é usada em " conflito, 2200, "danger")
             return false
         }
     }
     SalvarCfg(secao, chave, tecla)
     if (ehHotkey)
         AtualizarHotkeyCombo()
-    ShowHint(label ": " StrUpper(tecla), 1300, "success")
+    ShowHint(label ": " _ComboDisplay(tecla), 1300, "success")
     return true
 }
 
+; Modificadores fisicamente pressionados, no formato de hotkey do AHK.
+; Ordem fixa (^!+) para que a mesma combinação vire sempre o mesmo texto
+; no INI — a checagem de conflito e o despachante comparam strings.
+_ModsPressionados() {
+    mods := ""
+    if GetKeyState("Ctrl", "P")
+        mods .= "^"
+    if GetKeyState("Alt", "P")
+        mods .= "!"
+    if GetKeyState("Shift", "P")
+        mods .= "+"
+    return mods
+}
+
+; Tira os modificadores das teclas que encerram o InputHook: sozinhos eles
+; não são a tecla escolhida, só entram como prefixo dela.
+_IgnorarModsNoHook(ih) {
+    ih.KeyOpt("{LControl}{RControl}{LShift}{RShift}{LAlt}{RAlt}{LWin}{RWin}", "-E -S")
+}
+
 ; Aguarda o usuário pressionar uma tecla/botão do mouse e salva no INI.
+; Se (secao, chave) for uma hotkey, aceita combinação com Ctrl/Alt/Shift
+; (ex.: "^y", "+XButton1"); teclas que o macro ENVIA ao jogo ficam
+; sempre com uma tecla só.
 ; Se 'uiText' for um objeto de controle, atualiza seu valor visual.
 CapturarTecla(configSection, configKey, uiText := 0, label := "Tecla") {
-    ShowHint("Pressione tecla ou botão do mouse (ESC cancela)", 999999)
+    aceitaMods := HotkeySlotExiste(configSection, configKey)
+    ShowHint(aceitaMods
+        ? "Pressione tecla, botão do mouse ou combinação com Ctrl/Alt/Shift (ESC cancela)"
+        : "Pressione tecla ou botão do mouse (ESC cancela)", 999999)
 
     ; Aguarda soltar o botão que abriu a captura (evita capturar o próprio clique)
     while GetKeyState("LButton", "P")
         Sleep(10)
     Sleep(150)
 
-    ih := InputHook("L0 E")
-    ih.KeyOpt("{Escape}", "N")
+    ; Sem a opção E: EndKey devolve o nome da tecla ("y"), não o caractere
+    ; gerado — com Ctrl/Shift segurado o caractere seria outro.
+    ih := InputHook("L0")
     ih.KeyOpt("{All}", "E")
+    ih.KeyOpt("{Escape}", "-E")
+    _IgnorarModsNoHook(ih)
     ih.Start()
 
     tecla := ""
@@ -56,14 +85,8 @@ CapturarTecla(configSection, configKey, uiText := 0, label := "Tecla") {
         }
 
         key := ih.EndKey
-
-        if (key = "Escape")
-            continue
-
         if (key != "") {
-            if (key ~= "i)^(Control|Shift|Alt|LControl|RControl|LShift|RShift|LAlt|RAlt)$")
-                continue
-            tecla := key
+            tecla := _NormalizarTecla(key)
             break
         }
 
@@ -75,6 +98,9 @@ CapturarTecla(configSection, configKey, uiText := 0, label := "Tecla") {
         }
     }
 
+    ; Lido logo após detectar a tecla, enquanto os modificadores ainda estão
+    ; segurados.
+    mods := aceitaMods ? _ModsPressionados() : ""
     ih.Stop()
 
     if (!tecla) {
@@ -88,11 +114,12 @@ CapturarTecla(configSection, configKey, uiText := 0, label := "Tecla") {
         return
     }
 
+    tecla := mods . tecla
     if !_SalvarTeclaCapturada(configSection, configKey, tecla, label)
         return
 
     if IsObject(uiText)
-        uiText.Value := label ": [ " StrUpper(tecla) " ]"
+        uiText.Value := label ": [ " _ComboDisplay(tecla) " ]"
 }
 
 ; Aguarda um clique do mouse e salva as coordenadas no INI.
@@ -128,11 +155,11 @@ CapturarPosicaoMouse(secao, objetoTexto, chaveX := "clickX", chaveY := "clickY")
     ShowHint("Posição salva: " posX ", " posY, 1200, "success")
 }
 
-; Captura UMA tecla de teclado OU um botão de mouse (sem modificadores).
-; Usado para hotkeys de toggle — simples e confiável.
-; Exemplos: "F5", "XButton1", "q", "F12"
+; Captura uma tecla de teclado OU um botão de mouse, opcionalmente com
+; Ctrl/Alt/Shift. Usado para as hotkeys de toggle e pânico.
+; Exemplos: "F5", "XButton1", "q", "^y", "+XButton2"
 CapturarCombo(configSection, configKey, uiText := 0, label := "Hotkey") {
-    ShowHint("Pressione UMA tecla ou botão do mouse (ESC cancela)", 999999)
+    ShowHint("Pressione tecla, botão do mouse ou combinação com Ctrl/Alt/Shift (ESC cancela)", 999999)
 
     ; Aguarda soltar tudo antes de começar
     Sleep(300)
@@ -152,9 +179,7 @@ CapturarCombo(configSection, configKey, uiText := 0, label := "Hotkey") {
 
     ih := InputHook("V I")
     ih.KeyOpt("{All}", "E S")
-    ih.KeyOpt("{Escape}", "N")
-    ih.KeyOpt("{LControl}{RControl}{LShift}{RShift}{LAlt}{RAlt}", "")
-    ih.OnKeyDown := (ih, vk, sc) => _OnComboKey(ih, vk, sc)
+    _IgnorarModsNoHook(ih)
     ih.Start()
 
     resultado := ""
@@ -175,15 +200,15 @@ CapturarCombo(configSection, configKey, uiText := 0, label := "Hotkey") {
                 return
             }
             if (k != "") {
-                resultado := _NormalizarTecla(k)
+                resultado := _ModsPressionados() . _NormalizarTecla(k)
                 break
             }
         }
 
         for btn in ["XButton1", "XButton2", "MButton"] {
             if GetKeyState(btn, "P") {
+                resultado := _ModsPressionados() . btn
                 ih.Stop()
-                resultado := btn
                 while GetKeyState(btn, "P")
                     Sleep(10)
                 break 2
@@ -200,14 +225,7 @@ CapturarCombo(configSection, configKey, uiText := 0, label := "Hotkey") {
         return
 
     if IsObject(uiText)
-        uiText.Value := label ": [ " StrUpper(resultado) " ]"
-}
-
-_OnComboKey(ih, vk, sc) {
-    nome := GetKeyName(Format("vk{:x}sc{:x}", vk, sc))
-    if (nome ~= "i)^(Control|Shift|Alt|LControl|RControl|LShift|RShift|LAlt|RAlt|LWin|RWin)$")
-        return
-    ih.Stop()
+        uiText.Value := label ": [ " _ComboDisplay(resultado) " ]"
 }
 
 _NormalizarTecla(k) {
@@ -216,7 +234,18 @@ _NormalizarTecla(k) {
     return k
 }
 
-; Exibição legível de uma tecla (sem modificadores)
+; Exibição legível de uma tecla, com modificadores por extenso:
+; "^+y" → "CTRL + SHIFT + Y". A tecla precisa sobrar depois do prefixo,
+; então uma tecla que seja o próprio "^" não é confundida com Ctrl.
 _ComboDisplay(tecla) {
-    return StrUpper(tecla)
+    if !RegExMatch(tecla, "^([\^!+]*)(.+)$", &m)
+        return StrUpper(tecla)
+    txt := ""
+    if InStr(m[1], "^")
+        txt .= "CTRL + "
+    if InStr(m[1], "!")
+        txt .= "ALT + "
+    if InStr(m[1], "+")
+        txt .= "SHIFT + "
+    return txt . StrUpper(m[2])
 }

@@ -102,10 +102,14 @@ ConflitoDeTecla(secao, chave, tecla) {
     return ""
 }
 
+; Botão do mouse sozinho ganha "*" (dispara mesmo com modificador segurado).
+; Com modificador ("+XButton1") o "*" sai: senão "XButton1" e
+; "Shift+XButton1" não poderiam ser hotkeys diferentes.
 _MontarChaveHk(tecla) {
     if (tecla = "N/A" || tecla = "")
         return ""
-    prefixo := (tecla ~= "i)Button") ? "$*" : "$"
+    temMods := (tecla ~= "^[\^!+]+.")
+    prefixo := (tecla ~= "i)Button" && !temMods) ? "$*" : "$"
     return prefixo . tecla
 }
 
