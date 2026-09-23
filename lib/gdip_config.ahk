@@ -514,16 +514,6 @@ _GCfg_WM_Activate(wParam, lParam, msg, hwnd) {
         _GCfg_ConfirmarEdicao()
 }
 
-; A tela de config é AlwaysOnTop — sem isso a caixa de texto (InputBox)
-; podia nascer escondida atrás dela.
-_GCfg_InputNoTopo(titulo) {
-    alvo := titulo " ahk_pid " DllCall("GetCurrentProcessId")
-    try {
-        WinSetAlwaysOnTop(1, alvo)
-        WinActivate(alvo)
-    }
-}
-
 ; ── Widgets ─────────────────────────────────────────────
 
 ; Cabeçalho: faixa colorida + título + botões × (fechar) e ↺ (resetar,
@@ -752,13 +742,33 @@ _GCfg_Slider(g, boxes, id, x, y, w, label, value, vMin, vMax, step, unit, onChan
 
 ; Versão compacta do slider, sem chip numérico ao lado — usada quando
 ; vários deles precisam ficar lado a lado numa mesma linha estreita
-; (ex.: os 4 tempos de espera do Cooldown). O valor aparece acima da
-; trilha em vez de num chip separado. Devolve a altura ocupada (fixa).
+; (ex.: os 4 tempos de espera do Cooldown). O valor aparece num chip
+; pequeno acima da trilha, clicável para digitar o número — mesma edição
+; do chip do _GCfg_Slider (ver _GCfg_EditarValorSlider). Devolve a altura
+; ocupada (fixa).
 _GCfg_MiniSlider(g, boxes, id, x, y, w, titulo, value, vMin, vMax, step, unit, onChange, hoverId) {
     ch := 40
 
     Gdip_DrawText(g, titulo, 8, true, Gdip_Argb(255, T()["MUTED"]), x, y, w, 12, true)
-    Gdip_DrawText(g, value unit, 9, true, Gdip_Argb(255, T()["ACCENT"]), x, y + 11, w, 14, true)
+
+    chipW := Min(40, w - 6), chipH := 14
+    chipX := x + (w - chipW) / 2, chipY := y + 11
+    ed := _GCfg_EdicaoDoSlider(id)
+    chipHov := (hoverId = id "_valor")
+    if (chipHov || ed) {
+        chipBrush := Gdip_BrushSolid(Gdip_Argb(255, T()["BG3"]))
+        Gdip_FillRoundRect(g, chipBrush, chipX, chipY, chipW, chipH, 4)
+        Gdip_DeleteBrush(chipBrush)
+    }
+    if (ed)
+        _GCfg_DesenharChipEmEdicao(g, ed, unit, chipX, chipY, chipW, chipH)
+    else
+        Gdip_DrawText(g, value unit, 9, true, Gdip_Argb(255, T()["ACCENT"]), chipX, chipY, chipW, chipH, true)
+
+    ; Chip antes da trilha na lista: as áreas de clique se encostam, e o
+    ; hit-test devolve a primeira que contém o ponto.
+    boxes.Push({ id: id "_valor", x: chipX, y: chipY, w: chipW, h: chipH,
+        onClick: _GCfg_EditarValorSlider.Bind(id, value, vMin, vMax, step, onChange) })
 
     trackY := y + 30
     trackH := 5

@@ -81,7 +81,7 @@ macro_modular/
 │
 ├── lib\                         ← Utilitários internos (não edite)
 │   ├── globals.ahk              ← Estado global, mapa de macros e tema de cores
-│   ├── config.ahk               ← Leitura/escrita do config.ini (com cache) e perfis
+│   ├── config.ahk               ← Leitura/escrita do config.ini (com cache)
 │   ├── gdip.ahk                 ← Wrapper GDI+ usado para desenhar a HUD
 │   ├── hint.ahk                 ← Notificações flutuantes na tela
 │   ├── window.ahk               ← Helpers de janela, detecção do jogo e checagem de admin
@@ -125,8 +125,8 @@ macro_modular/
 
 ### Configurando um macro
 
-1. Clique na seta **▾** da barra para expandir o painel-resumo.
-2. Clique no botão **⚙** ao lado do macro desejado.
+1. Passe o mouse sobre a barra da HUD — aparece um botão **⚙** abaixo de cada ícone (ou ao lado, com a barra na vertical).
+2. Clique no **⚙** do macro desejado.
 3. A tela de configuração será aberta.
 4. Configure cada opção conforme descrito nas seções abaixo.
 5. Feche com o botão **X** — as configurações são salvas automaticamente.
@@ -135,29 +135,23 @@ macro_modular/
 
 ## Interface Principal
 
-A interface é uma **HUD flutuante compacta**, desenhada com GDI+ (cantos arredondados, hover animado e transições suaves). Ela tem uma barra sempre visível e um painel-resumo opcional que expande abaixo dela.
+A interface é uma **HUD flutuante compacta**, desenhada com GDI+ (cantos arredondados, hover animado e transições suaves). Normalmente ela mostra só os ícones dos macros; com o mouse sobre a barra aparecem os botões de configuração.
 
 ```
-┌────────────────────────────────────────────┐
-│ (◉)(◉)(◉)(◉)(◉)  │  ⚙   ▾   ✕              │  ← barra: ícones dos macros | geral | expandir | fechar
-├────────────────────────────────────────────┤
-│  RESUMO RÁPIDO                              │
-│  [ícone] Combo Principal              ⚙  ●  │
-│  [ícone] Combo Secundário             ⚙  ○  │
-│  [ícone] Reviver                      ⚙  ○  │
-│  [ícone] Combo Revive                 ⚙  ○  │
-│  [ícone] Cooldown                     ⚙  ○  │
-└────────────────────────────────────────────┘
+┌──────────────────────┐
+│ (◉)(◉)(◉)(◉)(◉) │ ✕  │  ← ícones dos macros | fechar
+│  ⚙  ⚙  ⚙  ⚙  ⚙  │ ⚙  │  ← config de cada macro | config geral (só no hover)
+└──────────────────────┘
 ```
+
+Com os ícones na vertical (Configurações Gerais → ÍCONES DA HUD), vira uma coluna de ícones (com o ✕ no fim) e, à direita dela, uma coluna de ⚙ (com o ⚙ geral ao lado do ✕).
 
 | Elemento | Função |
 |----------|--------|
-| Ícone do macro (barra) | Ativa/desativa o macro. Hover mostra tooltip com nome + tecla configurada |
-| ⚙ (barra, topo direito) | Abre as Configurações Gerais |
-| ▾ (barra, topo direito) | Expande/recolhe o painel-resumo |
-| ✕ (barra, topo direito) | Fecha a HUD |
-| Linha do painel-resumo | Clique na linha ativa/desativa o macro; o ponto à direita indica o estado |
-| ⚙ (linha do painel-resumo) | Abre a tela de configuração daquele macro específico |
+| Ícone do macro | Ativa/desativa o macro. Hover mostra tooltip com o nome |
+| ⚙ do macro (abaixo/ao lado do ícone) | Abre a tela de configuração daquele macro. Fica apagado e acende com o mouse sobre o ícone ou o próprio ⚙ |
+| ⚙ geral | Abre as Configurações Gerais |
+| ✕ | Fecha a HUD |
 
 ---
 
@@ -188,7 +182,7 @@ A interface é uma **HUD flutuante compacta**, desenhada com GDI+ (cantos arredo
 
 **Como configurar passo a passo:**
 
-1. Abra a configuração do Combo Principal (expanda o painel na HUD e clique no ⚙ da linha do Combo Principal).
+1. Abra a configuração do Combo Principal (passe o mouse na HUD e clique no ⚙ do ícone do Combo Principal).
 2. Clique em **▶ DEFINIR BOTÃO INICIAL** e pressione a tecla da sua primeira habilidade.
 3. Clique em **▶ DEFINIR BOTÃO FINAL** e pressione a tecla da sua última habilidade.
 4. Clique em **▶ DEFINIR TECLA MACRO** e pressione a tecla/botão que vai disparar o combo.
@@ -247,7 +241,7 @@ Funciona exatamente igual ao **Combo Principal**, mas é uma configuração sepa
 
 **Como configurar passo a passo:**
 
-1. Abra a configuração do Revive (expanda o painel na HUD e clique no ⚙ da linha do Reviver).
+1. Abra a configuração do Revive (passe o mouse na HUD e clique no ⚙ do ícone do Reviver).
 2. Clique em **▶ DEFINIR POSIÇÃO** e depois clique com o botão esquerdo do mouse **sobre o Pokémon** que você quer reviver no jogo.
 3. Clique em **▶ DEFINIR HOTKEY** e pressione a tecla que você usa para confirmar/usar o item de revive.
 4. Clique em **▶ DEFINIR TECLA MACRO** e pressione a tecla/botão que vai disparar o macro.
@@ -306,7 +300,7 @@ Funciona exatamente igual ao **Combo Principal**, mas é uma configuração sepa
 | **Hotkey Cooldown** | Tecla que inicia/cancela o macro |
 | **Posição do Clique** | Coordenadas onde o mouse clica antes de cada `Ctrl+N` |
 | **Pokémon Inicial** | De qual Pokémon (1-4) começa a rotação |
-| **Tempos de Espera** | Tempo em segundos para cada slot (PKM 1, PKM 2, PKM 3, PKM 4) |
+| **Tempos de Espera** | Tempo em segundos (0 a 60) para cada slot (PKM 1, PKM 2, PKM 3, PKM 4). Ajuste arrastando a barra ou clicando no valor para digitar (Enter salva, Esc cancela) |
 | **Full Defense** | Ativa/desativa o envio de Full Defense ao iniciar |
 | **Hotkey Ligar/Desligar** | Tecla para ativar/desativar o macro |
 
@@ -317,7 +311,7 @@ Funciona exatamente igual ao **Combo Principal**, mas é uma configuração sepa
 
 ## Configurações Gerais
 
-Acessado pelo botão **⚙** na barra da HUD (ao lado da seta de expandir e do ✕).  
+Acessado pelo botão **⚙** na barra da HUD (ao lado do ✕, visível com o mouse sobre a barra).  
 Estas configurações são **globais** — afetam todos os macros do sistema.
 
 ---
@@ -365,19 +359,7 @@ Define a tecla enviada **após** o término de qualquer combo ou ao iniciar o Co
 
 ---
 
-### 5. Perfis
-
-O cartão **PERFIL ATIVO** (topo da tela) guarda conjuntos diferentes de configuração dos macros — por exemplo, um perfil por Pokémon ou time.
-
-- **◀ ▶** troca de perfil (também dá pra trocar clicando no nome do perfil no painel expandido da HUD).
-- **+ NOVO** cria um perfil copiando as configurações dos macros do perfil atual.
-- **EXCLUIR** apaga o perfil ativo (o perfil **Padrão** não pode ser excluído).
-
-Cada perfil tem suas próprias teclas, posições e tempos dos 5 macros. As Configurações Gerais (delay, prefixo F, Full Attack/Defense, tamanho da interface etc.) valem para todos os perfis. Ao trocar de perfil, todos os macros são desligados.
-
----
-
-### 6. Tecla de Pânico
+### 5. Tecla de Pânico
 
 Uma tecla que **desliga todos os macros de uma vez** e interrompe o que estiver rodando (combo, cooldown). Só funciona com o jogo em foco.
 
@@ -418,7 +400,7 @@ O sistema possui proteção avançada contra conflito de hotkeys:
 ### Botão Reset (↺)
 
 Cada tela de configuração possui um botão **↺** vermelho no canto superior direito.  
-Ao confirmar, **apaga todas as configurações** daquele macro (no perfil ativo) e retorna tudo para `N/A`.
+Ao confirmar, **apaga todas as configurações** daquele macro e retorna tudo para `N/A`.
 
 > Use com cuidado — esta ação não pode ser desfeita.
 

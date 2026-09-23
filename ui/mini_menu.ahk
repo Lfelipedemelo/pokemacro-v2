@@ -5,12 +5,12 @@
 ;
 ; Substitui o antigo mini-menu (retângulos chapados) por uma barra
 ; flutuante desenhada com GDI+ numa janela em camadas: hover com
-; realce animado + tooltip, estado ativo com anel de brilho pulsante,
-; e um painel-resumo que expande/recolhe com transição de altura.
+; realce animado + tooltip e estado ativo com anel de brilho pulsante.
 ;
 ; É a interface principal do app: abre/fecha com Ctrl+F12 (pokemacro.ahk).
-; O painel expandido (chevron) mostra um botão ⚙ por macro que abre a
-; tela de configuração específica daquele macro.
+; Com o mouse sobre a barra aparece um botão ⚙ ao lado (vertical) ou
+; abaixo (horizontal) de cada ícone, que abre a tela de configuração
+; daquele macro, além do ⚙ geral e do ✕.
 ;
 ; API pública mantida para o resto do app:
 ;   global miniGui          — objeto Gui quando aberta, 0 quando fechada
@@ -21,9 +21,7 @@
 global miniGui        := 0
 global _hudX          := 0
 global _hudY          := 0
-global _hudExpanded   := false
-global _hudExpandT    := 0.0
-global _hudBarHover   := false  ; true enquanto o mouse está sobre a barra — engrenagem/expandir/fechar só existem nesse momento
+global _hudBarHover   := false  ; true enquanto o mouse está sobre a barra — engrenagens/fechar só existem nesse momento
 global _hudHoverId    := ""
 global _hudHoverT     := Map()
 global _hudBoxes      := []
@@ -80,7 +78,7 @@ _HudAtualizarVisibleItems() {
 }
 
 ; Igual aos ícones (_HudIconImg): _HudRedraw roda a 60fps durante hover/
-; expandir/pulso, e IniRead é I/O de arquivo — reler 5 seções do INI em
+; pulso, e IniRead é I/O de arquivo — reler 5 seções do INI em
 ; todo frame era a mesma classe de lentidão que já resolvemos pros ícones.
 ; Devolve a lista cacheada; quem muda o INI é responsável por chamar
 ; _HudAtualizarVisibleItems() (abrir a HUD, ou _RecriarMini).
@@ -102,7 +100,7 @@ AbrirMiniMenu() {
 }
 
 _HudAbrir() {
-    global miniGui, _hudX, _hudY, _hudExpanded, _hudExpandT, _hudHoverId, _hudHoverT, _hudBarHover, _hudVisivel
+    global miniGui, _hudX, _hudY, _hudHoverId, _hudHoverT, _hudBarHover, _hudVisivel
 
     Gdip_EnsureStarted()
 
@@ -110,8 +108,6 @@ _HudAbrir() {
     _hudHoverT  := Map()
     _hudBarHover := false
     _hudVisivel  := true   ; nasce visível; _HudVisibilidade abaixo corrige
-    _hudExpanded := (CfgLer("MiniMenu", "expandido", "1") = "1")
-    _hudExpandT  := _hudExpanded ? 1.0 : 0.0
     _HudAtualizarVisibleItems()
 
     pos := _HudCarregarPos()
@@ -276,7 +272,7 @@ _HudWM_MouseMove(wParam, lParam, msg, hwnd) {
     Win_ArmarMouseLeave(hwnd)
     ; WM_MOUSEMOVE só chega enquanto o cursor está sobre a janela da HUD,
     ; então essa borda (false → true) é o sinal de "entrou na barra" —
-    ; usado para só então desenhar engrenagem/expandir/fechar. Redesenha
+    ; usado para só então desenhar engrenagens/fechar. Redesenha
     ; uma vez aqui (não a cada pixel), o resto do frame já ia rodar de
     ; qualquer forma pelo hit-test de hover abaixo.
     if (!_hudBarHover) {
@@ -310,7 +306,7 @@ _HudWM_MouseLeave(wParam, lParam, msg, hwnd) {
     if (!miniGui || hwnd != miniGui.Hwnd)
         return
     _hudHoverId := ""
-    _hudBarHover := false   ; sai da barra: some com gear/expandir/fechar
+    _hudBarHover := false   ; sai da barra: some com engrenagens/fechar
     _HudRedraw()
 }
 
@@ -327,14 +323,8 @@ _HudWM_LButtonDown(wParam, lParam, msg, hwnd) {
 }
 
 _HudActivar(box) {
-    global _hudExpanded
     switch box.kind {
         case "gear":    AbrirConfigGeral()
-        case "perfil":  ProximoPerfil()
-        case "chevron":
-            _hudExpanded := !_hudExpanded
-            SalvarCfg("MiniMenu", "expandido", _hudExpanded ? "1" : "0")
-            _HudStartFx()
         ; Fechar é adiado para fora do handler de WM_LBUTTONDOWN: destruir a
         ; janela enquanto ainda se está dentro do próprio despacho de
         ; mensagens dela causa erro (reentrância). Ctrl+F12 fecha direto
@@ -351,7 +341,7 @@ _HudStartFx() {
 }
 
 _HudFxTick() {
-    global _hudHoverId, _hudHoverT, _hudExpandT, _hudExpanded
+    global _hudHoverId, _hudHoverT
 
     ativo := false
     speed := 0.28
@@ -370,14 +360,6 @@ _HudFxTick() {
         ativo := true
     }
 
-    alvoExp := _hudExpanded ? 1.0 : 0.0
-    nt := _hudExpandT + (alvoExp - _hudExpandT) * 0.25
-    if (Abs(alvoExp - nt) < 0.01)
-        nt := alvoExp
-    if (nt != _hudExpandT)
-        ativo := true
-    _hudExpandT := nt
-
     _HudRedraw()
 
     if (!ativo)
@@ -393,15 +375,15 @@ _HudPulseTick() {
 }
 
 ; ── Ícone real (mesmos .png usados na janela principal) ───
-; Tamanho fixo por contexto (barra / linha do painel): permite cachear o
-; ícone já reamostrado uma única vez em vez de escalar em alta qualidade
-; a cada frame, que era a maior causa de lentidão nas animações.
+; Tamanho fixo: permite cachear o ícone já reamostrado uma única vez em
+; vez de escalar em alta qualidade a cada frame, que era a maior causa de
+; lentidão nas animações.
 _HudIconImg(nome, size) {
     global icons
     return Gdip_ScaledIcon(A_ScriptDir "\" icons[nome], size)
 }
 
-_HudDrawMiniBtn(g, kind, cx, cy, d, hoverT, expandido := false) {
+_HudDrawMiniBtn(g, kind, cx, cy, d, hoverT) {
     global _HUD_SCALE
     scale := _HUD_SCALE
 
@@ -426,11 +408,6 @@ _HudDrawMiniBtn(g, kind, cx, cy, d, hoverT, expandido := false) {
             iconSz := Round(d * 0.62)
             Gdip_DrawImage(g, Gdip_ScaledIcon(A_ScriptDir "\icons\gear.png", iconSz),
                 cx - iconSz / 2, cy - iconSz / 2, iconSz, iconSz)
-        case "chevron":
-            y1 := expandido ? cy + armLen * 0.5 : cy - armLen * 0.3
-            y2 := expandido ? cy - armLen * 0.3 : cy + armLen * 0.5
-            Gdip_DrawLine(g, pen, cx - armLen, y1, cx, y2)
-            Gdip_DrawLine(g, pen, cx, y2, cx + armLen, y1)
         case "close":
             Gdip_DrawLine(g, pen, cx - armLen, cy - armLen, cx + armLen, cy + armLen)
             Gdip_DrawLine(g, pen, cx - armLen, cy + armLen, cx + armLen, cy - armLen)
@@ -463,7 +440,7 @@ _HudRedraw() {
 }
 
 _HudDesenharFrame() {
-    global miniGui, _hudX, _hudY, _hudExpandT, _hudExpanded, _hudHoverT, _hudBoxes, macros, _HUD_SCALE, _hudBarHover, _hudCanvas
+    global miniGui, _hudX, _hudY, _hudHoverT, _hudBoxes, macros, _HUD_SCALE, _hudBarHover, _hudCanvas
 
     if (!miniGui)
         return
@@ -475,21 +452,32 @@ _HudDesenharFrame() {
 
     PAD := Round(14*s), GAP := Round(10*s), BTN_D := Round(36*s), MINI_D := Round(22*s), SEP_H := Round(22*s)
     BAR_THICK := Round(58*s)   ; espessura fixa da barra (altura se horizontal, largura se vertical)
-    ICON_BAR_SZ := Round(34*s), ICON_ROW_SZ := Round(20*s)
+    ICON_BAR_SZ := Round(34*s)
+    GEAR_D := Round(20*s), GEAR_GAP := Round(8*s)
 
     vertical := (GetHudOrientacao() = "vertical")
 
     boxes    := []
     barIcons := []
 
-    ; Separador + engrenagem/expandir/fechar só existem enquanto o mouse
-    ; está sobre a barra (_hudBarHover) — no jogo, quase sempre só se quer
-    ; ligar/desligar um macro pelos ícones, então esse grupo nem ocupa
-    ; espaço fora do hover.
+    ; Com o mouse sobre a barra (_hudBarHover) a HUD vira duas fileiras
+    ; (colunas, se vertical): a dos ícones, com separador + ✕ no fim, e
+    ; uma faixa de configurações com o ⚙ de cada macro alinhado ao seu
+    ; ícone e o ⚙ geral alinhado ao ✕. Fora do hover só os ícones existem
+    ; — no jogo, quase sempre só se quer ligar/desligar um macro.
+    ;
+    ; A faixa cresce PARA FORA da barra (abaixo na horizontal, à direita
+    ; na vertical): os ícones não se mexem quando ela aparece, então o que
+    ; está sob o mouse continua lá. A distância entre as fileiras deixa as
+    ; áreas de clique sem sobreposição (ícone: BTN_D/2 + 3, ⚙: GEAR_D/2 + 3).
     mostrarCluster := _hudBarHover
     sepX := 0, sepY := 0
-    gearCx := 0, gearCy := 0, chevCx := 0, chevCy := 0, closeCx := 0, closeCy := 0
-    tGear := 0, tChev := 0, tClose := 0
+    gearCx := 0, gearCy := 0, closeCx := 0, closeCy := 0
+    tGear := 0, tClose := 0
+
+    mostrarCfg := mostrarCluster && items.Length > 0
+    cfgOffset  := BTN_D / 2 + GEAR_GAP + GEAR_D / 2
+    cfgFaixa   := mostrarCluster ? (GEAR_GAP + GEAR_D + Round(4*s)) : 0
 
     if (vertical) {
         ; Ícones empilhados numa coluna estreita — a mesma lógica de
@@ -502,8 +490,7 @@ _HudDesenharFrame() {
             hv := _hudHoverT.Has(hk) ? _hudHoverT[hk] : 0
             r  := BTN_D / 2 + hv * 2 * s
             thisCy := cy + BTN_D / 2
-            boxes.Push({ id: hk, kind: "macro", nome: m["nome"], cx: barCX, cy: thisCy, r: BTN_D / 2 + 3 })
-            barIcons.Push({ m: m, cx: barCX, cy: thisCy, r: r, hoverT: hv })
+            barIcons.Push({ m: m, cx: barCX, cy: thisCy, r: r, hoverT: hv, cfgCx: barCX + cfgOffset, cfgCy: thisCy })
             cy += BTN_D + GAP
         }
 
@@ -512,24 +499,18 @@ _HudDesenharFrame() {
             sepY := cy
             cy += 1 + GAP
 
-            tGear := _hudHoverT.Has("gear") ? _hudHoverT["gear"] : 0
-            gearCx := barCX, gearCy := cy + MINI_D / 2
-            boxes.Push({ id: "gear", kind: "gear", cx: gearCx, cy: gearCy, r: MINI_D / 2 + 3 })
-            cy += MINI_D + 6
-
-            tChev := _hudHoverT.Has("chevron") ? _hudHoverT["chevron"] : 0
-            chevCx := barCX, chevCy := cy + MINI_D / 2
-            boxes.Push({ id: "chevron", kind: "chevron", cx: chevCx, cy: chevCy, r: MINI_D / 2 + 3 })
-            cy += MINI_D + 6
-
             tClose := _hudHoverT.Has("close") ? _hudHoverT["close"] : 0
             closeCx := barCX, closeCy := cy + MINI_D / 2
             boxes.Push({ id: "close", kind: "close", cx: closeCx, cy: closeCy, r: MINI_D / 2 + 3 })
+
+            tGear := _hudHoverT.Has("gear") ? _hudHoverT["gear"] : 0
+            gearCx := barCX + cfgOffset, gearCy := closeCy
+            boxes.Push({ id: "gear", kind: "gear", cx: gearCx, cy: gearCy, r: MINI_D / 2 + 3 })
             cy += MINI_D
         }
 
-        barSectionW := BAR_THICK
-        barSectionH := cy + PAD
+        winW := BAR_THICK + cfgFaixa
+        winH := cy + PAD
     } else {
         barCY := BAR_THICK // 2
         cx := PAD
@@ -539,8 +520,7 @@ _HudDesenharFrame() {
             hv := _hudHoverT.Has(hk) ? _hudHoverT[hk] : 0
             r  := BTN_D / 2 + hv * 2 * s
             thisCx := cx + BTN_D / 2
-            boxes.Push({ id: hk, kind: "macro", nome: m["nome"], cx: thisCx, cy: barCY, r: BTN_D / 2 + 3 })
-            barIcons.Push({ m: m, cx: thisCx, cy: barCY, r: r, hoverT: hv })
+            barIcons.Push({ m: m, cx: thisCx, cy: barCY, r: r, hoverT: hv, cfgCx: thisCx, cfgCy: barCY + cfgOffset })
             cx += BTN_D + GAP
         }
 
@@ -549,74 +529,25 @@ _HudDesenharFrame() {
             sepX := cx
             cx += 1 + GAP
 
-            tGear := _hudHoverT.Has("gear") ? _hudHoverT["gear"] : 0
-            gearCx := cx + MINI_D / 2, gearCy := barCY
-            boxes.Push({ id: "gear", kind: "gear", cx: gearCx, cy: gearCy, r: MINI_D / 2 + 3 })
-            cx += MINI_D + 6
-
-            tChev := _hudHoverT.Has("chevron") ? _hudHoverT["chevron"] : 0
-            chevCx := cx + MINI_D / 2, chevCy := barCY
-            boxes.Push({ id: "chevron", kind: "chevron", cx: chevCx, cy: chevCy, r: MINI_D / 2 + 3 })
-            cx += MINI_D + 6
-
             tClose := _hudHoverT.Has("close") ? _hudHoverT["close"] : 0
             closeCx := cx + MINI_D / 2, closeCy := barCY
             boxes.Push({ id: "close", kind: "close", cx: closeCx, cy: closeCy, r: MINI_D / 2 + 3 })
+
+            tGear := _hudHoverT.Has("gear") ? _hudHoverT["gear"] : 0
+            gearCx := closeCx, gearCy := barCY + cfgOffset
+            boxes.Push({ id: "gear", kind: "gear", cx: gearCx, cy: gearCy, r: MINI_D / 2 + 3 })
             cx += MINI_D
         }
 
-        barSectionW := cx + PAD
-        barSectionH := BAR_THICK
+        winW := cx + PAD
+        winH := BAR_THICK + cfgFaixa
     }
 
-    ROW_H := Round(28*s), ROW_GAP := Round(4*s), PANEL_PAD := Round(10*s), HEADER_H := Round(18*s)
-    nRows := items.Length
-    panelFullH := (nRows > 0) ? (PANEL_PAD * 2 + HEADER_H + nRows * ROW_H + (nRows - 1) * ROW_GAP) : 0
-
-    ease := _hudExpandT * _hudExpandT * (3 - 2 * _hudExpandT)   ; smoothstep
-    panelH := Round(panelFullH * ease)
-    mostrarPainel := (panelH > 2) && (nRows > 0)
-
-    ; Barra vertical é mais estreita que o painel-resumo (ícone + rótulo +
-    ; engrenagem + indicador não cabem nos ~64px da coluna) — larga a
-    ; janela pro mínimo do painel quando ele está visível. Barra horizontal
-    ; já é larga o bastante sozinha (winW cresce com a quantidade de ícones).
-    PANEL_MIN_W := Round(230*s)
-    winW := vertical ? Max(barSectionW, mostrarPainel ? PANEL_MIN_W : 0) : barSectionW
-    winH := barSectionH + panelH
-
-    GEAR_D := Round(20*s)
-
-    ; Perfil ativo no cabeçalho do painel — clicável (troca para o
-    ; próximo) quando existe mais de um perfil.
-    perfilTxt := "", perfilW := 0
-    temVariosPerfis := PerfisLista().Length > 1
-    if (mostrarPainel && (temVariosPerfis || PerfilAtivo() != "")) {
-        perfilTxt := StrUpper(PerfilNomeExibicao()) (temVariosPerfis ? "  ▸" : "")
-        perfilW   := Round((StrLen(perfilTxt) * 6 + 12) * s)
-        if (temVariosPerfis)
-            boxes.Push({ id: "perfil", kind: "perfil", x: winW - PAD - perfilW, y: barSectionH + PANEL_PAD - 2*s, w: perfilW, h: HEADER_H })
-    }
-
-    panelRows := []
-    if (mostrarPainel) {
-        py := barSectionH + PANEL_PAD + HEADER_H
-        for m in items {
-            avail := winH - py
-            if (avail < 6)
-                break
-            rh := Min(ROW_H, avail)
-            rowCy := py + rh / 2
-            dotCx := winW - PAD - Round(8*s)
-            rowGearCx := dotCx - Round(10*s) - GEAR_D / 2
-
-            ; botão de configurações fica acima na lista de boxes para ter
-            ; prioridade no hit-test sobre a linha inteira (que também é clicável)
-            boxes.Push({ id: "cfg_" m["id"], kind: "cfg", cfgFn: m["cfg"], cx: rowGearCx, cy: rowCy, r: GEAR_D / 2 + 3 })
-            boxes.Push({ id: "row_" m["id"], kind: "macro", nome: m["nome"], x: PAD, y: py, w: winW - PAD * 2, h: rh })
-            panelRows.Push({ m: m, y: py, h: rh, cy: rowCy, gearCx: rowGearCx, dotCx: dotCx })
-            py += ROW_H + ROW_GAP
-        }
+    for it in barIcons {
+        m := it.m
+        boxes.Push({ id: "bar_" m["id"], kind: "macro", nome: m["nome"], cx: it.cx, cy: it.cy, r: BTN_D / 2 + 3 })
+        if (mostrarCfg)
+            boxes.Push({ id: "cfg_" m["id"], kind: "cfg", cfgFn: m["cfg"], cx: it.cfgCx, cy: it.cfgCy, r: GEAR_D / 2 + 3 })
     }
 
     _hudBoxes := boxes
@@ -666,6 +597,21 @@ _HudDesenharFrame() {
         Gdip_DrawImage(g, _HudIconImg(m["nome"], ICON_BAR_SZ),
             it.cx - ICON_BAR_SZ / 2, it.cy - ICON_BAR_SZ / 2, ICON_BAR_SZ, ICON_BAR_SZ)
 
+        ; ⚙ do macro: apagado por padrão, acende quando o mouse está no
+        ; ícone dele ou no próprio ⚙ — fica claro de qual macro é, e os
+        ; outros não chamam atenção (menos clique errado no meio do jogo).
+        if (mostrarCfg) {
+            tCfg := _hudHoverT.Has("cfg_" m["id"]) ? _hudHoverT["cfg_" m["id"]] : 0
+            _HudDrawMiniBtn(g, "gear", it.cfgCx, it.cfgCy, GEAR_D, tCfg)
+            destaque := Max(tCfg, hoverT)
+            if (destaque < 1) {
+                rDim := GEAR_D / 2 + 2*s
+                dimBrush := Gdip_BrushSolid(Gdip_Argb(Round(150 * (1 - destaque)), "0x0f0d12"))
+                Gdip_FillEllipse(g, dimBrush, it.cfgCx - rDim, it.cfgCy - rDim, rDim * 2, rDim * 2)
+                Gdip_DeleteBrush(dimBrush)
+            }
+        }
+
         ; Tooltip: só guarda o ícone com mais hover (durante a transição de
         ; um ícone para outro, os dois estão com hoverT > 0) — o desenho
         ; é feito na janela própria, ver _HudTipDesenhar.
@@ -673,79 +619,20 @@ _HudDesenharFrame() {
             tipAlvo := it
     }
 
-    ; separador + botões auxiliares — só existem com o mouse sobre a barra.
-    ; A linha do separador é perpendicular ao eixo da barra: vertical
-    ; quando a barra é horizontal, horizontal quando a barra é a coluna.
+    ; separador + ✕ / ⚙ geral — só existem com o mouse sobre a barra.
+    ; A linha do separador é perpendicular ao eixo da barra e atravessa as
+    ; duas fileiras (ícones e configurações): vertical quando a barra é
+    ; horizontal, horizontal quando a barra é a coluna.
     if (mostrarCluster) {
         sepPen := Gdip_Pen(Gdip_Argb(255, "0x221f27"), 1)
         if (vertical)
-            Gdip_DrawLine(g, sepPen, gearCx - SEP_H / 2, sepY, gearCx + SEP_H / 2, sepY)
+            Gdip_DrawLine(g, sepPen, closeCx - SEP_H / 2, sepY, gearCx + SEP_H / 2, sepY)
         else
-            Gdip_DrawLine(g, sepPen, sepX, gearCy - SEP_H / 2, sepX, gearCy + SEP_H / 2)
+            Gdip_DrawLine(g, sepPen, sepX, closeCy - SEP_H / 2, sepX, gearCy + SEP_H / 2)
         Gdip_DeletePen(sepPen)
 
-        _HudDrawMiniBtn(g, "gear",    gearCx,  gearCy,  MINI_D, tGear)
-        _HudDrawMiniBtn(g, "chevron", chevCx,  chevCy,  MINI_D, tChev, _hudExpanded)
-        _HudDrawMiniBtn(g, "close",   closeCx, closeCy, MINI_D, tClose)
-    }
-
-    ; painel-resumo
-    if (mostrarPainel) {
-        sepPen2 := Gdip_Pen(Gdip_Argb(Round(255 * ease), "0x1c1a20"), 1)
-        Gdip_DrawLine(g, sepPen2, PAD * 0.5, barSectionH, winW - PAD * 0.5, barSectionH)
-        Gdip_DeletePen(sepPen2)
-
-        if (ease > 0.4) {
-            alphaHdr := (ease - 0.4) / 0.6
-            resumoW := winW - PAD * 2 - perfilW
-            if (resumoW > 60*s)   ; barra curta (poucos ícones): o perfil tem prioridade
-                Gdip_DrawText(g, "RESUMO RÁPIDO", 9*s, true, Gdip_Argb(Round(190 * alphaHdr), "0x65636d"),
-                    PAD, barSectionH + PANEL_PAD - 2*s, resumoW, HEADER_H, false)
-            if (perfilTxt != "") {
-                tPerfil := _hudHoverT.Has("perfil") ? _hudHoverT["perfil"] : 0
-                corPerfil := Gdip_LerpArgb(Round(230 * alphaHdr), T()["ACCENT2"], "0xe8e6ec", tPerfil)
-                Gdip_DrawText(g, perfilTxt, 9*s, true, corPerfil,
-                    winW - PAD - perfilW, barSectionH + PANEL_PAD - 2*s, perfilW, HEADER_H, true)
-            }
-        }
-
-        for pr in panelRows {
-            m := pr.m
-            ligado := macros[m["nome"]]
-            y := pr.y, h := pr.h
-
-            if (ligado) {
-                rowBg := Gdip_BrushSolid(Gdip_Argb(46, accent))
-                Gdip_FillRoundRect(g, rowBg, PAD, y, winW - PAD * 2, h, 8*s)
-                Gdip_DeleteBrush(rowBg)
-            }
-
-            icoSz := Round(24*s)
-            icoY := y + (h - icoSz) / 2
-            icoBg := ligado ? Gdip_LerpArgb(255, "0x201e24", accent, 0.26) : Gdip_Argb(255, "0x201e24")
-            icoBrush := Gdip_BrushSolid(icoBg)
-            Gdip_FillRoundRect(g, icoBrush, PAD + 4*s, icoY, icoSz, icoSz, 6*s)
-            Gdip_DeleteBrush(icoBrush)
-
-            imgPad := 2*s
-            Gdip_DrawImage(g, _HudIconImg(m["nome"], ICON_ROW_SZ), PAD + 4*s + imgPad, icoY + imgPad, ICON_ROW_SZ, ICON_ROW_SZ)
-
-            labelX := PAD + 4*s + icoSz + 10*s
-            labelW := pr.gearCx - GEAR_D / 2 - 8*s - labelX
-            Gdip_DrawText(g, m["label"], 11*s, true,
-                ligado ? Gdip_Argb(255, "0xf2f0f5") : Gdip_Argb(255, "0xdcdae0"),
-                labelX, y, labelW, h, false)
-
-            tCfg := _hudHoverT.Has("cfg_" m["id"]) ? _hudHoverT["cfg_" m["id"]] : 0
-            _HudDrawMiniBtn(g, "gear", pr.gearCx, pr.cy, GEAR_D, tCfg)
-
-            dotR := 3*s
-            dotCy := pr.cy
-            dotArgb := ligado ? Gdip_Argb(255, accent) : Gdip_Argb(255, "0x4b4855")
-            dotBrush := Gdip_BrushSolid(dotArgb)
-            Gdip_FillEllipse(g, dotBrush, pr.dotCx - dotR, dotCy - dotR, dotR * 2, dotR * 2)
-            Gdip_DeleteBrush(dotBrush)
-        }
+        _HudDrawMiniBtn(g, "gear",  gearCx,  gearCy,  MINI_D, tGear)
+        _HudDrawMiniBtn(g, "close", closeCx, closeCy, MINI_D, tClose)
     }
 
     Gdip_PresentLayeredCanvas(canvas, hudHwnd, _hudX, _hudY)

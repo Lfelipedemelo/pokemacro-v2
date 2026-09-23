@@ -5,17 +5,9 @@
 ExecutarMacroCooldown() {
     global executandoCooldown
 
-    ; Sem posição configurada, o clique iria para o canto (0, 0) da tela.
-    if (CfgLer("Cooldown", "clickX", "") = "" || CfgLer("Cooldown", "clickY", "") = "") {
-        ShowHint("COOLDOWN: Defina a posição primeiro!", 1800, "danger")
-        return
-    }
-
     executandoCooldown := true
     cfg     := GetCfg("Cooldown")
     idAtual := cfg["pokemonInicial"]
-
-    MouseGetPos(&xOriginal, &yOriginal)
 
     if (cfg["usarFullDefCD"] = "true" && cfg["fullDefense"] != "N/A")
         SendEvent("{" cfg["fullDefense"] "}")
@@ -23,22 +15,19 @@ ExecutarMacroCooldown() {
     Loop {
         if (!executandoCooldown || idAtual < 1 || !cfg.Has("tempo" idAtual))
             break
-        ; Nunca clica fora do jogo: se o jogador deu alt-tab durante a
-        ; espera, segura o próximo clique até o jogo voltar ao foco.
-        while (executandoCooldown && !JogoAtivo())
-            Sleep(100)
-        if (!executandoCooldown)
-            break
-
-        MouseMove(cfg["clickX"], cfg["clickY"], 0)
-        Click()
-
+        ; Se o jogador está em outra janela/tela durante a espera, traz o
+        ; jogo para frente antes de trocar o pokémon — sem mexer no mouse.
+        if (!JogoAtivo()) {
+            while (executandoCooldown && !JogoAtivo()) {
+                try WinActivate("ahk_exe " JOGO_EXE)
+                WinWaitActive("ahk_exe " JOGO_EXE,, 1)
+            }
+            Sleep(50)  ; dá tempo do cliente processar o foco antes da tecla
+        }
         if (!executandoCooldown)
             break
 
         SendEvent("^" . idAtual)
-        Sleep(50)
-        MouseMove(xOriginal, yOriginal, 0)
 
         tempoEspera := cfg["tempo" . idAtual]
         Loop (tempoEspera * 10) {
@@ -51,5 +40,4 @@ ExecutarMacroCooldown() {
     }
 
     executandoCooldown := false
-    MouseMove(xOriginal, yOriginal, 0)
 }

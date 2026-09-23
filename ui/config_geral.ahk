@@ -19,7 +19,7 @@ GetHudOrientacao() {
 }
 
 AbrirConfigGeral() {
-    _GCfg_Abrir(288, 528, _DesenharConfigGeral)
+    _GCfg_Abrir(288, 476, _DesenharConfigGeral)
 }
 
 ; ── Tamanho da interface (HUD + telas de config) ──
@@ -64,70 +64,6 @@ _GCfg_VisibilidadeItem(g, boxes, x, y, w, secao, label, hoverId) {
         (*) => (SalvarCfg(secao, "showInMini", "false"), _RecriarMini(), _GCfg_Redraw()), hoverId)
 }
 
-; ── Perfis ──
-; Cartão "PERFIL ATIVO": ◀ nome ▶ troca entre perfis, "+ NOVO" cria um
-; copiando as configs dos macros do perfil atual, "EXCLUIR" remove o
-; perfil ativo (menos o padrão). Ver lib\config.ahk (seção Perfis).
-_ConfigGeral_CartaoPerfil(g, boxes, x, y, w, hoverId) {
-    ch := 44
-    card := Gdip_BrushSolid(Gdip_Argb(255, T()["BG2"]))
-    Gdip_FillRoundRect(g, card, x, y, w, ch, 8)
-    Gdip_DeleteBrush(card)
-    Gdip_DrawText(g, "PERFIL ATIVO", 9, true, Gdip_Argb(255, T()["MUTED"]), x + 8, y + 5, w - 16, 14, false)
-
-    varios  := PerfisLista().Length > 1
-    padrao  := PerfilAtivo() = ""
-    segY := y + 21, segH := 17
-    setaW := 18, novoW := 46, exclW := 52, gap := 4
-    nomeX := x + 8 + setaW + gap
-    nomeW := w - 16 - setaW * 2 - novoW - exclW - gap * 4
-
-    _ConfigGeral_Botao(g, boxes, "perf_ant", x + 8, segY, setaW, segH, "◀", varios, hoverId, (*) => ProximoPerfil(-1))
-
-    nomeBr := Gdip_BrushSolid(Gdip_Argb(255, T()["BG"]))
-    Gdip_FillRoundRect(g, nomeBr, nomeX, segY, nomeW, segH, 5)
-    Gdip_DeleteBrush(nomeBr)
-    Gdip_DrawText(g, StrUpper(PerfilNomeExibicao()), 9, true, Gdip_Argb(255, T()["TEXT"]), nomeX, segY, nomeW, segH, true)
-
-    bx := nomeX + nomeW + gap
-    _ConfigGeral_Botao(g, boxes, "perf_prox", bx, segY, setaW, segH, "▶", varios, hoverId, (*) => ProximoPerfil(1))
-    bx += setaW + gap
-    _ConfigGeral_Botao(g, boxes, "perf_novo", bx, segY, novoW, segH, "+ NOVO", true, hoverId, (*) => _ConfigGeral_NovoPerfil())
-    bx += novoW + gap
-    _ConfigGeral_Botao(g, boxes, "perf_excl", bx, segY, exclW, segH, "EXCLUIR", !padrao, hoverId,
-        (*) => _GCfg_Confirmar("EXCLUIR PERFIL " StrUpper(PerfilNomeExibicao()) "?",
-            "As configs dos macros desse perfil serão apagadas.",
-            (*) => ExcluirPerfilAtivo(), "SIM, EXCLUIR"), true)
-    return ch
-}
-
-; Botãozinho em pílula usado no cartão de perfil. Desabilitado = apagado
-; e sem área de clique.
-_ConfigGeral_Botao(g, boxes, id, x, y, w, h, texto, habilitado, hoverId, onClick, perigo := false) {
-    hov := habilitado && (hoverId = id)
-    cor := hov ? (perigo ? "0x3d1f1f" : T()["BG3"]) : T()["BG"]
-    br := Gdip_BrushSolid(Gdip_Argb(255, cor))
-    Gdip_FillRoundRect(g, br, x, y, w, h, 5)
-    Gdip_DeleteBrush(br)
-    corTxt := !habilitado ? Gdip_Argb(90, T()["MUTED"])
-        : perigo ? Gdip_Argb(255, "0xe05252")
-        : Gdip_Argb(255, hov ? T()["TEXT"] : T()["MUTED"])
-    Gdip_DrawText(g, texto, 8, true, corTxt, x, y, w, h, true)
-    if (habilitado)
-        boxes.Push({ id: id, x: x, y: y, w: w, h: h, onClick: onClick })
-}
-
-_ConfigGeral_NovoPerfil() {
-    SetTimer(_GCfg_InputNoTopo.Bind("Novo perfil"), -80)
-    r := InputBox("Nome do novo perfil (letras, números, espaço, _ ou -).`nAs configs dos macros do perfil atual serão copiadas.",
-        "Novo perfil", "w320 h140")
-    if (r.Result != "OK" || Trim(r.Value) = "")
-        return
-    erro := CriarPerfil(r.Value)
-    if (erro != "")
-        ShowHint(erro, 2000, "danger")
-}
-
 _DesenharConfigGeral(g, w, h, hoverId) {
     boxes := []
 
@@ -142,8 +78,6 @@ _DesenharConfigGeral(g, w, h, hoverId) {
     colW := (w - pad*2 - 10) // 2
     col2 := pad + colW + 10
     y := hH + 10
-
-    y += _ConfigGeral_CartaoPerfil(g, boxes, pad, y, w - pad*2, hoverId) + 8
 
     usarF := GetUsarPrefixoF()
     _GCfg_Toggle(g, boxes, "prefF", pad, y, colW, "PREFIXO [F]", "F1..F9", "1..9", usarF = "true",

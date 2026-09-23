@@ -47,7 +47,7 @@ _DesenharConfigCooldown(g, w, h, hoverId) {
         idx := A_Index
         sx  := pad + 8 + slotW * (idx - 1)
         _GCfg_MiniSlider(g, boxes, "tempo" idx, sx, y + 24, slotW, "PKM " idx, cfg["tempo" idx],
-            0, 180, 1, "s", ((i, v) => SalvarCfg("Cooldown", "tempo" i, v)).Bind(idx), hoverId)
+            0, TEMPO_COOLDOWN_MAX, 1, "s", ((i, v) => SalvarCfg("Cooldown", "tempo" i, v)).Bind(idx), hoverId)
     }
     y += tempoH + 8
 

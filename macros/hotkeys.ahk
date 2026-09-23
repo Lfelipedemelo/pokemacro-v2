@@ -48,15 +48,14 @@ _EhComboExclusivo(nome) {
 }
 
 ; ─── Tecla de pânico: desliga tudo e para o que estiver rodando ──
-DesligarTodosMacros(avisar := true) {
+DesligarTodosMacros() {
     global macros, interromperCombo, executandoCooldown
     for nome in macros
         macros[nome] := false
     interromperCombo   := true
     executandoCooldown := false
     _HudRedraw()
-    if (avisar)
-        ShowHint("TODOS OS MACROS DESLIGADOS", 1400, "warn")
+    ShowHint("TODOS OS MACROS DESLIGADOS", 1400, "warn")
 }
 
 ; ─── Hotkeys configuráveis ────────────────────────────────
@@ -117,7 +116,7 @@ _TeclaExec(nome) {
 }
 
 ; Re-registra todas as hotkeys a partir do INI. Só precisa rodar quando
-; uma tecla muda (captura, reset, troca de perfil) — ligar/desligar um
+; uma tecla muda (captura, reset) — ligar/desligar um
 ; macro NÃO exige re-registro, porque os critérios de HotIf consultam
 ; macros[] na hora do pressionamento.
 ;
