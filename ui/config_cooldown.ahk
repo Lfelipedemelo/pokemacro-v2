@@ -3,7 +3,7 @@
 ; =====================================================
 
 AbrirConfigCooldown() {
-    _GCfg_Abrir(288, 392, _DesenharConfigCooldown)
+    _GCfg_Abrir(288, 474, _DesenharConfigCooldown)
 }
 
 _DesenharConfigCooldown(g, w, h, hoverId) {
@@ -51,6 +51,23 @@ _DesenharConfigCooldown(g, w, h, hoverId) {
     }
     y += tempoH + 8
 
+    ; ── Tecla (Ctrl+N) enviada em cada posição — permite mapear a ordem
+    ; do time no jogo para as posições do Cooldown (ex.: 2º pokémon = Ctrl+4).
+    teclaH := 74
+    teclaBrush := Gdip_BrushSolid(Gdip_Argb(255, T()["BG2"]))
+    Gdip_FillRoundRect(g, teclaBrush, pad, y, w - pad*2, teclaH, 8)
+    Gdip_DeleteBrush(teclaBrush)
+    Gdip_DrawText(g, "TECLA CTRL+N POR POSIÇÃO", 9, true, Gdip_Argb(255, T()["MUTED"]), pad + 8, y + 6, w - pad*2 - 16, 14, false)
+
+    teclaSlotW := (w - pad*2 - 16) // 4
+    Loop 4 {
+        idx := A_Index
+        sx  := pad + 8 + teclaSlotW * (idx - 1)
+        _GCfg_MiniButton(g, boxes, "tecla" idx, sx, y + 24, teclaSlotW, "PKM " idx, "Ctrl+" cfg["tecla" idx],
+            _CiclarTeclaCooldown.Bind(idx), hoverId)
+    }
+    y += teclaH + 8
+
     usaFD := cfg["usarFullDefCD"] = "true"
     _GCfg_Toggle(g, boxes, "fd", pad, y, w - pad*2, "FULL DEFENSE (COOLDOWN)", "ATIVAR", "DESATIVAR", usaFD,
         (*) => SalvarCfg("Cooldown", "usarFullDefCD", "true"),
@@ -71,10 +88,18 @@ _DesenharConfigCooldown(g, w, h, hoverId) {
     return boxes
 }
 
+; Avança a tecla (Ctrl+N) da posição idx para o próximo número, voltando
+; a 1 depois do máximo — cada clique no botão troca o valor mostrado.
+_CiclarTeclaCooldown(idx, *) {
+    atual := GetCfg("Cooldown")["tecla" idx]
+    novo  := (atual >= TECLA_COOLDOWN_MAX) ? 1 : atual + 1
+    SalvarCfg("Cooldown", "tecla" idx, novo)
+}
+
 ResetarCooldown() {
     _GCfg_Confirmar(
         "RESETAR COOLDOWN?",
-        "Isso limpará hotkey, pokémon e tempos.",
+        "Isso limpará hotkey, pokémon, tempos e teclas.",
         (*) => (ResetarSecao("Cooldown"), ShowHint("COOLDOWN RESETADO!", 1000, "success"))
     )
 }

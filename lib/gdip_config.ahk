@@ -822,6 +822,27 @@ _GCfg_MiniSlider(g, boxes, id, x, y, w, titulo, value, vMin, vMax, step, unit, o
     return ch
 }
 
+; Botão compacto lado a lado (ex.: os 4 mapeamentos de tecla do Cooldown):
+; título acima, botão clicável abaixo mostrando o valor atual no próprio
+; texto. Cada clique dispara onClick — quem chama decide o que fazer com
+; o valor (ex.: ciclar 1..9). Devolve a altura ocupada (fixa).
+_GCfg_MiniButton(g, boxes, id, x, y, w, titulo, valorTexto, onClick, hoverId) {
+    ch := 40
+    hovered := (hoverId = id)
+
+    Gdip_DrawText(g, titulo, 8, true, Gdip_Argb(255, T()["MUTED"]), x, y, w, 12, true)
+
+    btnY := y + 15, btnH := 21
+    btnBrush := Gdip_BrushSolid(Gdip_Argb(255, hovered ? T()["BG3"] : T()["BG"]))
+    Gdip_FillRoundRect(g, btnBrush, x, btnY, w, btnH, 6)
+    Gdip_DeleteBrush(btnBrush)
+    Gdip_DrawText(g, valorTexto, 9, true, Gdip_Argb(255, hovered ? T()["ACCENT"] : T()["TEXT"]),
+        x, btnY, w, btnH, true)
+
+    boxes.Push({ id: id, x: x, y: btnY, w: w, h: btnH, onClick: onClick })
+    return ch
+}
+
 ; Cartão compartilhado "Exibir no Mini Menu" — usado em todas as telas
 ; de macro (Combo, Revive, Combo Revive, Cooldown).
 _GCfg_ShowInMini(g, boxes, x, y, w, secao, hoverId) {

@@ -15,6 +15,7 @@ global _cfgCache := Map()
 global _CFG_NIL  := Chr(1)   ; marca "chave ausente no INI" dentro do cache
 
 global TEMPO_COOLDOWN_MAX := 60   ; segundos — faixa dos tempos de espera do Cooldown
+global TECLA_COOLDOWN_MAX := 9    ; faixa das teclas (Ctrl+1..Ctrl+9) por posição do Cooldown
 
 CfgLer(secao, chave, padrao := "") {
     global configFile, _cfgCache, _CFG_NIL
@@ -75,7 +76,11 @@ GetCfg(tipo) {
         "tempo1",               _CfgTempoCooldown(1),
         "tempo2",               _CfgTempoCooldown(2),
         "tempo3",               _CfgTempoCooldown(3),
-        "tempo4",               _CfgTempoCooldown(4)
+        "tempo4",               _CfgTempoCooldown(4),
+        "tecla1",               _CfgTeclaCooldown(1),
+        "tecla2",               _CfgTeclaCooldown(2),
+        "tecla3",               _CfgTeclaCooldown(3),
+        "tecla4",               _CfgTeclaCooldown(4)
     )
 }
 
@@ -91,6 +96,14 @@ _CfgInt(secao, chave, padrao) {
 ; 0–180) passa a valer o máximo, igual ao que a tela mostra.
 _CfgTempoCooldown(n) {
     return Max(0, Min(TEMPO_COOLDOWN_MAX, _CfgInt("Cooldown", "tempo" n, 0)))
+}
+
+; Tecla (Ctrl+N) enviada na posição n da sequência do Cooldown — permite
+; que o usuário mapeie cada posição para o slot real do pokémon no jogo
+; (ex.: ordem do time trocada, "pokémon inicial" 2 chamado com Ctrl+4).
+; Padrão é n, igual ao comportamento antigo (posição = slot).
+_CfgTeclaCooldown(n) {
+    return Max(1, Min(TECLA_COOLDOWN_MAX, _CfgInt("Cooldown", "tecla" n, n)))
 }
 
 ; Atalho para checar se um macro deve aparecer no mini menu.

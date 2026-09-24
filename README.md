@@ -282,15 +282,15 @@ Funciona exatamente igual ao **Combo Principal**, mas é uma configuração sepa
 
 ### Cooldown
 
-**O que faz:** Macro de rotação progressiva que clica em uma posição da tela e pressiona `Ctrl+N` para cada Pokémon (do configurado até o 1), aguardando um tempo específico entre cada um.
+**O que faz:** Macro de rotação progressiva que clica em uma posição da tela e pressiona `Ctrl+N` para cada Pokémon (do configurado até o 1), aguardando um tempo específico entre cada um. A tecla enviada em cada posição é configurável, então a ordem do time no jogo não precisa bater com o número da posição.
 
 **Como funciona:**
 1. Ao pressionar a **Hotkey Cooldown**, o macro inicia.
 2. Opcionalmente envia a tecla de **Full Defense** antes de começar.
-3. Para cada Pokémon (do inicial até o 1):
+3. Para cada posição (do Pokémon Inicial até a posição 1):
    - Move o mouse para a posição configurada e clica.
-   - Pressiona `Ctrl+N` (onde N é o número do Pokémon).
-   - Aguarda o tempo configurado para aquele Pokémon.
+   - Pressiona `Ctrl+N`, onde N é a tecla configurada para aquela posição (por padrão, igual ao número da posição).
+   - Aguarda o tempo configurado para aquela posição.
 4. Pressionar a **Hotkey Cooldown** novamente durante a execução **cancela** o macro imediatamente.
 
 #### Opções de Configuração
@@ -299,13 +299,14 @@ Funciona exatamente igual ao **Combo Principal**, mas é uma configuração sepa
 |-------|----------------|
 | **Hotkey Cooldown** | Tecla que inicia/cancela o macro |
 | **Posição do Clique** | Coordenadas onde o mouse clica antes de cada `Ctrl+N` |
-| **Pokémon Inicial** | De qual Pokémon (1-4) começa a rotação |
-| **Tempos de Espera** | Tempo em segundos (0 a 60) para cada slot (PKM 1, PKM 2, PKM 3, PKM 4). Ajuste arrastando a barra ou clicando no valor para digitar (Enter salva, Esc cancela) |
+| **Pokémon Inicial** | De qual posição (1-4) começa a rotação |
+| **Tempos de Espera** | Tempo em segundos (0 a 60) para cada posição (PKM 1, PKM 2, PKM 3, PKM 4). Ajuste arrastando a barra ou clicando no valor para digitar (Enter salva, Esc cancela) |
+| **Tecla Ctrl+N por Posição** | Qual número (1-9) é enviado com Ctrl em cada posição (PKM 1, PKM 2, PKM 3, PKM 4) — útil quando a ordem do time no jogo é diferente da ordem das posições. Cada clique no botão avança para o próximo número (volta a 1 depois do 9) |
 | **Full Defense** | Ativa/desativa o envio de Full Defense ao iniciar |
 | **Hotkey Ligar/Desligar** | Tecla para ativar/desativar o macro |
 
-> **Exemplo:** Pokémon Inicial = 3, tempos PKM3 = 10s, PKM2 = 8s, PKM1 = 6s.  
-> O macro vai: clicar → Ctrl+3 → 10s → clicar → Ctrl+2 → 8s → clicar → Ctrl+1 → 6s → fim.
+> **Exemplo:** Pokémon Inicial = 2, tecla da posição 2 = 4, tecla da posição 1 = 3, tempos PKM2 = 10s, PKM1 = 6s.  
+> O macro vai: clicar → Ctrl+4 → 10s → clicar → Ctrl+3 → 6s → fim.
 
 ---
 

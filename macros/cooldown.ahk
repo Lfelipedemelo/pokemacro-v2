@@ -32,7 +32,7 @@ ExecutarMacroCooldown() {
         if (!executandoCooldown)
             break
 
-        SendEvent("^" . idAtual)
+        SendEvent("^" . cfg["tecla" . idAtual])
 
         ; Prazo por A_TickCount (igual ao EsperarInterrompivel do combo):
         ; somar Sleep(100) acumulava o arredondamento do timer do Windows
