@@ -21,6 +21,23 @@
 
 ---
 
+## 📖 Guias Passo a Passo (com imagens)
+
+Tutoriais ilustrados de como configurar e usar cada função, tela por tela:
+
+| # | Guia | Conteúdo |
+|:-:|------|----------|
+| 1 | [Primeiros passos](docs/01-primeiros-passos.md) | Abrir o programa, usar a HUD, capturar teclas e posições, avisos, reset |
+| 2 | [Combo Principal / Secundário](docs/02-combos.md) | Sequência de habilidades com Full Attack / Full Defense |
+| 3 | [Revive](docs/03-revive.md) | Reviver com um botão + detecção do pokémon (ícone do dedo) |
+| 4 | [Combo Revive](docs/04-combo-revive.md) | Reviver e já soltar um combo |
+| 5 | [Cooldown](docs/05-cooldown.md) | Rotação de pokémons com `Ctrl + N` e tempos por posição |
+| 6 | [Configurações Gerais](docs/06-configuracoes-gerais.md) | Prefixo F, Modo Legado, tamanho, HUD vertical, Tecla de Pânico, Full Attack/Defense |
+
+<p align="center"><img src="docs/img/hud-hover.png" width="480" alt="HUD do PokéMacro"></p>
+
+---
+
 ## 📋 Índice
 
 1. [Requisitos](#requisitos)
@@ -121,7 +138,7 @@ macro_modular/
 
 > 💡 **Exclusividade entre Combos:** Combo Principal, Combo Secundário e Combo Revive são mutuamente exclusivos — ativar um desliga automaticamente os outros.
 
-> 💡 **Dica de tecla:** Passe o mouse sobre um ícone da barra para ver em um tooltip o nome do macro e a tecla configurada para ele.
+> 💡 **Dica:** Passe o mouse sobre um ícone da barra para ver em um tooltip o nome do macro.
 
 ### Configurando um macro
 
@@ -166,7 +183,7 @@ Com os ícones na vertical (Configurações Gerais → ÍCONES DA HUD), vira uma
 **Como funciona:**
 1. Ao pressionar a **Tecla do Macro**, o sistema envia as teclas da sequência uma por uma.
 2. Cada tecla fica configurável entre usar prefixo `F` (ex: `F3`) ou só o número (ex: `3`) — veja [Configurações Gerais](#configurações-gerais).
-3. Pressionar a **Tecla do Macro** novamente enquanto executa **interrompe** o combo.
+3. Pressionar a **Tecla do Macro** novamente enquanto o combo executa **não faz nada** — ele não é interrompido nem reiniciado. O combo só para se for interrompido pelo Revive/Combo Revive, pela Tecla de Pânico, se o macro for desligado ou se o jogo perder o foco.
 
 #### Opções de Configuração
 
@@ -282,13 +299,13 @@ Funciona exatamente igual ao **Combo Principal**, mas é uma configuração sepa
 
 ### Cooldown
 
-**O que faz:** Macro de rotação progressiva que clica em uma posição da tela e pressiona `Ctrl+N` para cada Pokémon (do configurado até o 1), aguardando um tempo específico entre cada um. A tecla enviada em cada posição é configurável, então a ordem do time no jogo não precisa bater com o número da posição.
+**O que faz:** Macro de rotação progressiva que pressiona `Ctrl+N` para cada Pokémon (do configurado até o 1), aguardando um tempo específico entre cada um. A tecla enviada em cada posição é configurável, então a ordem do time no jogo não precisa bater com o número da posição.
 
 **Como funciona:**
 1. Ao pressionar a **Hotkey Cooldown**, o macro inicia.
 2. Opcionalmente envia a tecla de **Full Defense** antes de começar.
 3. Para cada posição (do Pokémon Inicial até a posição 1):
-   - Move o mouse para a posição configurada e clica.
+   - Se a janela do jogo não estiver ativa (você foi para outra janela durante a espera), traz o jogo de volta para frente — sem mexer no mouse. Se o jogo tiver sido fechado, o macro é cancelado.
    - Pressiona `Ctrl+N`, onde N é a tecla configurada para aquela posição (por padrão, igual ao número da posição).
    - Aguarda o tempo configurado para aquela posição.
 4. Pressionar a **Hotkey Cooldown** novamente durante a execução **cancela** o macro imediatamente.
@@ -298,7 +315,6 @@ Funciona exatamente igual ao **Combo Principal**, mas é uma configuração sepa
 | Campo | O que configura |
 |-------|----------------|
 | **Hotkey Cooldown** | Tecla que inicia/cancela o macro |
-| **Posição do Clique** | Coordenadas onde o mouse clica antes de cada `Ctrl+N` |
 | **Pokémon Inicial** | De qual posição (1-4) começa a rotação |
 | **Tempos de Espera** | Tempo em segundos (0 a 60) para cada posição (PKM 1, PKM 2, PKM 3, PKM 4). Ajuste arrastando a barra ou clicando no valor para digitar (Enter salva, Esc cancela) |
 | **Tecla Ctrl+N por Posição** | Qual número (1-9) é enviado com Ctrl em cada posição (PKM 1, PKM 2, PKM 3, PKM 4) — útil quando a ordem do time no jogo é diferente da ordem das posições. Cada clique no botão avança para o próximo número (volta a 1 depois do 9) |
@@ -306,7 +322,7 @@ Funciona exatamente igual ao **Combo Principal**, mas é uma configuração sepa
 | **Hotkey Ligar/Desligar** | Tecla para ativar/desativar o macro |
 
 > **Exemplo:** Pokémon Inicial = 2, tecla da posição 2 = 4, tecla da posição 1 = 3, tempos PKM2 = 10s, PKM1 = 6s.  
-> O macro vai: clicar → Ctrl+4 → 10s → clicar → Ctrl+3 → 6s → fim.
+> O macro vai: Ctrl+4 → 10s → Ctrl+3 → 6s → fim.
 
 ---
 
@@ -394,7 +410,7 @@ O sistema possui proteção avançada contra conflito de hotkeys:
 
 - **Tecla já usada:** ao definir uma hotkey (tecla do macro, ligar/desligar ou pânico) que já pertence a outra, o sistema avisa e não salva. A única exceção é a tecla do macro dos três combos, que pode ser a mesma (só um combo fica ligado por vez).
 - **Mesma tecla no macro e no jogo:** Se a Tecla do Macro for a mesma que uma ação do jogo (ex: `F3` é hotkey e primeira habilidade do combo), o sistema usa supressão de input — a tecla não é enviada ao jogo duas vezes.
-- **Re-entrada bloqueada:** Enquanto um combo está em execução, novas execuções do mesmo combo são bloqueadas.
+- **Re-entrada bloqueada:** Enquanto um combo está em execução, apertar a tecla de qualquer combo é ignorado — não interrompe nem inicia outro combo por cima.
 - **Revive interrompe Combo:** Pressionar a tecla do Revive ou Combo Revive durante a execução de um combo **interrompe o combo imediatamente** e executa o revive.
 - **Cancelamento do Cooldown:** Pressionar a hotkey do Cooldown durante a execução cancela o macro imediatamente.
 
