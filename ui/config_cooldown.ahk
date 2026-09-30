@@ -3,7 +3,7 @@
 ; =====================================================
 
 AbrirConfigCooldown() {
-    _GCfg_Abrir(288, 474, _DesenharConfigCooldown)
+    _GCfg_Abrir(288, 422, _DesenharConfigCooldown)
 }
 
 _DesenharConfigCooldown(g, w, h, hoverId) {
@@ -27,8 +27,8 @@ _DesenharConfigCooldown(g, w, h, hoverId) {
 
     _GCfg_Field(g, boxes, "hkcd", pad, y, colW, "HOTKEY COOLDOWN", _ComboDisplay(cfg["hotkeyCooldown"]),
         (*) => (CapturarTecla("Cooldown", "hotkeyCooldown", 0, "HOTKEY COOLDOWN"), _GCfg_Redraw()), hoverId)
-    _GCfg_Field(g, boxes, "pos", col2, y, colW, "POSIÇÃO", "[ " cfg["clickX"] ", " cfg["clickY"] " ]",
-        (*) => (CapturarPosicaoMouse("Cooldown", 0), _GCfg_Redraw()), hoverId)
+    _GCfg_Field(g, boxes, "toggle", col2, y, colW, "LIGAR/DESLIGAR", _ComboDisplay(cfg["toggleHotkeyCooldown"]),
+        (*) => (CapturarCombo("Cooldown", "toggleHotkey", 0, "HOTKEY TOGGLE"), _GCfg_Redraw()), hoverId)
     y += 44 + 8
 
     _GCfg_Segmented(g, boxes, "pkm", pad, y, w - pad*2, "POKÉMON INICIAL", ["1", "2", "3", "4"],
@@ -75,10 +75,6 @@ _DesenharConfigCooldown(g, w, h, hoverId) {
     y += 44 + 8
 
     _GCfg_ShowInMini(g, boxes, pad, y, w - pad*2, "Cooldown", hoverId)
-    y += 44 + 8
-
-    _GCfg_Field(g, boxes, "toggle", pad, y, w - pad*2, "LIGAR/DESLIGAR", _ComboDisplay(cfg["toggleHotkeyCooldown"]),
-        (*) => (CapturarCombo("Cooldown", "toggleHotkey", 0, "HOTKEY TOGGLE"), _GCfg_Redraw()), hoverId)
 
     Gdip_ResetClip(g)
     borderPen := Gdip_Pen(Gdip_Argb(255, T()["SEP"]), 1)

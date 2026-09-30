@@ -71,8 +71,6 @@ GetCfg(tipo) {
         "toggleHotkeyCooldown", CfgLer("Cooldown", "toggleHotkey",    "N/A"),
         "usarFullDefCD",        CfgLer("Cooldown", "usarFullDefCD",   "false"),
         "pokemonInicial",       _CfgInt("Cooldown", "pokemonInicial", 1),
-        "clickX",               _CfgInt("Cooldown", "clickX",  0),
-        "clickY",               _CfgInt("Cooldown", "clickY",  0),
         "tempo1",               _CfgTempoCooldown(1),
         "tempo2",               _CfgTempoCooldown(2),
         "tempo3",               _CfgTempoCooldown(3),

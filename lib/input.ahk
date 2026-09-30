@@ -123,7 +123,7 @@ CapturarTecla(configSection, configKey, uiText := 0, label := "Tecla") {
 }
 
 ; Aguarda um clique do mouse e salva as coordenadas no INI.
-CapturarPosicaoMouse(secao, objetoTexto, chaveX := "clickX", chaveY := "clickY") {
+CapturarPosicaoMouse(secao, objetoTexto, chaveX, chaveY) {
     CoordMode("Mouse", "Screen")
 
     ShowHint("Clique no local desejado (ESC cancela)", 999999)
