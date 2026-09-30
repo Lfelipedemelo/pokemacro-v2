@@ -21,30 +21,27 @@ _EnviarSequenciaRevive(cfgRev, modoLegado) {
 
     Critical("On")
     try {
+        ; Só recolhe o pokémon se ele estiver fora: guardado ou morto, o
+        ; primeiro Ctrl+1/clique o soltaria e a sequência sairia invertida.
+        ; Sem detecção calibrada (-1), mantém o comportamento antigo.
+        estado := EstadoPokemonFora()
+
         MouseGetPos(&xAtual, &yAtual)
         MouseMove(cfgRev["x"], cfgRev["y"], 0)
 
-        if (modoLegado = "true") {
-            ; Modo Legado: clique direito no alvo
-            Click("Right")
+        if (estado != 0) {
+            _AlternarPokebola(modoLegado)
+            ; Com detecção, espera o jogo de fato recolher antes do item —
+            ; o delay sozinho, se muito baixo, atropelava o jogo.
+            if (estado = 1)
+                EsperarDedoSumir(500)
             Sleep(delay)
-            if (cfgRev["teclaInputRevive"] != "N/A") {
-                SendEvent("{" cfgRev["teclaInputRevive"] " down}")
-                SendEvent("{" cfgRev["teclaInputRevive"] " up}")
-            }
-            Click("Right")
-        } else {
-            ; Modo Normal: Ctrl+1
-            SendEvent("{Ctrl down}{1 down}")
-            SendEvent("{1 up}{Ctrl up}")
-            Sleep(delay)
-            if (cfgRev["teclaInputRevive"] != "N/A") {
-                SendEvent("{" cfgRev["teclaInputRevive"] " down}")
-                SendEvent("{" cfgRev["teclaInputRevive"] " up}")
-            }
-            SendEvent("{Ctrl down}{1 down}")
-            SendEvent("{1 up}{Ctrl up}")
         }
+        if (cfgRev["teclaInputRevive"] != "N/A") {
+            SendEvent("{" cfgRev["teclaInputRevive"] " down}")
+            SendEvent("{" cfgRev["teclaInputRevive"] " up}")
+        }
+        _AlternarPokebola(modoLegado)
 
         MouseMove(xAtual, yAtual, 0)
     } finally {
@@ -52,6 +49,16 @@ _EnviarSequenciaRevive(cfgRev, modoLegado) {
     }
 
     return true
+}
+
+; Recolhe/solta o pokémon: clique direito no alvo (modo legado) ou Ctrl+1.
+_AlternarPokebola(modoLegado) {
+    if (modoLegado = "true") {
+        Click("Right")
+    } else {
+        SendEvent("{Ctrl down}{1 down}")
+        SendEvent("{1 up}{Ctrl up}")
+    }
 }
 
 ExecutarRevive() {

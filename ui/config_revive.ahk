@@ -3,7 +3,7 @@
 ; =====================================================
 
 AbrirTelaConfigRevive(tipo) {
-    _GCfg_Abrir(288, 256, _DesenharConfigRevive)
+    _GCfg_Abrir(288, 308,_DesenharConfigRevive)
 }
 
 _DesenharConfigRevive(g, w, h, hoverId) {
@@ -40,6 +40,17 @@ _DesenharConfigRevive(g, w, h, hoverId) {
         (*) => (CapturarCombo("Revive", "toggleHotkey", 0, "HOTKEY TOGGLE"), _GCfg_Redraw()), hoverId)
     y += 44 + 8
 
+    ; Detecção do pokémon fora (ícone do dedo da barra de habilidades):
+    ; evita recolher/soltar invertido quando ele já está guardado ou morto.
+    calibrado := CfgLer("Revive", "detectarDedo", "false") = "true"
+    _GCfg_Field(g, boxes, "dedo", pad, y, colW, "DETECTAR POKÉMON",
+        calibrado ? "RECAPTURAR" : "CAPTURAR DEDO",
+        (*) => (CapturarIconeDedo(), _GCfg_Redraw()), hoverId)
+    _GCfg_Field(g, boxes, "dedoTeste", col2, y, colW, "DETECÇÃO",
+        calibrado ? "TESTAR" : "INATIVA",
+        (*) => TestarDeteccaoDedo(), hoverId)
+    y += 44 + 8
+
     _GCfg_ShowInMini(g, boxes, pad, y, w - pad*2, "Revive", hoverId)
 
     Gdip_ResetClip(g)
@@ -53,7 +64,7 @@ _DesenharConfigRevive(g, w, h, hoverId) {
 ResetarConfigRevive() {
     _GCfg_Confirmar(
         "RESETAR REVIVE?",
-        "Isso limpará posição, teclas e delay.",
-        (*) => (ResetarSecao("Revive"), ShowHint("REVIVE RESETADO!", 1000, "success"))
+        "Isso limpará posição, teclas, delay e detecção.",
+        (*) => (ResetarSecao("Revive"), RemoverIconeDedo(), ShowHint("REVIVE RESETADO!", 1000, "success"))
     )
 }

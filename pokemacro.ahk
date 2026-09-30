@@ -16,6 +16,7 @@ TraySetIcon(A_ScriptDir "\icons\logo.png")
 #Include lib\hint.ahk
 #Include lib\window.ahk
 #Include lib\input.ahk
+#Include lib\deteccao.ahk
 
 #Include ui\mini_menu.ahk
 #Include ui\config_combo.ahk
