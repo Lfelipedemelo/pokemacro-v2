@@ -62,6 +62,7 @@ _HudMacroList() {
         Map("id", "c3", "nome", "revive",          "label", "Reviver",          "secao", "Revive",          "cfg", (*) => AbrirTelaConfigRevive("revive")),
         Map("id", "c4", "nome", "comboRevive",     "label", "Combo Revive",     "secao", "comboRevive",     "cfg", (*) => AbrirConfigComboRevive()),
         Map("id", "c5", "nome", "cooldown",        "label", "Cooldown",         "secao", "Cooldown",        "cfg", (*) => AbrirConfigCooldown()),
+        Map("id", "c6", "nome", "rotacao",         "label", "Rotação",          "secao", "Rotacao",         "cfg", (*) => AbrirConfigRotacao()),
     ]
 }
 
@@ -373,8 +374,12 @@ _HudPulseTick() {
     global macros, _hudVisivel
     if !_hudVisivel
         return
-    if (macros["comboPrincipal"] || macros["comboSecundario"] || macros["revive"] || macros["comboRevive"] || macros["cooldown"])
-        _HudRedraw()
+    for nome, ligado in macros {
+        if (ligado) {
+            _HudRedraw()
+            return
+        }
+    }
 }
 
 ; ── Ícone real (mesmos .png usados na janela principal) ───
@@ -384,6 +389,34 @@ _HudPulseTick() {
 _HudIconImg(nome, size) {
     global icons
     return Gdip_ScaledIcon(A_ScriptDir "\" icons[nome], size)
+}
+
+; Ícone da Rotação. Desligada: só o ícone, igual aos outros macros.
+; Ligada: o ícone escurece e o número do próximo Ctrl+N vem por cima,
+; em destaque — o aviso de "qual pokémon sai no próximo aperto". O
+; número é desenhado por frame (muda a cada pressionamento); o ícone
+; continua vindo do cache (_HudIconImg). Sem passo configurado: "—".
+_HudDesenharIconeRotacao(g, cx, cy, sz, ligado) {
+    global _HUD_SCALE
+    s := _HUD_SCALE
+
+    Gdip_DrawImage(g, _HudIconImg("rotacao", sz), cx - sz / 2, cy - sz / 2, sz, sz)
+    if !ligado
+        return
+
+    escuro := Gdip_BrushSolid(Gdip_Argb(165, "0x0f0d12"))
+    Gdip_FillEllipse(g, escuro, cx - sz / 2, cy - sz / 2, sz, sz)
+    Gdip_DeleteBrush(escuro)
+
+    prox := RotacaoProxima()
+    txt := prox ? String(prox.slot) : "—"
+    ; contorno escuro (texto deslocado em volta) para o número se
+    ; destacar sobre as cores do ícone
+    fonte := 17 * s, d := 1.2 * s
+    contorno := Gdip_Argb(255, "0x0a090c")
+    for off in [[-d, 0], [d, 0], [0, -d], [0, d], [-d, -d], [d, d], [-d, d], [d, -d]]
+        Gdip_DrawText(g, txt, fonte, true, contorno, cx - sz / 2 + off[1], cy - sz / 2 + off[2], sz, sz, true)
+    Gdip_DrawText(g, txt, fonte, true, Gdip_Argb(255, "0xffffff"), cx - sz / 2, cy - sz / 2, sz, sz, true)
 }
 
 _HudDrawMiniBtn(g, kind, cx, cy, d, hoverT) {
@@ -597,8 +630,11 @@ _HudDesenharFrame() {
         Gdip_DrawEllipse(g, ringPen, it.cx - it.r, it.cy - it.r, it.r * 2, it.r * 2)
         Gdip_DeletePen(ringPen)
 
-        Gdip_DrawImage(g, _HudIconImg(m["nome"], ICON_BAR_SZ),
-            it.cx - ICON_BAR_SZ / 2, it.cy - ICON_BAR_SZ / 2, ICON_BAR_SZ, ICON_BAR_SZ)
+        if (m["nome"] = "rotacao")
+            _HudDesenharIconeRotacao(g, it.cx, it.cy, ICON_BAR_SZ, ligado)
+        else
+            Gdip_DrawImage(g, _HudIconImg(m["nome"], ICON_BAR_SZ),
+                it.cx - ICON_BAR_SZ / 2, it.cy - ICON_BAR_SZ / 2, ICON_BAR_SZ, ICON_BAR_SZ)
 
         ; ⚙ do macro: apagado por padrão, acende quando o mouse está no
         ; ícone dele ou no próprio ⚙ — fica claro de qual macro é, e os

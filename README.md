@@ -32,7 +32,8 @@ Tutoriais ilustrados de como configurar e usar cada função, tela por tela:
 | 3 | [Revive](docs/03-revive.md) | Reviver com um botão + detecção do pokémon (ícone do dedo) |
 | 4 | [Combo Revive](docs/04-combo-revive.md) | Reviver e já soltar um combo |
 | 5 | [Cooldown](docs/05-cooldown.md) | Rotação de pokémons com `Ctrl + N` e tempos por posição |
-| 6 | [Configurações Gerais](docs/06-configuracoes-gerais.md) | Prefixo F, Modo Legado, tamanho, HUD vertical, Tecla de Pânico, Full Attack/Defense |
+| 6 | [Rotação](docs/06-rotacao.md) | Uma tecla que troca de pokémon numa ordem salva, com o próximo `Ctrl + N` na HUD |
+| 7 | [Configurações Gerais](docs/07-configuracoes-gerais.md) | Prefixo F, Modo Legado, tamanho, HUD vertical, Tecla de Pânico, Full Attack/Defense |
 
 <p align="center"><img src="docs/img/hud-hover.png" width="480" alt="HUD do PokéMacro"></p>
 
@@ -51,6 +52,7 @@ Tutoriais ilustrados de como configurar e usar cada função, tela por tela:
    - [Revive](#revive)
    - [Combo Revive](#combo-revive)
    - [Cooldown](#cooldown)
+   - [Rotação](#rotação)
 7. [Configurações Gerais](#configurações-gerais)
 8. [Sistema de Hotkeys](#sistema-de-hotkeys)
 9. [Perguntas Frequentes](#perguntas-frequentes)
@@ -94,7 +96,8 @@ macro_modular/
 │   ├── combo_secundario.png
 │   ├── revive.png
 │   ├── combo_revive.png
-│   └── cooldown.png
+│   ├── cooldown.png
+│   └── rotacao.png              ← ligada, a HUD escurece o ícone e mostra o próximo Ctrl+N por cima
 │
 ├── lib\                         ← Utilitários internos (não edite)
 │   ├── globals.ahk              ← Estado global, mapa de macros e tema de cores
@@ -110,6 +113,7 @@ macro_modular/
 │   ├── config_revive.ahk        ← Tela de configuração do Revive
 │   ├── config_combo_revive.ahk  ← Tela de configuração do Combo Revive
 │   ├── config_cooldown.ahk      ← Tela de configuração do Cooldown
+│   ├── config_rotacao.ahk       ← Tela de configuração da Rotação
 │   └── config_geral.ahk         ← Configurações globais do sistema
 │
 └── macros\                      ← Lógica de execução dos macros
@@ -117,7 +121,8 @@ macro_modular/
     ├── combo.ahk                ← Lógica do Combo Principal/Secundário
     ├── revive.ahk               ← Lógica do Revive
     ├── combo_revive.ahk         ← Lógica do Combo Revive
-    └── cooldown.ahk             ← Lógica do Cooldown Progressivo
+    ├── cooldown.ahk             ← Lógica do Cooldown Progressivo
+    └── rotacao.ahk              ← Lógica da Rotação (uma tecla que cicla os pokémons)
 ```
 
 ---
@@ -156,9 +161,9 @@ A interface é uma **HUD flutuante compacta**, desenhada com GDI+ (cantos arredo
 
 ```
 ┌──────────────────────┐
-│ (◉)(◉)(◉)(◉)(◉) │ ✕  │  ← ícones dos macros | fechar
-│  ⚙  ⚙  ⚙  ⚙  ⚙  │ ⚙  │  ← config de cada macro | config geral (só no hover)
-└──────────────────────┘
+│ (◉)(◉)(◉)(◉)(◉)(2) │ ✕  │  ← ícones dos macros | fechar
+│  ⚙  ⚙  ⚙  ⚙  ⚙  ⚙  │ ⚙  │  ← config de cada macro | config geral (só no hover)
+└─────────────────────────┘
 ```
 
 Com os ícones na vertical (Configurações Gerais → ÍCONES DA HUD), vira uma coluna de ícones (com o ✕ no fim) e, à direita dela, uma coluna de ⚙ (com o ⚙ geral ao lado do ✕).
@@ -317,12 +322,35 @@ Funciona exatamente igual ao **Combo Principal**, mas é uma configuração sepa
 | **Hotkey Cooldown** | Tecla que inicia/cancela o macro |
 | **Pokémon Inicial** | De qual posição (1-4) começa a rotação |
 | **Tempos de Espera** | Tempo em segundos (0 a 60) para cada posição (PKM 1, PKM 2, PKM 3, PKM 4). Ajuste arrastando a barra ou clicando no valor para digitar (Enter salva, Esc cancela) |
-| **Tecla Ctrl+N por Posição** | Qual número (1-9) é enviado com Ctrl em cada posição (PKM 1, PKM 2, PKM 3, PKM 4) — útil quando a ordem do time no jogo é diferente da ordem das posições. Cada clique no botão avança para o próximo número (volta a 1 depois do 9) |
+| **Tecla Ctrl+N por Posição** | Qual número (1-6) é enviado com Ctrl em cada posição (PKM 1, PKM 2, PKM 3, PKM 4) — útil quando a ordem do time no jogo é diferente da ordem das posições. Clicar no botão abre um seletor com os números 1 a 6 (clicar fora ou `Esc` fecha) |
 | **Full Defense** | Ativa/desativa o envio de Full Defense ao iniciar |
 | **Hotkey Ligar/Desligar** | Tecla para ativar/desativar o macro |
 
 > **Exemplo:** Pokémon Inicial = 2, tecla da posição 2 = 4, tecla da posição 1 = 3, tempos PKM2 = 10s, PKM1 = 6s.  
 > O macro vai: Ctrl+4 → 10s → Ctrl+3 → 6s → fim.
+
+---
+
+### Rotação
+
+**O que faz:** Troca de pokémon com **uma tecla só**, seguindo uma ordem salva. Cada aperto da **Tecla Macro** envia o `Ctrl+N` do passo atual e avança para o próximo. O ícone da Rotação na HUD mostra o número do **próximo** `Ctrl+N` quando ela está ligada. Guia completo: [docs/06-rotacao.md](docs/06-rotacao.md).
+
+**Como funciona:**
+1. Dois formatos: **2 × 4** (2 rotações de 4 pokémons, padrão `1-2-3-4 | 1-2-5-6`) ou **3 × 3** (3 rotações de 3, padrão `1-2-3 | 1-4-5 | 1-—-6`). As rotações seguem uma depois da outra, voltando ao início depois da última. Cada formato guarda sua própria configuração.
+2. Passos vazios (`—`) são pulados — ex.: o 2º passo da 3ª rotação no 3 × 3 (o pokémon repetido) vem vazio; com um `Ctrl+N` nele, a repetição passa a sair.
+3. Ligar a Rotação sempre começa do início; a **Tecla Reiniciar Rotação** faz o mesmo no meio do jogo. Por padrão o macro **pula o 1º passo de todas as rotações** (você puxa esse pokémon à mão no começo de cada rotação): no 2 × 4 os apertos enviam `2-3-4 | 2-5-6`, no 3 × 3 `2-3 | 4-5 | 6`, e voltam para o `2`.
+4. Cada aperto **interrompe o combo em andamento**, para as skills restantes não saírem no pokémon que acabou de entrar.
+
+#### Opções de Configuração
+
+| Campo | O que configura |
+|-------|----------------|
+| **Tecla Macro** | Tecla que envia o próximo pokémon da rotação |
+| **Ligar/Desligar** | Tecla para ativar/desativar o macro |
+| **Tecla Reiniciar Rotação** | Volta a rotação ao início (só com a Rotação ligada) |
+| **Rotações** | Formato `2 × 4` ou `3 × 3` — a tela mostra um cartão por rotação |
+| **1º Pokémon** | `PULAR` (padrão): o 1º passo das rotações nunca é enviado (puxado à mão). `SOLTAR`: o 1º passo sai normalmente |
+| **Cartões das rotações** | O `Ctrl+N` de cada passo. Clicar num passo abre um seletor com `1` a `6` e `—` (vazio); clicar fora ou `Esc` fecha. Mexer em um passo reinicia a rotação |
 
 ---
 
@@ -408,10 +436,10 @@ Ao pressionar **▶ DEFINIR** em qualquer campo de tecla, o sistema aguarda voc�
 
 O sistema possui proteção avançada contra conflito de hotkeys:
 
-- **Tecla já usada:** ao definir uma hotkey (tecla do macro, ligar/desligar ou pânico) que já pertence a outra, o sistema avisa e não salva. A única exceção é a tecla do macro dos três combos, que pode ser a mesma (só um combo fica ligado por vez).
+- **Tecla já usada:** ao definir uma hotkey (tecla do macro, ligar/desligar, reiniciar rotação ou pânico) que já pertence a outra, o sistema avisa e não salva. A única exceção é a tecla do macro dos três combos, que pode ser a mesma (só um combo fica ligado por vez).
 - **Mesma tecla no macro e no jogo:** Se a Tecla do Macro for a mesma que uma ação do jogo (ex: `F3` é hotkey e primeira habilidade do combo), o sistema usa supressão de input — a tecla não é enviada ao jogo duas vezes.
 - **Re-entrada bloqueada:** Enquanto um combo está em execução, apertar a tecla de qualquer combo é ignorado — não interrompe nem inicia outro combo por cima.
-- **Revive interrompe Combo:** Pressionar a tecla do Revive ou Combo Revive durante a execução de um combo **interrompe o combo imediatamente** e executa o revive.
+- **Revive e Rotação interrompem o Combo:** Pressionar a tecla do Revive, do Combo Revive ou da Rotação durante a execução de um combo **interrompe o combo imediatamente** e executa o revive / a troca de pokémon.
 - **Cancelamento do Cooldown:** Pressionar a hotkey do Cooldown durante a execução cancela o macro imediatamente.
 
 ### Botão Reset (↺)

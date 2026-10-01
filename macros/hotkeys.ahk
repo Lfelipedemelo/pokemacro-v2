@@ -22,6 +22,10 @@ DefinirMacro(nome, ligado) {
         }
     }
 
+    ; Ligar a Rotação sempre começa do 1º passo da 1ª rotação.
+    if (ligado && nome = "rotacao")
+        ReiniciarRotacao()
+
     ; Desligar também para o que estiver rodando daquele macro.
     if (!ligado) {
         if _EhComboExclusivo(nome)
@@ -60,7 +64,8 @@ DesligarTodosMacros() {
 
 ; ─── Hotkeys configuráveis ────────────────────────────────
 ; Lista de todas as teclas que viram hotkey, com rótulo para mensagens de
-; conflito. tipo: "exec" (executa o macro), "toggle" ou "panico".
+; conflito. tipo: "exec" (executa o macro), "toggle", "reiniciar" (volta
+; a Rotação ao 1º passo) ou "panico".
 _HotkeySlots() {
     global MACROS_INFO
     slots := []
@@ -68,6 +73,7 @@ _HotkeySlots() {
         slots.Push({ secao: info.secao, chave: info.exec,         tipo: "exec",   macro: nome, label: info.label })
         slots.Push({ secao: info.secao, chave: "toggleHotkey",    tipo: "toggle", macro: nome, label: info.label " (LIGAR/DESLIGAR)" })
     }
+    slots.Push({ secao: "Rotacao", chave: "teclaReiniciar", tipo: "reiniciar", macro: "rotacao", label: "ROTAÇÃO (REINICIAR)" })
     slots.Push({ secao: "Geral", chave: "teclaPanico", tipo: "panico", macro: "", label: "TECLA DE PÂNICO" })
     return slots
 }
@@ -152,6 +158,9 @@ AtualizarHotkeyCombo() {
         pedidos.Push({ chave: _MontarChaveHk(CfgLer(info.secao, info.exec, "")), crit: critExec[nome], cb: ProcessarPressionamento })
         pedidos.Push({ chave: _MontarChaveHk(CfgLer(info.secao, "toggleHotkey", "")), crit: critJogo, cb: ToggleMacroPorHotkey.Bind(nome) })
     }
+    ; Reiniciar a Rotação só vale com ela ligada (mesmo critério da tecla
+    ; de executar) — desligada, a tecla volta a chegar ao jogo.
+    pedidos.Push({ chave: _MontarChaveHk(CfgLer("Rotacao", "teclaReiniciar", "")), crit: critExec["rotacao"], cb: (*) => ReiniciarRotacao(true) })
     pedidos.Push({ chave: _MontarChaveHk(CfgLer("Geral", "teclaPanico", "")), crit: critJogo, cb: (*) => DesligarTodosMacros() })
 
     for p in pedidos {
@@ -222,6 +231,8 @@ ProcessarPressionamento(thisHotkey) {
                 } else {
                     ExecutarMacroCooldown()
                 }
+            case "rotacao":
+                ExecutarRotacao()
         }
     } finally {
         if (!interrompivel)

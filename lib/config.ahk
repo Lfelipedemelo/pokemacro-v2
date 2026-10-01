@@ -15,7 +15,7 @@ global _cfgCache := Map()
 global _CFG_NIL  := Chr(1)   ; marca "chave ausente no INI" dentro do cache
 
 global TEMPO_COOLDOWN_MAX := 60   ; segundos — faixa dos tempos de espera do Cooldown
-global TECLA_COOLDOWN_MAX := 9    ; faixa das teclas (Ctrl+1..Ctrl+9) por posição do Cooldown
+global TECLA_POKEMON_MAX  := 6    ; pokémons do time (Ctrl+1..Ctrl+6) — faixa das teclas do Cooldown e dos passos da Rotação
 
 CfgLer(secao, chave, padrao := "") {
     global configFile, _cfgCache, _CFG_NIL
@@ -101,12 +101,40 @@ _CfgTempoCooldown(n) {
 ; (ex.: ordem do time trocada, "pokémon inicial" 2 chamado com Ctrl+4).
 ; Padrão é n, igual ao comportamento antigo (posição = slot).
 _CfgTeclaCooldown(n) {
-    return Max(1, Min(TECLA_COOLDOWN_MAX, _CfgInt("Cooldown", "tecla" n, n)))
+    return Max(1, Min(TECLA_POKEMON_MAX, _CfgInt("Cooldown", "tecla" n, n)))
+}
+
+; Formato da Rotação: "2x4" (2 rotações de 4 pokémons, padrão) ou "3x3"
+; (3 rotações de 3). Devolve { modo, rotacoes, passos }.
+GetFormatoRotacao() {
+    modo := CfgLer("Rotacao", "formato", "2x4") = "3x3" ? "3x3" : "2x4"
+    return (modo = "3x3") ? { modo: "3x3", rotacoes: 3, passos: 3 } : { modo: "2x4", rotacoes: 2, passos: 4 }
+}
+
+; Pokémon (Ctrl+N) do passo 'passo' da rotação 'rot' do macro Rotação, no
+; formato atual. 0 = passo vazio (pulado). Cada formato tem suas próprias
+; chaves no INI ("r1p1".. no 2x4, "t1p1".. no 3x3), então trocar de
+; formato não perde a configuração do outro. Padrões:
+;   2x4: 1-2-3-4 | 1-2-5-6
+;   3x3: 1-2-3 | 1-4-5 | 1-—-6 — na 3ª rotação o 2º passo seria repetir
+;        um pokémon antes do 6º; vazio por padrão, então do 1º vai direto
+;        ao 3º (o usuário põe um Ctrl+N ali se quiser a repetição).
+_CfgSlotRotacao(rot, passo) {
+    static padroes := Map(
+        "2x4", [[1, 2, 3, 4], [1, 2, 5, 6]],
+        "3x3", [[1, 2, 3], [1, 4, 5], [1, 0, 6]])
+    modo := GetFormatoRotacao().modo
+    return Max(0, Min(TECLA_POKEMON_MAX, _CfgInt("Rotacao", _ChaveSlotRotacao(rot, passo), padroes[modo][rot][passo])))
+}
+
+; Chave do INI do passo, no formato atual (ver _CfgSlotRotacao).
+_ChaveSlotRotacao(rot, passo) {
+    return ((GetFormatoRotacao().modo = "3x3") ? "t" : "r") rot "p" passo
 }
 
 ; Atalho para checar se um macro deve aparecer no mini menu.
 ; secao deve ser a seção exata do INI: "comboPrincipal", "comboSecundario",
-; "comboRevive", "Revive" ou "Cooldown"
+; "comboRevive", "Revive", "Cooldown" ou "Rotacao"
 GetShowInMini(secao) {
     return CfgLer(secao, "showInMini", "true") = "true"
 }

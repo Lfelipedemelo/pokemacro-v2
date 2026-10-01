@@ -1,6 +1,6 @@
-# 6. Configurações Gerais
+# 7. Configurações Gerais
 
-[⬅ Cooldown](05-cooldown.md) · [README](../README.md) · Início: [Primeiros passos](01-primeiros-passos.md)
+[⬅ Rotação](06-rotacao.md) · [README](../README.md) · Início: [Primeiros passos](01-primeiros-passos.md)
 
 Opções **globais**, que valem para todos os macros. Para abrir: passe o mouse na HUD e clique no **⚙ geral** (o da direita, abaixo do **✕**).
 
@@ -79,4 +79,4 @@ Um cartão `SIM | NÃO` para cada macro. Com `NÃO`, o ícone some da HUD — ú
 
 ---
 
-[⬅ Cooldown](05-cooldown.md) · [README](../README.md) · Início: [Primeiros passos](01-primeiros-passos.md)
+[⬅ Rotação](06-rotacao.md) · [README](../README.md) · Início: [Primeiros passos](01-primeiros-passos.md)

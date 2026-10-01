@@ -25,6 +25,7 @@
 ;   _GCfg_Segmented(...)           — cartão com N opções (pílula segmentada)
 ;   _GCfg_Slider(...)              — cartão com barra arrastável (valores numéricos)
 ;   _GCfg_MiniSlider(...)          — versão compacta do slider, para vários lado a lado
+;   _GCfg_AbrirSeletor(...)        — painel "dropdown" com opções lado a lado, aberto sob um botão
 ;   _GCfg_ShowInMini(...)          — cartão "exibir no mini menu" (compartilhado entre telas)
 
 global _gcfgGui     := 0
@@ -42,6 +43,7 @@ global _gcfgDraw    := 0
 global _gcfgDragBox := 0
 global _gcfgConfirm := 0   ; confirmação aberta por cima da tela ({titulo, sub, onSim, textoSim}) ou 0
 global _gcfgEdit    := 0   ; chip de slider sendo editado pelo teclado (ver _GCfg_EditarValorSlider) ou 0
+global _gcfgSeletor := 0   ; seletor de opções aberto sobre um botão (ver _GCfg_AbrirSeletor) ou 0
 global _gcfgCanvas  := 0   ; canvas GDI+ reaproveitado entre redesenhos (ver _GCfg_Redraw)
 
 ; Fator de escala aplicado a todas as telas de configuração. Widgets
@@ -66,12 +68,13 @@ global _GCFG_SCALE      := _GCFG_SCALE_BASE * EscalaFator()
 ; fica visível por vez, mas clicar num botão de config sempre leva a
 ; ele (em vez de ficar sem efeito porque "já tinha algo aberto").
 _GCfg_Abrir(w, h, drawFn) {
-    global _gcfgGui, _gcfgW, _gcfgH, _gcfgX, _gcfgY, _gcfgBoxes, _gcfgHoverId, _gcfgDraw, _gcfgDragBox, _GCFG_SCALE, _gcfgConfirm, _gcfgEdit
+    global _gcfgGui, _gcfgW, _gcfgH, _gcfgX, _gcfgY, _gcfgBoxes, _gcfgHoverId, _gcfgDraw, _gcfgDragBox, _GCFG_SCALE, _gcfgConfirm, _gcfgEdit, _gcfgSeletor
 
     if (_gcfgGui)
         _GCfg_Fechar()
     _gcfgConfirm := 0
     _gcfgEdit    := 0
+    _gcfgSeletor := 0
 
     Gdip_EnsureStarted()
 
@@ -117,7 +120,7 @@ _GCfg_Abrir(w, h, drawFn) {
 }
 
 _GCfg_Fechar() {
-    global _gcfgGui, _gcfgDragBox, _gcfgX, _gcfgY, _gcfgConfirm, _gcfgCanvas
+    global _gcfgGui, _gcfgDragBox, _gcfgX, _gcfgY, _gcfgConfirm, _gcfgCanvas, _gcfgSeletor
     if (!_gcfgGui)
         return
     _GCfg_ConfirmarEdicao()   ; fechar com um valor digitado e não confirmado salva ele
@@ -125,6 +128,7 @@ _GCfg_Fechar() {
     SalvarCfg("Geral", "configPosY", _gcfgY)
     _gcfgDragBox := 0
     _gcfgConfirm := 0
+    _gcfgSeletor := 0
     try _gcfgGui.Destroy()
     _gcfgGui := 0
     if (_gcfgCanvas) {
@@ -135,7 +139,7 @@ _GCfg_Fechar() {
 
 ; ── Desenho ────────────────────────────────────────────
 _GCfg_Redraw() {
-    global _gcfgGui, _gcfgW, _gcfgH, _gcfgX, _gcfgY, _gcfgBoxes, _gcfgDraw, _gcfgHoverId, _GCFG_SCALE, _gcfgConfirm, _gcfgCanvas
+    global _gcfgGui, _gcfgW, _gcfgH, _gcfgX, _gcfgY, _gcfgBoxes, _gcfgDraw, _gcfgHoverId, _GCFG_SCALE, _gcfgConfirm, _gcfgCanvas, _gcfgSeletor
     if (!_gcfgGui || !_gcfgDraw)
         return
     Critical "On"
@@ -156,6 +160,8 @@ _GCfg_Redraw() {
         ; recebem clique (ver _GCfg_Confirmar).
         if (_gcfgConfirm)
             _gcfgBoxes := _GCfg_DesenharConfirmacao(canvas.pGraphics, _gcfgW, _gcfgH, _gcfgHoverId)
+        else if (_gcfgSeletor)
+            _gcfgBoxes := _GCfg_DesenharSeletor(canvas.pGraphics, _gcfgW, _gcfgH, _gcfgHoverId)
         Gdip_PresentLayeredCanvas(canvas, _gcfgGui.Hwnd, _gcfgX, _gcfgY)
     } finally {
         ; Um erro no desenho não pode deixar o script inteiro em Critical
@@ -236,6 +242,103 @@ _GCfg_DesenharConfirmacao(g, w, h, hoverId) {
     boxes.Push({ id: "conf_nao", x: bxNao, y: by, w: bw, h: bh, onClick: _GCfg_ResponderConfirmacao.Bind(false) })
     ; véu inteiro por último: bloqueia clique/arraste no resto da tela
     boxes.Push({ id: "conf_veu", x: 0, y: 0, w: w, h: h })
+    return boxes
+}
+
+; ── Seletor de opções (painel "dropdown" sob um botão) ──
+; Em vez de um botão que cicla o valor a cada clique, abre um painel logo
+; abaixo (ou acima, se não couber) do botão 'ancora' ({x, y, w, h}, em
+; coordenadas lógicas) com todas as opções lado a lado; a atual ('sel',
+; índice 1-based) fica destacada. Clicar numa opção chama onEscolher(idx)
+; e fecha; clicar fora ou Esc só fecha. Enquanto aberto, só o painel
+; recebe clique — mesmo esquema da confirmação.
+_GCfg_AbrirSeletor(ancora, titulo, opcoes, sel, onEscolher) {
+    global _gcfgSeletor, _gcfgHoverId, _gcfgGui
+    if (!_gcfgGui)
+        return
+    _gcfgSeletor := { ancora: ancora, titulo: titulo, opcoes: opcoes, sel: sel, onEscolher: onEscolher }
+    _gcfgHoverId := ""
+    _GCfg_Redraw()
+}
+
+_GCfg_FecharSeletor(*) {
+    global _gcfgSeletor, _gcfgHoverId
+    _gcfgSeletor := 0
+    _gcfgHoverId := ""
+}
+
+_GCfg_EscolherNoSeletor(idx, *) {
+    global _gcfgSeletor
+    s := _gcfgSeletor
+    _GCfg_FecharSeletor()
+    if (s)
+        s.onEscolher.Call(idx)
+}
+
+_GCfg_DesenharSeletor(g, w, h, hoverId) {
+    global _gcfgSeletor
+    s := _gcfgSeletor
+    a := s.ancora
+    boxes := []
+
+    ; véu leve: a tela continua visível, mas fica claro que o foco é o painel
+    Gdip_SetClipRoundRect(g, 0, 0, w, h, 14)
+    veu := Gdip_BrushSolid(Gdip_Argb(110, "0x0a0c10"))
+    Gdip_FillRect(g, veu, 0, 0, w, h)
+    Gdip_DeleteBrush(veu)
+    Gdip_ResetClip(g)
+
+    ; o botão de origem continua destacado sob o véu
+    ancPen := Gdip_Pen(Gdip_Argb(255, T()["ACCENT2"]), 1.5)
+    Gdip_DrawRoundRect(g, ancPen, a.x, a.y, a.w, a.h, 6)
+    Gdip_DeletePen(ancPen)
+
+    n := s.opcoes.Length
+    chipH := 24, gap := 4, padI := 8, tituloH := 18
+    ; chips de 28px, encolhidos quando muitas opções não caberiam na
+    ; largura da tela
+    chipW := Min(28, Floor((w - 16 - padI * 2 - (n - 1) * gap) / n))
+    pw := padI * 2 + n * chipW + (n - 1) * gap
+    ph := padI + tituloH + chipH + padI
+    px := Max(8, Min(a.x + a.w / 2 - pw / 2, w - 8 - pw))
+    py := a.y + a.h + 4
+    if (py + ph > h - 8)
+        py := a.y - 4 - ph
+
+    sombra := Gdip_BrushSolid(Gdip_Argb(120, "0x000000"))
+    Gdip_FillRoundRect(g, sombra, px + 1, py + 3, pw, ph, 9)
+    Gdip_DeleteBrush(sombra)
+    card := Gdip_BrushSolid(Gdip_Argb(255, T()["BG3"]))
+    Gdip_FillRoundRect(g, card, px, py, pw, ph, 9)
+    Gdip_DeleteBrush(card)
+    borda := Gdip_Pen(Gdip_Argb(255, "0x3a4558"), 1)
+    Gdip_DrawRoundRect(g, borda, px, py, pw, ph, 9)
+    Gdip_DeletePen(borda)
+
+    Gdip_DrawText(g, s.titulo, 8, true, Gdip_Argb(255, T()["MUTED"]), px + padI, py + padI - 2, pw - padI * 2, tituloH, false)
+
+    cy := py + padI + tituloH
+    Loop n {
+        idx := A_Index
+        cx := px + padI + (idx - 1) * (chipW + gap)
+        id := "sel_" idx
+        ativo := (idx = s.sel), hov := (hoverId = id)
+        cor := ativo ? T()["ACCENT2"] : (hov ? T()["BG2"] : T()["BG"])
+        br := Gdip_BrushSolid(Gdip_Argb(255, cor))
+        Gdip_FillRoundRect(g, br, cx, cy, chipW, chipH, 6)
+        Gdip_DeleteBrush(br)
+        if (hov && !ativo) {
+            hp := Gdip_Pen(Gdip_Argb(255, T()["ACCENT2"]), 1)
+            Gdip_DrawRoundRect(g, hp, cx, cy, chipW, chipH, 6)
+            Gdip_DeletePen(hp)
+        }
+        Gdip_DrawText(g, s.opcoes[idx], 10, true, Gdip_Argb(255, (ativo || hov) ? T()["TEXT"] : T()["MUTED"]), cx, cy, chipW, chipH, true)
+        boxes.Push({ id: id, x: cx, y: cy, w: chipW, h: chipH, onClick: _GCfg_EscolherNoSeletor.Bind(idx) })
+    }
+    ; o próprio painel absorve cliques entre os chips; o véu (por último)
+    ; fecha o seletor em qualquer clique fora dele
+    boxes.Push({ id: "sel_painel", x: px, y: py, w: pw, h: ph })
+    boxes.Push({ id: "sel_veu", x: 0, y: 0, w: w, h: h, onClick: _GCfg_FecharSeletor })
     return boxes
 }
 
@@ -478,8 +581,15 @@ _GCfg_ConfirmarEdicao() {
 ; as teclas pelo IsDialogMessage, que come Enter/Esc antes de virarem
 ; WM_CHAR. Devolver 0 aqui impede esse processamento padrão.
 _GCfg_WM_KeyDown(wParam, lParam, msg, hwnd) {
-    global _gcfgGui, _gcfgEdit
-    if (!_gcfgGui || hwnd != _gcfgGui.Hwnd || !_gcfgEdit)
+    global _gcfgGui, _gcfgEdit, _gcfgSeletor
+    if (!_gcfgGui || hwnd != _gcfgGui.Hwnd)
+        return
+    if (_gcfgSeletor && wParam = 0x1B) {   ; Esc fecha o seletor aberto
+        _GCfg_FecharSeletor()
+        _GCfg_Redraw()
+        return 0
+    }
+    if (!_gcfgEdit)
         return
     e := _gcfgEdit
     switch wParam {

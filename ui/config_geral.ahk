@@ -43,7 +43,7 @@ _ConfigGeral_EscalaNome(idx) {
 ; ── Macros que podem ser exibidos/ocultados na HUD (Ctrl+F12) ──
 ; Mesma seção/chave "showInMini" usada pelo toggle "EXIBIR NO MINI MENU"
 ; de cada tela de macro (_GCfg_ShowInMini em lib\gdip_config.ahk) — este
-; painel só dá um lugar único para ver e mexer nos 5 de uma vez.
+; painel só dá um lugar único para ver e mexer em todos de uma vez.
 _ConfigGeral_MacrosVisiveis() {
     return [
         Map("secao", "comboPrincipal",  "label", "COMBO PRINCIPAL"),
@@ -51,6 +51,7 @@ _ConfigGeral_MacrosVisiveis() {
         Map("secao", "Revive",          "label", "REVIVER"),
         Map("secao", "comboRevive",     "label", "COMBO REVIVE"),
         Map("secao", "Cooldown",        "label", "COOLDOWN"),
+        Map("secao", "Rotacao",         "label", "ROTAÇÃO"),
     ]
 }
 
@@ -129,7 +130,8 @@ _DesenharConfigGeral(g, w, h, hoverId) {
     _GCfg_VisibilidadeItem(g, boxes, col2, y, colW, itens[4]["secao"], itens[4]["label"], hoverId)
     y += 44 + 8
 
-    _GCfg_VisibilidadeItem(g, boxes, pad, y, w - pad*2, itens[5]["secao"], itens[5]["label"], hoverId)
+    _GCfg_VisibilidadeItem(g, boxes, pad,  y, colW, itens[5]["secao"], itens[5]["label"], hoverId)
+    _GCfg_VisibilidadeItem(g, boxes, col2, y, colW, itens[6]["secao"], itens[6]["label"], hoverId)
     y += 44
 
     Gdip_ResetClip(g)

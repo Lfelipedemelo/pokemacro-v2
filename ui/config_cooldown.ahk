@@ -64,7 +64,7 @@ _DesenharConfigCooldown(g, w, h, hoverId) {
         idx := A_Index
         sx  := pad + 8 + teclaSlotW * (idx - 1)
         _GCfg_MiniButton(g, boxes, "tecla" idx, sx, y + 24, teclaSlotW, "PKM " idx, "Ctrl+" cfg["tecla" idx],
-            _CiclarTeclaCooldown.Bind(idx), hoverId)
+            _EscolherTeclaCooldown.Bind(idx, { x: sx, y: y + 24 + 15, w: teclaSlotW, h: 21 }), hoverId)
     }
     y += teclaH + 8
 
@@ -84,12 +84,14 @@ _DesenharConfigCooldown(g, w, h, hoverId) {
     return boxes
 }
 
-; Avança a tecla (Ctrl+N) da posição idx para o próximo número, voltando
-; a 1 depois do máximo — cada clique no botão troca o valor mostrado.
-_CiclarTeclaCooldown(idx, *) {
-    atual := GetCfg("Cooldown")["tecla" idx]
-    novo  := (atual >= TECLA_COOLDOWN_MAX) ? 1 : atual + 1
-    SalvarCfg("Cooldown", "tecla" idx, novo)
+; Clicar no botão da posição idx abre o seletor (Ctrl+1..6) logo abaixo
+; dele; 'ancora' é o retângulo do botão, para o painel se posicionar.
+_EscolherTeclaCooldown(idx, ancora, *) {
+    opcoes := []
+    Loop TECLA_POKEMON_MAX
+        opcoes.Push(String(A_Index))
+    _GCfg_AbrirSeletor(ancora, "TECLA DO PKM " idx " (CTRL + N)", opcoes,
+        GetCfg("Cooldown")["tecla" idx], (n) => SalvarCfg("Cooldown", "tecla" idx, n))
 }
 
 ResetarCooldown() {

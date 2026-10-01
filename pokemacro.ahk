@@ -24,12 +24,14 @@ TraySetIcon(A_ScriptDir "\icons\logo.png")
 #Include ui\config_cooldown.ahk
 #Include ui\config_combo_revive.ahk
 #Include ui\config_geral.ahk
+#Include ui\config_rotacao.ahk
 
 #Include macros\hotkeys.ahk
 #Include macros\combo.ahk
 #Include macros\revive.ahk
 #Include macros\cooldown.ahk
 #Include macros\combo_revive.ahk
+#Include macros\rotacao.ahk
 
 ; =====================================================
 ; INICIALIZAÇÃO

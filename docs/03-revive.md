@@ -9,7 +9,7 @@ O Revive faz, com um único botão, toda a sequência de reviver o pokémon: rec
 ## 3.1 O que o revive faz, na ordem
 
 1. Move o mouse para a **Posição** configurada.
-2. **Recolhe** o pokémon (`Ctrl + 1`, ou clique direito no [Modo Legado](06-configuracoes-gerais.md#passo-2--modo-legado)).
+2. **Recolhe** o pokémon (`Ctrl + 1`, ou clique direito no [Modo Legado](07-configuracoes-gerais.md#passo-2--modo-legado)).
    - Com a **detecção do pokémon** calibrada (veja 3.4), esse passo é **pulado** se o pokémon já estiver guardado ou morto — evita que a sequência saia invertida.
 3. Espera o **Delay entre Cliques**.
 4. Aperta a **Hotkey Revive** (a tecla do item de revive no jogo).
@@ -115,7 +115,7 @@ Se o resultado estiver errado, clique em **RECAPTURAR** e repita a calibração 
 | O pokémon é solto em vez de recolhido | Calibre a **detecção do pokémon** (3.4) |
 | O item é usado mas o pokémon não revive | Recapture a **Posição** exatamente sobre o pokémon; aumente o **Delay** |
 | Nada acontece | Revive ligado na HUD? Jogo em foco? Tecla do Macro definida? |
-| Funciona às vezes, às vezes não | Teste o **Modo Legado** nas [Configurações Gerais](06-configuracoes-gerais.md#passo-2--modo-legado) |
+| Funciona às vezes, às vezes não | Teste o **Modo Legado** nas [Configurações Gerais](07-configuracoes-gerais.md#passo-2--modo-legado) |
 
 ---
 

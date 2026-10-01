@@ -32,11 +32,13 @@ SetWorkingDir(A_ScriptDir)
 #Include ..\..\ui\config_cooldown.ahk
 #Include ..\..\ui\config_combo_revive.ahk
 #Include ..\..\ui\config_geral.ahk
+#Include ..\..\ui\config_rotacao.ahk
 #Include ..\..\macros\hotkeys.ahk
 #Include ..\..\macros\combo.ahk
 #Include ..\..\macros\revive.ahk
 #Include ..\..\macros\cooldown.ahk
 #Include ..\..\macros\combo_revive.ahk
+#Include ..\..\macros\rotacao.ahk
 
 ; ── Config de demonstração (cópia temporária — nunca o config.ini real) ──
 FileCopy(A_ScriptDir "\demo.ini", A_ScriptDir "\demo_run.ini", true)
@@ -101,8 +103,10 @@ AnotarCartao(g, boxes, id, n) {
 }
 
 ; Renderiza uma tela de config (mesma função de desenho do app) num PNG.
-RenderCfg(nome, w, h, drawFn, anot, hoverId := "", confirm := 0) {
-    global S, OUT, _gcfgConfirm
+; seletor: { botao: id do box que abre o seletor, ... } — clica nele (o
+; onClick abre o seletor via _GCfg_AbrirSeletor) e desenha o painel.
+RenderCfg(nome, w, h, drawFn, anot, hoverId := "", confirm := 0, seletor := 0) {
+    global S, OUT, _gcfgConfirm, _gcfgSeletor, _gcfgGui
     canvas := Gdip_NewLayeredCanvas(w * S, h * S)
     g := canvas.pGraphics
     Gdip_ScaleTransform(g, S, S)
@@ -111,6 +115,15 @@ RenderCfg(nome, w, h, drawFn, anot, hoverId := "", confirm := 0) {
         _gcfgConfirm := confirm
         _GCfg_DesenharConfirmacao(g, w, h, hoverId)
         _gcfgConfirm := 0
+    }
+    if (seletor) {
+        ; _GCfg_AbrirSeletor exige uma tela aberta e redesenha nela — uma
+        ; janela fictícia escondida basta; o desenho que vale é o daqui.
+        _gcfgGui := Gui("-Caption +ToolWindow +E0x80000")
+        AcharBox(boxes, seletor.botao).onClick.Call()
+        _gcfgGui.Destroy(), _gcfgGui := 0
+        _GCfg_DesenharSeletor(g, w, h, seletor.hover)
+        _gcfgSeletor := 0
     }
     for a in anot {
         if (a.Length = 2)
@@ -218,6 +231,29 @@ RenderCfg("config-combo-revive", 288, 360, _DesenharConfigComboRevive,
 RenderCfg("config-cooldown", 288, 422, _DesenharConfigCooldown,
     [[1, "hkcd"], [2, "toggle"], [3, "pkm_1"], [4, 267, 155], [5, 267, 237], [6, "fd_a"], [7, "showmini_a"]])
 
+; Seletor aberto na tecla do PKM 3 (Ctrl+4), mouse sobre o 3.
+RenderCfg("config-cooldown-seletor", 288, 422, _DesenharConfigCooldown, [], "", 0,
+    { botao: "tecla3", hover: "sel_3" })
+
+; Padrão (1º de cada rotação à mão): sequência 2-3-4 | 2-5-6; dois apertos
+; depois do início, o próximo é o Ctrl+4 da 1ª rotação (contorno verde).
+; O marcador 6 vai em todos os cartões de rotação (um por rotação).
+_rotacaoPos := 3
+RenderCfg("config-rotacao", 288, AlturaConfigRotacao(), _DesenharConfigRotacao,
+    [[1, "hkmacro"], [2, "toggle"], [3, "reiniciar"], [4, "formato_a"], [5, "primeiro_a"], [6, 267, 207], [6, 267, 289], [7, "showmini_a"]])
+
+; Seletor aberto no 3º passo da 2ª rotação (Ctrl+5), mouse sobre o 6.
+RenderCfg("config-rotacao-seletor", 288, AlturaConfigRotacao(), _DesenharConfigRotacao, [], "", 0,
+    { botao: "r2p3", hover: "sel_6" })
+
+; Formato 3x3 (sequência padrão 2-3 | 4-5 | 6, a 3ª rotação com o 2º
+; passo vazio): ao ligar, o próximo é o Ctrl+2 da 1ª rotação.
+SalvarCfg("Rotacao", "formato", "3x3")
+_rotacaoPos := 1
+RenderCfg("config-rotacao-3x3", 288, AlturaConfigRotacao(), _DesenharConfigRotacao,
+    [[1, "hkmacro"], [2, "toggle"], [3, "reiniciar"], [4, "formato_a"], [5, "primeiro_a"], [6, 267, 207], [6, 267, 289], [6, 267, 371], [7, "showmini_a"]])
+SalvarCfg("Rotacao", "formato", "2x4")
+
 RenderCfg("config-geral", 288, 476, _DesenharConfigGeral,
     [[1, "prefF_a"], [2, "legado_a"], [3, "escala_1"], [4, "orient_a"], [5, "panico"], [6, "fa"], [7, "fd"], [8, "vis_comboPrincipal_a"]])
 
@@ -229,10 +265,13 @@ _HUD_SCALE := 2
 miniGui := Gui("-Caption +ToolWindow +E0x80000")
 macros["comboPrincipal"] := true
 macros["revive"] := true
+macros["rotacao"] := true
+_rotacaoPos := 1   ; início padrão (1º pokémon à mão): o ícone da Rotação mostra "2"
 RenderHud("hud", false, Map())
 RenderHud("hud-hover", true, Map("bar_c1", 1.0), true)
 macros["comboPrincipal"] := false
 macros["revive"] := false
+macros["rotacao"] := false
 RenderHud("hud-desligada", false, Map())
 SalvarCfg("Geral", "hudOrientacao", "vertical")
 macros["comboPrincipal"] := true
@@ -254,6 +293,7 @@ RenderHint("hint-dedo-teste", "DEDO ENCONTRADO em 1012, 941 (3 ms) — pokémon 
 RenderHint("hint-dedo-teste-nao", "DEDO NÃO ENCONTRADO (21 ms) — pokémon guardado/morto", "warn")
 RenderHint("hint-proibido", "Clique esquerdo/direito não pode ser usado", "warn")
 RenderHint("hint-revive-erro", "Erro: Defina a posição primeiro!", "danger")
+RenderHint("hint-rotacao-reiniciada", "ROTAÇÃO REINICIADA — próximo: Ctrl+2", "info")
 
 FileDelete(A_ScriptDir "\demo_run.ini")
 ExitApp()

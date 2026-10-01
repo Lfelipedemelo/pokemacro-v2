@@ -34,7 +34,8 @@ global macros := Map(
     "comboSecundario", false,
     "revive",          false,
     "cooldown",        false,
-    "comboRevive",     false
+    "comboRevive",     false,
+    "rotacao",         false
 )
 
 ; Metadados de cada macro: seção do INI, chave da tecla que executa,
@@ -47,23 +48,31 @@ global MACROS_INFO := Map(
     "comboSecundario", { secao: "comboSecundario", exec: "teclaHotkey",    label: "COMBO SECUNDÁRIO", interrompivel: false },
     "comboRevive",     { secao: "comboRevive",     exec: "teclaHotkey",    label: "COMBO REVIVE",     interrompivel: true  },
     "revive",          { secao: "Revive",          exec: "teclaHotkey",    label: "REVIVE",           interrompivel: true  },
-    "cooldown",        { secao: "Cooldown",        exec: "hotkeyCooldown", label: "COOLDOWN",         interrompivel: true  }
+    "cooldown",        { secao: "Cooldown",        exec: "hotkeyCooldown", label: "COOLDOWN",         interrompivel: true  },
+    "rotacao",         { secao: "Rotacao",         exec: "teclaHotkey",    label: "ROTAÇÃO",          interrompivel: true  }
 )
 
 ; Ordem de prioridade do despachante quando a mesma tecla serve a mais
 ; de um macro ligado (ver ProcessarPressionamento).
-global MACROS_ORDEM := ["comboPrincipal", "comboSecundario", "comboRevive", "revive", "cooldown"]
+global MACROS_ORDEM := ["comboPrincipal", "comboSecundario", "comboRevive", "revive", "cooldown", "rotacao"]
 
 ; Os três combos são mutuamente exclusivos (ligar um desliga os outros).
 global COMBOS_EXCLUSIVOS := ["comboPrincipal", "comboSecundario", "comboRevive"]
 
-; Mapa de ícones usados na interface principal
+; Cor da Rotação (verde-água das setas de icons\rotacao.png): faixa do
+; cabeçalho da tela de config e contorno do próximo passo nela.
+global ROTACAO_COR := "0x34c79c"
+
+; Mapa de ícones usados na interface principal. Com a Rotação ligada,
+; a HUD escurece o ícone dela e desenha por cima o próximo Ctrl+N (ver
+; _HudDesenharIconeRotacao em ui\mini_menu.ahk).
 global icons := Map(
     "comboPrincipal",  "icons\combo_principal.png",
     "comboSecundario", "icons\combo_secundario.png",
     "revive",          "icons\revive.png",
     "cooldown",        "icons\cooldown.png",
-    "comboRevive",     "icons\combo_revive.png"
+    "comboRevive",     "icons\combo_revive.png",
+    "rotacao",         "icons\rotacao.png"
 )
 
 ; ─── Tema fixo (Pokédex Azul) ────────────────────

@@ -33,14 +33,15 @@ A HUD é a interface principal. Em repouso ela mostra só os ícones dos macros:
 | 3º — poção com aro cinza | **Reviver** |
 | 4º — poção com aro vermelho | **Combo Revive** |
 | 5º — relógio dourado | **Cooldown** |
+| 6º — duas pokébolas com setas verdes | **Rotação** — ligada, o ícone escurece e mostra o número do próximo `Ctrl + N` que ela vai enviar ([guia](06-rotacao.md)) |
 
 ### Ligar e desligar um macro
 
 Clique no ícone. Quando o macro está **ligado**, o ícone ganha um **anel azul com brilho pulsante**:
 
-<p align="center"><img src="img/hud.png" width="420" alt="HUD com Combo Principal e Reviver ligados"></p>
+<p align="center"><img src="img/hud.png" width="420" alt="HUD com Combo Principal, Reviver e Rotação ligados"></p>
 
-Na imagem acima, **Combo Principal** e **Reviver** estão ligados; os outros estão desligados. Clique de novo para desligar.
+Na imagem acima, **Combo Principal**, **Reviver** e **Rotação** estão ligados; os outros estão desligados. Clique de novo para desligar.
 
 > 💡 Clicar na HUD **não tira o foco do jogo** — você pode ligar/desligar macros no meio da partida.
 >
@@ -56,7 +57,7 @@ Passe o mouse sobre a HUD e ela revela uma segunda fileira:
 |:-:|----------|-----------|
 | **1** | Ícone do macro | Liga/desliga o macro. Com o mouse em cima aparece um tooltip com o nome do macro |
 | **2** | ⚙ do macro | Abre a **tela de configuração daquele macro**. Fica apagado e acende quando o mouse passa no ícone correspondente |
-| **3** | ⚙ geral | Abre as **[Configurações Gerais](06-configuracoes-gerais.md)** |
+| **3** | ⚙ geral | Abre as **[Configurações Gerais](07-configuracoes-gerais.md)** |
 | **4** | ✕ | Fecha a HUD (reabra com `Ctrl + F12`) |
 
 ### Mover a HUD
@@ -65,7 +66,7 @@ Clique e **arraste** qualquer área vazia da barra. A posição é salva automat
 
 ### HUD na vertical
 
-Em [Configurações Gerais → Ícones da HUD](06-configuracoes-gerais.md#passo-4--ícones-da-hud-horizontal-ou-vertical) você pode empilhar os ícones numa coluna. As engrenagens aparecem à direita de cada ícone:
+Em [Configurações Gerais → Ícones da HUD](07-configuracoes-gerais.md#passo-4--ícones-da-hud-horizontal-ou-vertical) você pode empilhar os ícones numa coluna. As engrenagens aparecem à direita de cada ícone:
 
 <p align="center"><img src="img/hud-vertical.png" width="120" alt="HUD na vertical"></p>
 
@@ -152,7 +153,7 @@ Clique em **SIM, RESETAR** para confirmar ou **NÃO** para desistir. **Não dá 
 - **Todas as hotkeys só funcionam com o jogo (`pxgme.exe`) em foco.** Em outra janela, suas teclas voltam ao normal.
 - A **Tecla do Macro** só dispara se o macro estiver **ligado** na HUD.
 - A **Hotkey Ligar/Desligar** de cada macro liga/desliga sem precisar abrir a HUD — um aviso mostra o novo estado (ex.: `COMBO PRINCIPAL: LIGADO`).
-- A **[Tecla de Pânico](06-configuracoes-gerais.md#passo-5--tecla-de-pânico)** desliga todos os macros e interrompe o que estiver rodando.
+- A **[Tecla de Pânico](07-configuracoes-gerais.md#passo-5--tecla-de-pânico)** desliga todos os macros e interrompe o que estiver rodando.
 
 ---
 
