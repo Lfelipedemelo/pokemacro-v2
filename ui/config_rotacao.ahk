@@ -2,13 +2,13 @@
 ; ui\config_rotacao.ahk — Config Rotação (GDI+)
 ; =====================================================
 
-; Altura: 422 com 2 rotações (2x4); cada rotação a mais soma um cartão (82).
+; Altura: 510 com 2 rotações (2x4); cada rotação a mais soma um cartão (100).
 AbrirConfigRotacao() {
     _GCfg_Abrir(288, AlturaConfigRotacao(), _DesenharConfigRotacao)
 }
 
 AlturaConfigRotacao() {
-    return 422 + (GetFormatoRotacao().rotacoes - 2) * 82
+    return 510 + (GetFormatoRotacao().rotacoes - 2) * 100
 }
 
 _DesenharConfigRotacao(g, w, h, hoverId) {
@@ -58,11 +58,12 @@ _DesenharConfigRotacao(g, w, h, hoverId) {
         (*) => (SalvarCfg("Rotacao", "enviarPrimeiro", "true"),  ReiniciarRotacao()), hoverId)
     y += 44 + 8
 
-    ; ── Um cartão por rotação (passos: Ctrl+1..6 ou vazio) ──
+    ; ── Um cartão por rotação (passos: Ctrl+1..6 ou vazio; embaixo de
+    ;    cada passo, o combo solto depois da troca: —, C1 ou C2) ──
     prox := RotacaoProxima()
     Loop fmt.rotacoes {
         rot := A_Index
-        cardH := 74
+        cardH := 92
         cardBrush := Gdip_BrushSolid(Gdip_Argb(255, T()["BG2"]))
         Gdip_FillRoundRect(g, cardBrush, pad, y, w - pad*2, cardH, 8)
         Gdip_DeleteBrush(cardBrush)
@@ -84,9 +85,18 @@ _DesenharConfigRotacao(g, w, h, hoverId) {
                 Gdip_DrawRoundRect(g, proxPen, sx + 2, y + 24 + 15, slotW - 4, 21, 6)
                 Gdip_DeletePen(proxPen)
             }
+            ; passo vazio ou 1º passo pulado (puxado à mão) nunca é
+            ; enviado pelo macro — não tem como soltar combo depois dele
+            enviado := slot > 0 && !(passo = 1 && !RotacaoEnviarPrimeiro())
+            _DesenharChipComboRotacao(g, boxes, rot, passo, sx + 2, y + 64, slotW - 4, enviado, hoverId)
         }
         y += cardH + 8
     }
+
+    ; Só pesa nos passos com combo marcado: tempo para o pokémon sair da
+    ; pokébola antes do 1º botão do combo.
+    y += _GCfg_Slider(g, boxes, "delay", pad, y, w - pad*2, "ESPERA ANTES DO COMBO", GetDelayComboRotacao(),
+        0, DELAY_COMBO_ROTACAO_MAX, 10, "ms", (v) => SalvarCfg("Rotacao", "delayCombo", v), hoverId) + 8
 
     _GCfg_ShowInMini(g, boxes, pad, y, w - pad*2, "Rotacao", hoverId)
 
@@ -96,6 +106,49 @@ _DesenharConfigRotacao(g, w, h, hoverId) {
     Gdip_DeletePen(borderPen)
 
     return boxes
+}
+
+; Chip "combo depois da troca" sob o botão do passo: "—" (nenhum),
+; "COMBO 1" ou "COMBO 2" (na cor da Rotação quando marcado). Passo que o
+; macro não envia ('ativo' = false) fica com o chip apagado e sem clique.
+_DesenharChipComboRotacao(g, boxes, rot, passo, x, y, w, ativo, hoverId) {
+    static NOMES := ["COMBO 1", "COMBO 2"]
+    h := 20
+    id := "c" rot "p" passo
+    combo := _CfgComboRotacao(rot, passo)
+    hov := ativo && (hoverId = id)
+
+    br := Gdip_BrushSolid(Gdip_Argb(ativo ? 255 : 110, hov ? T()["BG3"] : T()["BG"]))
+    Gdip_FillRoundRect(g, br, x, y, w, h, 6)
+    Gdip_DeleteBrush(br)
+    if (ativo && combo) {
+        pen := Gdip_Pen(Gdip_Argb(150, ROTACAO_COR), 1)
+        Gdip_DrawRoundRect(g, pen, x, y, w, h, 6)
+        Gdip_DeletePen(pen)
+    }
+
+    txt := combo ? NOMES[combo] : "—"
+    cor := !ativo ? Gdip_Argb(90, T()["MUTED"])
+        : hov ? Gdip_Argb(255, T()["ACCENT"])
+        : combo ? Gdip_Argb(255, ROTACAO_COR)
+        : Gdip_Argb(255, T()["MUTED"])
+    Gdip_DrawText(g, txt, 8, true, cor, x, y, w, h, true)
+
+    if (ativo)
+        boxes.Push({ id: id, x: x, y: y, w: w, h: h,
+            onClick: _EscolherComboRotacao.Bind(rot, passo, { x: x, y: y, w: w, h: h }) })
+}
+
+_EscolherComboRotacao(rot, passo, ancora, *) {
+    atual := _CfgComboRotacao(rot, passo)
+    _GCfg_AbrirSeletor(ancora, "SOLTAR COMBO", ["—", "C1", "C2"],
+        atual + 1, _DefinirComboRotacao.Bind(rot, passo))
+}
+
+; idx do seletor: 1 = nenhum, 2 = Combo 1, 3 = Combo 2. Não mexe na
+; ordem da sequência, então não reinicia a rotação.
+_DefinirComboRotacao(rot, passo, idx) {
+    SalvarCfg("Rotacao", _ChaveSlotRotacao(rot, passo) "c", idx - 1)
 }
 
 ; Clicar num passo abre o seletor (Ctrl+1..6 ou — vazio) logo abaixo do

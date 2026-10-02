@@ -24,8 +24,8 @@ EscalaFator(nome := "") {
     return fatores.Has(nome) ? fatores[nome] : 1.0
 }
 
-; Estado de execução dos macros
-global interromperCombo    := false
+; Estado de execução dos macros (a interrupção de combo é a geração
+; _comboGeracao, em macros\combo.ahk — ver InterromperCombo)
 global executandoCooldown  := false
 
 ; Mapa de macros ativos (nome => bool)

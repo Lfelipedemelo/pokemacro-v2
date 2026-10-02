@@ -9,7 +9,7 @@ global _macroExecutando := false
 ; a regra de exclusividade entre combos e o redesenho da HUD valem igual
 ; para qualquer origem.
 DefinirMacro(nome, ligado) {
-    global macros, interromperCombo, executandoCooldown, COMBOS_EXCLUSIVOS
+    global macros, executandoCooldown, COMBOS_EXCLUSIVOS
 
     macros[nome] := ligado
 
@@ -17,7 +17,7 @@ DefinirMacro(nome, ligado) {
         for outro in COMBOS_EXCLUSIVOS {
             if (outro != nome && macros[outro]) {
                 macros[outro] := false
-                interromperCombo := true   ; para o combo do outro, se estiver rodando
+                InterromperCombo()   ; para o combo do outro, se estiver rodando
             }
         }
     }
@@ -27,9 +27,10 @@ DefinirMacro(nome, ligado) {
         ReiniciarRotacao()
 
     ; Desligar também para o que estiver rodando daquele macro.
+    ; (a Rotação também: ela pode estar soltando o combo pós-troca)
     if (!ligado) {
-        if _EhComboExclusivo(nome)
-            interromperCombo := true
+        if (_EhComboExclusivo(nome) || nome = "rotacao")
+            InterromperCombo()
         if (nome = "cooldown")
             executandoCooldown := false
     }
@@ -53,10 +54,10 @@ _EhComboExclusivo(nome) {
 
 ; ─── Tecla de pânico: desliga tudo e para o que estiver rodando ──
 DesligarTodosMacros() {
-    global macros, interromperCombo, executandoCooldown
+    global macros, executandoCooldown
     for nome in macros
         macros[nome] := false
-    interromperCombo   := true
+    InterromperCombo()
     executandoCooldown := false
     _HudRedraw()
     ShowHint("TODOS OS MACROS DESLIGADOS", 1400, "warn")

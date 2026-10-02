@@ -16,6 +16,8 @@ global _CFG_NIL  := Chr(1)   ; marca "chave ausente no INI" dentro do cache
 
 global TEMPO_COOLDOWN_MAX := 60   ; segundos — faixa dos tempos de espera do Cooldown
 global TECLA_POKEMON_MAX  := 6    ; pokémons do time (Ctrl+1..Ctrl+6) — faixa das teclas do Cooldown e dos passos da Rotação
+global DELAY_COMBO_ROTACAO_MAX := 2000   ; ms — faixa da espera entre a troca da Rotação e o combo
+global COMBOS_ROTACAO := ["comboPrincipal", "comboSecundario"]   ; seção do INI do combo 1/2 que a Rotação solta
 
 CfgLer(secao, chave, padrao := "") {
     global configFile, _cfgCache, _CFG_NIL
@@ -130,6 +132,21 @@ _CfgSlotRotacao(rot, passo) {
 ; Chave do INI do passo, no formato atual (ver _CfgSlotRotacao).
 _ChaveSlotRotacao(rot, passo) {
     return ((GetFormatoRotacao().modo = "3x3") ? "t" : "r") rot "p" passo
+}
+
+; Combo que a Rotação solta logo depois de trocar para o passo: 0 = nenhum
+; (padrão), 1 = Combo Principal, 2 = Combo Secundário (usa os botões e o
+; Full Attack/Defense configurados naquele combo). Chave do INI = chave
+; do passo + "c" ("r1p2c", "t2p3c"...), então também é por formato.
+_CfgComboRotacao(rot, passo) {
+    v := _CfgInt("Rotacao", _ChaveSlotRotacao(rot, passo) "c", 0)
+    return (v = 1 || v = 2) ? v : 0
+}
+
+; Espera (ms) entre a troca de pokémon e o 1º botão do combo pós-troca —
+; o pokémon precisa ter saído da pokébola antes das skills.
+GetDelayComboRotacao() {
+    return Max(0, Min(DELAY_COMBO_ROTACAO_MAX, _CfgInt("Rotacao", "delayCombo", 500)))
 }
 
 ; Atalho para checar se um macro deve aparecer no mini menu.

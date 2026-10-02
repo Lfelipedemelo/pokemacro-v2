@@ -7,7 +7,7 @@
 ; usando as configs de [comboRevive].
 
 ExecutarComboRevive() {
-    global macros, interromperCombo, _reviveOcupado
+    global macros, _reviveOcupado
 
     if !macros["comboRevive"]
         return
@@ -19,7 +19,9 @@ ExecutarComboRevive() {
         return
 
     cfg := GetCfg("comboRevive")
-    interromperCombo := false
+    ; Nova geração: para o combo anterior que ainda estivesse rodando
+    ; (senão ele voltaria a soltar teclas depois deste terminar).
+    gen := InterromperCombo()
 
     ; ── 1. Executa o Revive ──────────────────────────
     _reviveOcupado := true
@@ -35,12 +37,12 @@ ExecutarComboRevive() {
     }
 
     ; ── 2. Aguarda o delay entre revive e combo (interrompível) ──
-    if !EsperarInterrompivel(cfg["delayCombo"])
+    if !EsperarInterrompivel(cfg["delayCombo"], gen)
         return
 
     ; ── 3. Executa o Combo ───────────────────────────
     if !macros["comboRevive"]   ; pode ter sido desligado durante o delay
         return
 
-    _RodarSequenciaCombo(cfg)
+    _RodarSequenciaCombo(cfg, gen)
 }

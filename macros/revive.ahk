@@ -62,14 +62,14 @@ _AlternarPokebola(modoLegado) {
 }
 
 ExecutarRevive() {
-    global macros, interromperCombo, _reviveOcupado
+    global macros, _reviveOcupado
 
     if !macros["revive"]
         return
 
     ; Sempre interrompe um combo em andamento, mesmo que esta
     ; execução do revive acabe sendo ignorada por reentrância abaixo.
-    interromperCombo := true
+    InterromperCombo()
 
     if (_reviveOcupado)
         return

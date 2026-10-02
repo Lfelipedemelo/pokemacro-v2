@@ -237,21 +237,29 @@ RenderCfg("config-cooldown-seletor", 288, 422, _DesenharConfigCooldown, [], "", 
 
 ; Padrão (1º de cada rotação à mão): sequência 2-3-4 | 2-5-6; dois apertos
 ; depois do início, o próximo é o Ctrl+4 da 1ª rotação (contorno verde).
-; O marcador 6 vai em todos os cartões de rotação (um por rotação).
+; Os marcadores 6 (pokémon) e 7 (combo pós-troca, linha de baixo) vão
+; em todos os cartões de rotação (um por rotação; cartões a cada 100).
 _rotacaoPos := 3
 RenderCfg("config-rotacao", 288, AlturaConfigRotacao(), _DesenharConfigRotacao,
-    [[1, "hkmacro"], [2, "toggle"], [3, "reiniciar"], [4, "formato_a"], [5, "primeiro_a"], [6, 267, 207], [6, 267, 289], [7, "showmini_a"]])
+    [[1, "hkmacro"], [2, "toggle"], [3, "reiniciar"], [4, "formato_a"], [5, "primeiro_a"], [6, 267, 207], [6, 267, 307],
+     [7, 267, 271], [7, 267, 371], [8, "delay"], [9, "showmini_a"]])
 
 ; Seletor aberto no 3º passo da 2ª rotação (Ctrl+5), mouse sobre o 6.
 RenderCfg("config-rotacao-seletor", 288, AlturaConfigRotacao(), _DesenharConfigRotacao, [], "", 0,
     { botao: "r2p3", hover: "sel_6" })
+
+; Seletor do combo pós-troca aberto no 3º passo da 2ª rotação, mouse
+; sobre o C1.
+RenderCfg("config-rotacao-combo", 288, AlturaConfigRotacao(), _DesenharConfigRotacao, [], "", 0,
+    { botao: "c2p3", hover: "sel_2" })
 
 ; Formato 3x3 (sequência padrão 2-3 | 4-5 | 6, a 3ª rotação com o 2º
 ; passo vazio): ao ligar, o próximo é o Ctrl+2 da 1ª rotação.
 SalvarCfg("Rotacao", "formato", "3x3")
 _rotacaoPos := 1
 RenderCfg("config-rotacao-3x3", 288, AlturaConfigRotacao(), _DesenharConfigRotacao,
-    [[1, "hkmacro"], [2, "toggle"], [3, "reiniciar"], [4, "formato_a"], [5, "primeiro_a"], [6, 267, 207], [6, 267, 289], [6, 267, 371], [7, "showmini_a"]])
+    [[1, "hkmacro"], [2, "toggle"], [3, "reiniciar"], [4, "formato_a"], [5, "primeiro_a"], [6, 267, 207], [6, 267, 307], [6, 267, 407],
+     [7, 267, 271], [7, 267, 371], [7, 267, 471], [8, "delay"], [9, "showmini_a"]])
 SalvarCfg("Rotacao", "formato", "2x4")
 
 RenderCfg("config-geral", 288, 476, _DesenharConfigGeral,
