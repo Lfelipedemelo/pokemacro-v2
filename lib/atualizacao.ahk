@@ -13,13 +13,18 @@
 ; As requisições são assíncronas (WinHttp + SetTimer), então a tela e as
 ; hotkeys dos macros não travam enquanto o GitHub responde. O estado fica
 ; em _atualiz (só em memória) e é lido pela tela a cada redesenho.
+;
+; Cada tentativa (verificar ou atualizar) é registrada em atualizacao.log
+; na pasta do app (ou no %TEMP%, se a pasta não aceitar gravação): versão,
+; Windows, cada etapa e, num erro, a mensagem técnica e o arquivo
+; envolvido — é o arquivo que o usuário manda quando algo dá errado.
 
 global ATUALIZ_REPO := "Lfelipedemelo/pokemacro-v2"
 
 ; Arquivos do usuário que nunca são sobrescritos (caminho relativo à
 ; pasta do app). Hoje nem vêm no .zip (estão no .gitignore), mas a lista
 ; protege contra alguém publicá-los por engano.
-global _ATUALIZ_PRESERVAR := ["config.ini", "revive_dedo.bmp"]
+global _ATUALIZ_PRESERVAR := ["config.ini", "revive_dedo.bmp", "atualizacao.log"]
 
 ; estado: "ocioso" | "verificando" | "atual" | "disponivel" | "baixando"
 ;         | "instalando" | "erro"
@@ -45,6 +50,7 @@ VerificarAtualizacao(*) {
     global _atualiz
     if (AtualizacaoOcupada())
         return
+    _AtualizLogInicio("VERIFICAR")
     _atualiz.nova := "", _atualiz.zip := ""
     _AtualizEstado("verificando")
     url := "https://api.github.com/repos/" ATUALIZ_REPO "/releases/latest"
@@ -54,23 +60,27 @@ VerificarAtualizacao(*) {
 _AtualizRespostaVerificar(req) {
     global _atualiz
     status := req.Status
-    if (status = 404)
+    if (status = 404) {
+        _AtualizLog("Nenhuma Release publicada no repositório")
         return _AtualizEstado("atual", "NENHUMA VERSÃO PUBLICADA AINDA")
+    }
     if (status = 403 || status = 429)
-        return _AtualizErro("GITHUB OCUPADO — TENTE DAQUI A POUCO")
+        return _AtualizErro("GITHUB OCUPADO — TENTE DAQUI A POUCO", "HTTP " status " (limite de consultas). Resposta: " SubStr(req.ResponseText, 1, 300))
     if (status != 200)
-        return _AtualizErro("ERRO DO GITHUB (" status ")")
+        return _AtualizErro("ERRO DO GITHUB (" status ")", "Resposta: " SubStr(req.ResponseText, 1, 300))
 
     txt := req.ResponseText
     if (!RegExMatch(txt, '"tag_name"\s*:\s*"([^"]+)"', &mTag)
      || !RegExMatch(txt, '"zipball_url"\s*:\s*"([^"]+)"', &mZip))
-        return _AtualizErro("RESPOSTA INESPERADA DO GITHUB")
+        return _AtualizErro("RESPOSTA INESPERADA DO GITHUB", "Sem tag_name/zipball_url. Início da resposta: " SubStr(txt, 1, 300))
 
     if (CompararVersao(mTag[1], VERSAO_APP) > 0) {
         _atualiz.nova := LTrim(mTag[1], "vV")
         _atualiz.zip  := mZip[1]
+        _AtualizLog("Última versão: " mTag[1] " (instalada: " VERSAO_APP ") → versão nova disponível")
         _AtualizEstado("disponivel")
     } else {
+        _AtualizLog("Última versão: " mTag[1] " (instalada: " VERSAO_APP ") → já está atualizado")
         _AtualizEstado("atual")
     }
 }
@@ -80,19 +90,21 @@ InstalarAtualizacao(*) {
     global _atualiz
     if (!AtualizacaoPodeInstalar())
         return
+    _AtualizLogInicio("ATUALIZAR para " _atualiz.nova)
     ; Pasta de desenvolvimento (clone do git): sobrescrever os arquivos
     ; bagunçaria o repositório — ali o certo é "git pull".
     if (DirExist(A_ScriptDir "\.git"))
-        return _AtualizErro("PASTA DO GIT — USE GIT PULL")
-    if (!_AtualizPastaGravavel())
-        return _AtualizErro("SEM PERMISSÃO PARA GRAVAR NA PASTA")
+        return _AtualizErro("PASTA DO GIT — USE GIT PULL", "Existe " A_ScriptDir "\.git")
+    if (!_AtualizPastaGravavel(&erroGravar))
+        return _AtualizErro("SEM PERMISSÃO PARA GRAVAR NA PASTA", "Teste de escrita falhou", erroGravar)
+    _AtualizLog("Pasta aceita gravação")
     _AtualizEstado("baixando")
     _AtualizRequisitar(_atualiz.zip, _AtualizRespostaDownload, 120000)
 }
 
 _AtualizRespostaDownload(req) {
     if (req.Status != 200)
-        return _AtualizErro("FALHA NO DOWNLOAD (" req.Status ")")
+        return _AtualizErro("FALHA NO DOWNLOAD (" req.Status ")", "Resposta: " SubStr(req.ResponseText, 1, 300))
     zip := _AtualizPastaTemp() ".zip"
     try {
         stream := ComObject("ADODB.Stream")
@@ -101,9 +113,10 @@ _AtualizRespostaDownload(req) {
         stream.Write(req.ResponseBody)
         stream.SaveToFile(zip, 2)   ; 2 = sobrescrever
         stream.Close()
-    } catch {
-        return _AtualizErro("NÃO CONSEGUI SALVAR O DOWNLOAD")
+    } catch as e {
+        return _AtualizErro("NÃO CONSEGUI SALVAR O DOWNLOAD", "Destino: " zip, e)
     }
+    _AtualizLog("Download salvo: " zip " (" Round(FileGetSize(zip) / 1024) " KB)")
     _AtualizEstado("instalando")
     ; Num timer: deixa a tela mostrar "INSTALANDO..." antes do RunWait
     ; (a extração bloqueia esta thread por alguns segundos).
@@ -111,18 +124,36 @@ _AtualizRespostaDownload(req) {
 }
 
 _AtualizExtrairECopiar(zip) {
+    ; Qualquer erro não previsto também vai para o log, em vez de virar
+    ; a caixa de erro padrão do AutoHotkey.
+    try
+        _AtualizExtrairECopiarPassos(zip)
+    catch as e
+        _AtualizErro("ERRO INESPERADO NA INSTALAÇÃO", "", e)
+}
+
+_AtualizExtrairECopiarPassos(zip) {
     global _atualiz
     pasta := _AtualizPastaTemp()
+    errPs := pasta "_erro.txt"
     try DirDelete(pasta, true)
+    try FileDelete(errPs)
     try {
         DirCreate(pasta)
-        z := StrReplace(zip, "'", "''"), p := StrReplace(pasta, "'", "''")
+        z := StrReplace(zip, "'", "''"), p := StrReplace(pasta, "'", "''"), ep := StrReplace(errPs, "'", "''")
         cmd := 'powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "'
-             . "Expand-Archive -LiteralPath '" z "' -DestinationPath '" p "' -Force" '"'
-        RunWait(cmd, , "Hide")
-    } catch {
-        return _AtualizErro("NÃO CONSEGUI EXTRAIR O ARQUIVO")
+             . "try { Expand-Archive -LiteralPath '" z "' -DestinationPath '" p "' -Force -ErrorAction Stop } "
+             . "catch { $_ | Out-String | Out-File -LiteralPath '" ep "' -Encoding utf8; exit 1 }" '"'
+        codigo := RunWait(cmd, , "Hide")
+    } catch as e {
+        return _AtualizErro("NÃO CONSEGUI EXTRAIR O ARQUIVO", "Não consegui rodar o PowerShell", e)
     }
+    if (codigo != 0) {
+        detalhe := "PowerShell saiu com código " codigo
+        try detalhe .= ". Erro: " Trim(FileRead(errPs, "UTF-8"), " `t`r`n")
+        return _AtualizErro("NÃO CONSEGUI EXTRAIR O ARQUIVO", detalhe)
+    }
+    _AtualizLog("Extraído em " pasta)
 
     ; O .zip do GitHub tem uma pasta única na raiz (usuario-repo-commit\).
     raiz := ""
@@ -131,8 +162,30 @@ _AtualizExtrairECopiar(zip) {
         break
     }
     if (raiz = "" || !FileExist(raiz "\pokemacro.ahk"))
-        return _AtualizErro("PACOTE DA ATUALIZAÇÃO INVÁLIDO")
+        return _AtualizErro("PACOTE DA ATUALIZAÇÃO INVÁLIDO", "Pasta raiz: '" raiz "' (sem pokemacro.ahk)")
 
+    ; Antes de copiar qualquer coisa, confere se todo arquivo que vai ser
+    ; substituído pode ser gravado (nenhum aberto/travado por outro
+    ; programa). Assim uma falha nunca deixa a pasta com metade dos
+    ; arquivos da versão nova e metade da antiga.
+    total := 0
+    Loop Files raiz "\*", "FR" {
+        total++
+        rel := SubStr(A_LoopFileFullPath, StrLen(raiz) + 2)
+        if (_AtualizPreservado(rel) || !FileExist(A_ScriptDir "\" rel))
+            continue
+        try FileSetAttrib("-R", A_ScriptDir "\" rel)
+        try {
+            f := FileOpen(A_ScriptDir "\" rel, "a")
+            f.Close()
+        } catch as e {
+            try DirDelete(pasta, true)
+            return _AtualizErro("ARQUIVO EM USO: " StrUpper(rel), "Não consegui abrir para gravação: " A_ScriptDir "\" rel, e)
+        }
+    }
+    _AtualizLog("Checagem ok: " total " arquivos no pacote, nenhum travado")
+
+    copiados := 0, rel := ""
     try {
         Loop Files raiz "\*", "FR" {
             rel := SubStr(A_LoopFileFullPath, StrLen(raiz) + 2)
@@ -143,10 +196,12 @@ _AtualizExtrairECopiar(zip) {
             if (!DirExist(dirDestino))
                 DirCreate(dirDestino)
             FileCopy(A_LoopFileFullPath, destino, true)
+            copiados++
         }
-    } catch {
-        return _AtualizErro("FALHA AO COPIAR OS ARQUIVOS")
+    } catch as e {
+        return _AtualizErro("FALHA AO COPIAR OS ARQUIVOS", "Parou em: " rel " (" copiados " já copiados)", e)
     }
+    _AtualizLog("Copiados " copiados " arquivos")
 
     try DirDelete(pasta, true)
     try FileDelete(zip)
@@ -154,6 +209,7 @@ _AtualizExtrairECopiar(zip) {
     ; Lido na próxima inicialização para avisar que deu certo
     ; (ver AvisarAtualizacaoConcluida).
     SalvarCfg("Geral", "atualizadoPara", _atualiz.nova)
+    _AtualizLog("Reiniciando o macro...")
     Reload()
 }
 
@@ -163,6 +219,7 @@ AvisarAtualizacaoConcluida() {
     if (CfgLer("Geral", "atualizadoPara", "") = "")
         return
     SalvarCfg("Geral", "atualizadoPara", "")
+    _AtualizLog("Reiniciado na versão " VERSAO_APP " — atualização concluída")
     ShowHint("Atualizado para a versão " VERSAO_APP, 3000, "success")
 }
 
@@ -180,6 +237,59 @@ AtualizacaoStatus() {
         case "erro":        return { texto: _atualiz.msg, tipo: "erro" }
         default:            return { texto: "VERSÃO INSTALADA: " VERSAO_APP, tipo: "normal" }
     }
+}
+
+; ── Log (atualizacao.log) ───────────────────────────────
+
+; Onde o log é gravado: na pasta do app; se ela não aceitar gravação (o
+; próprio motivo de alguns erros), no %TEMP%. O caminho usado de fato é
+; o que aparece no aviso de erro.
+_AtualizLogArquivo() {
+    static arq := ""
+    if (arq != "")
+        return arq
+    for cand in [A_ScriptDir "\atualizacao.log", A_Temp "\pokemacro_atualizacao.log"] {
+        try {
+            FileAppend("", cand, "UTF-8")
+            return arq := cand
+        }
+    }
+    return arq := A_Temp "\pokemacro_atualizacao.log"
+}
+
+_AtualizLog(msg) {
+    try FileAppend("[" FormatTime(, "HH:mm:ss") "] " msg "`r`n", _AtualizLogArquivo(), "UTF-8")
+}
+
+; Cabeçalho de cada tentativa, com o ambiente — o bastante para entender
+; um log que chegou de outra máquina.
+_AtualizLogInicio(acao) {
+    arq := _AtualizLogArquivo()
+    ; Não deixa crescer sem limite: passou de 256 KB, recomeça.
+    try {
+        if (FileGetSize(arq) > 256 * 1024)
+            FileDelete(arq)
+    }
+    try FileAppend("`r`n==================== " FormatTime(, "yyyy-MM-dd HH:mm:ss") " — " acao " ====================`r`n", arq, "UTF-8")
+    _AtualizLog("PokéMacro " VERSAO_APP " | AutoHotkey " A_AhkVersion (A_PtrSize = 8 ? " 64-bit" : " 32-bit")
+        . " | Windows " A_OSVersion " | administrador: " (A_IsAdmin ? "sim" : "não"))
+    _AtualizLog("Pasta do app: " A_ScriptDir)
+}
+
+; Detalhes técnicos de uma exceção do AutoHotkey (mensagem do Windows,
+; código de erro, onde aconteceu).
+_AtualizDescreverExcecao(e) {
+    txt := Type(e) ": " e.Message
+    if (e.HasProp("Extra") && e.Extra != "")
+        txt .= " | extra: " e.Extra
+    if (e.HasProp("Number"))
+        txt .= " | código: " e.Number
+    txt .= " | A_LastError: " A_LastError
+    if (e.HasProp("What") && e.What != "")
+        txt .= " | em: " e.What
+    if (e.HasProp("Line"))
+        txt .= " (linha " e.Line ")"
+    return txt
 }
 
 ; ── Utilitários ─────────────────────────────────────────
@@ -204,8 +314,16 @@ _AtualizEstado(estado, msg := "") {
     _GCfg_Redraw()
 }
 
-_AtualizErro(msg) {
+; msg: texto curto do cartão. detalhe/e (exceção): só vão para o log.
+_AtualizErro(msg, detalhe := "", e := 0) {
+    _AtualizLog("ERRO: " msg)
+    if (detalhe != "")
+        _AtualizLog("  detalhe: " detalhe)
+    if (IsObject(e))
+        _AtualizLog("  exceção: " _AtualizDescreverExcecao(e))
     _AtualizEstado("erro", msg)
+    SplitPath(_AtualizLogArquivo(), &nomeLog)
+    ShowHint("Erro na atualização — detalhes salvos em " nomeLog, 3500, "danger")
 }
 
 _AtualizPastaTemp() {
@@ -219,12 +337,14 @@ _AtualizPreservado(rel) {
     return false
 }
 
-_AtualizPastaGravavel() {
+_AtualizPastaGravavel(&erro := 0) {
     teste := A_ScriptDir "\.teste_escrita.tmp"
     try {
         FileAppend("", teste)
         FileDelete(teste)
         return true
+    } catch as e {
+        erro := e
     }
     return false
 }
@@ -233,14 +353,15 @@ _AtualizPastaGravavel() {
 ; rede ou demora acima de 'limite' ms viram estado "erro".
 _AtualizRequisitar(url, aoTerminar, limite := 15000) {
     global _atualiz
+    _AtualizLog("GET " url)
     try {
         req := ComObject("WinHttp.WinHttpRequest.5.1")
         req.Open("GET", url, true)
         req.SetRequestHeader("User-Agent", "PokeMacro/" VERSAO_APP)
         req.SetRequestHeader("Accept", "application/vnd.github+json")
         req.Send()
-    } catch {
-        return _AtualizErro("SEM CONEXÃO COM O GITHUB")
+    } catch as e {
+        return _AtualizErro("SEM CONEXÃO COM O GITHUB", "Falha ao enviar a requisição", e)
     }
     _atualiz.req := req
     _atualiz.aoTerminar := aoTerminar
@@ -254,22 +375,26 @@ _AtualizAguardar() {
     req := _atualiz.req
     try {
         pronto := req.WaitForResponse(0)
-    } catch {
+    } catch as e {
         SetTimer(_AtualizAguardar, 0)
         _atualiz.req := 0
-        return _AtualizErro("SEM CONEXÃO COM O GITHUB")
+        return _AtualizErro("SEM CONEXÃO COM O GITHUB", "Falha ao receber a resposta", e)
     }
     if (!pronto) {
         if (A_TickCount - _atualiz.inicio > _atualiz.limite) {
             SetTimer(_AtualizAguardar, 0)
             try req.Abort()
             _atualiz.req := 0
-            _AtualizErro("O GITHUB DEMOROU DEMAIS")
+            _AtualizErro("O GITHUB DEMOROU DEMAIS", "Sem resposta em " _atualiz.limite " ms")
         }
         return
     }
     SetTimer(_AtualizAguardar, 0)
     _atualiz.req := 0
+    _AtualizLog("Resposta HTTP " req.Status " em " (A_TickCount - _atualiz.inicio) " ms")
     fn := _atualiz.aoTerminar
-    fn.Call(req)
+    try
+        fn.Call(req)
+    catch as e
+        _AtualizErro("ERRO INESPERADO NA ATUALIZAÇÃO", "", e)
 }

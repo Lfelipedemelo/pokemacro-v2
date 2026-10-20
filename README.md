@@ -422,6 +422,7 @@ Cartão no fim da tela, com a versão instalada e dois botões:
 
 - **VERIFICAR** — consulta a última versão publicada no GitHub. Só acontece quando você clica.
 - **ATUALIZAR** — fica apagado até a verificação achar uma versão nova. Ao clicar, baixa a versão, substitui os arquivos e reinicia o macro sozinho. Seu `config.ini` e o `revive_dedo.bmp` são mantidos.
+- Cada tentativa fica registrada em **`atualizacao.log`**, na pasta do macro. Se der erro, mande esse arquivo: ele mostra onde e por que falhou.
 
 Detalhes e mensagens de erro: [guia de Configurações Gerais](docs/07-configuracoes-gerais.md#passo-8--atualizações).
 

@@ -99,7 +99,14 @@ Se algo der errado, a mensagem aparece em vermelho no cartão:
 | SEM CONEXÃO COM O GITHUB / O GITHUB DEMOROU DEMAIS | Confira a internet e clique em **VERIFICAR** de novo |
 | GITHUB OCUPADO — TENTE DAQUI A POUCO | O GitHub limita consultas seguidas; espere alguns minutos |
 | SEM PERMISSÃO PARA GRAVAR NA PASTA | A pasta do macro está protegida (ex.: dentro de `Arquivos de Programas`). Mova-a para `Documentos` ou rode o macro como administrador |
+| ARQUIVO EM USO: … | Outro programa está com esse arquivo aberto (ex.: um editor ou visualizador de imagem). Feche-o e clique em **ATUALIZAR** de novo — nada foi alterado na pasta |
 | PASTA DO GIT — USE GIT PULL | A pasta é um clone do repositório; atualize com `git pull` |
+
+#### Log da atualização (`atualizacao.log`)
+
+Cada vez que você clica em **VERIFICAR** ou **ATUALIZAR**, o macro anota o que fez no arquivo **`atualizacao.log`**, na pasta do macro: data e hora, versão instalada, versão do Windows, cada etapa e, se der erro, a mensagem técnica e o arquivo envolvido. Quando dá erro, um aviso na tela lembra que os detalhes foram salvos.
+
+Se a atualização falhar, **mande esse arquivo** para quem mantém o macro: é com ele que dá para entender onde e por que falhou. Se a pasta do macro não aceitar gravação, o log vai para `%TEMP%\pokemacro_atualizacao.log`. Para abrir, digite esse caminho na barra do Explorador de Arquivos. O arquivo recomeça sozinho quando passa de 256 KB e nunca é apagado pela atualização.
 
 ---
 

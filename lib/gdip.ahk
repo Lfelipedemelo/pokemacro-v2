@@ -249,11 +249,26 @@ Gdip_ScaleTransform(g, sx, sy) =>
     DllCall("gdiplus\GdipScaleWorldTransform", "Ptr", g, "Float", sx, "Float", sy, "Int", 0) ; MatrixOrderPrepend
 
 ; ── Imagens (ícones .png já existentes em icons\) ──────
+; Carrega pelos bytes em memória (IStream), não direto do arquivo: o
+; GdipLoadImageFromFile mantém o .png aberto enquanto a imagem existir (o
+; cache dura a sessão toda), e isso impedia a atualização
+; (lib\atualizacao.ahk) de sobrescrever os ícones com o app aberto.
 Gdip_LoadImage(path) {
-    static cache := Map()
+    static cache := Map(), streams := []
     if cache.Has(path)
         return cache[path]
-    DllCall("gdiplus\GdipLoadImageFromFile", "WStr", path, "Ptr*", &pImg := 0)
+    pImg := 0
+    try {
+        buf := FileRead(path, "RAW")
+        if (pStream := DllCall("shlwapi\SHCreateMemStream", "Ptr", buf, "UInt", buf.Size, "Ptr")) {
+            if (DllCall("gdiplus\GdipCreateBitmapFromStream", "Ptr", pStream, "Ptr*", &pImg) = 0)
+                streams.Push(pStream)   ; o bitmap lê do stream: precisa ficar vivo junto
+            else
+                ObjRelease(pStream), pImg := 0
+        }
+    }
+    if (!pImg)
+        DllCall("gdiplus\GdipLoadImageFromFile", "WStr", path, "Ptr*", &pImg := 0)
     cache[path] := pImg
     return pImg
 }
