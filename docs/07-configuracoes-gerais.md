@@ -85,7 +85,7 @@ Não precisa mais baixar a pasta inteira do GitHub a cada versão nova:
 
 1. Clique em **VERIFICAR** (9). O macro consulta o GitHub (leva um segundo ou dois) e a linha de cima do cartão mostra o resultado:
    - *"VERSÃO 2.0.0 · JÁ É A MAIS RECENTE"* — está tudo em dia;
-   - *"NOVA VERSÃO 2.1.0 DISPONÍVEL!"* — o botão **ATUALIZAR** acende.
+   - *"NOVA VERSÃO 2.1.0 DISPONÍVEL!"* (em verde) — o botão **ATUALIZAR** acende.
 2. Clique em **ATUALIZAR** (10). O macro baixa a versão nova, troca os arquivos e **reinicia sozinho**. Ao voltar, aparece o aviso *"Atualizado para a versão 2.1.0"*.
 
 <p align="center"><img src="img/config-geral-atualizacao.png" width="340" alt="Cartão de atualizações com versão nova encontrada e o botão ATUALIZAR liberado"></p>

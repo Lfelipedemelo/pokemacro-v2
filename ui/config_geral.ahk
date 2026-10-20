@@ -75,7 +75,12 @@ _ConfigGeral_CartaoAtualizacao(g, boxes, x, y, w, hoverId) {
     Gdip_DeleteBrush(cardBrush)
 
     st := AtualizacaoStatus()
-    corSt := st.tipo = "erro" ? "0xff8484" : (st.tipo = "destaque" ? T()["ACCENT2"] : T()["MUTED"])
+    switch st.tipo {
+        case "erro":     corSt := "0xff8484"
+        case "nova":     corSt := "0x4ade80"   ; verde: versão nova encontrada
+        case "destaque": corSt := T()["ACCENT2"]
+        default:         corSt := T()["MUTED"]
+    }
     Gdip_DrawText(g, st.texto, 9, true, Gdip_Argb(255, corSt), x + 8, y + 5, w - 16, 14, false)
 
     btnY := y + 21, btnH := 17, gap := 6

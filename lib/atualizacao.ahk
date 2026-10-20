@@ -167,13 +167,14 @@ AvisarAtualizacaoConcluida() {
 }
 
 ; ── Texto de status para a tela ─────────────────────────
-; Devolve { texto, tipo } — tipo: "normal" | "destaque" | "erro".
+; Devolve { texto, tipo } — tipo: "normal" | "nova" (versão nova achada)
+; | "destaque" | "erro".
 AtualizacaoStatus() {
     global _atualiz
     switch _atualiz.estado {
         case "verificando": return { texto: "PROCURANDO VERSÃO NOVA...", tipo: "normal" }
         case "atual":       return { texto: _atualiz.msg != "" ? _atualiz.msg : "VERSÃO " VERSAO_APP " · JÁ É A MAIS RECENTE", tipo: "normal" }
-        case "disponivel":  return { texto: "NOVA VERSÃO " _atualiz.nova " DISPONÍVEL!", tipo: "destaque" }
+        case "disponivel":  return { texto: "NOVA VERSÃO " _atualiz.nova " DISPONÍVEL!", tipo: "nova" }
         case "baixando":    return { texto: "BAIXANDO " _atualiz.nova "...", tipo: "destaque" }
         case "instalando":  return { texto: "INSTALANDO — O MACRO VAI REINICIAR", tipo: "destaque" }
         case "erro":        return { texto: _atualiz.msg, tipo: "erro" }

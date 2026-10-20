@@ -11,7 +11,7 @@ global configFile := A_ScriptDir "\config.ini"
 ; commit e crie uma Release no GitHub com a tag "v" + este número (ex.:
 ; v2.1.0) — é ela que o botão "Verificar atualizações" procura (ver
 ; lib\atualizacao.ahk).
-global VERSAO_APP := "2.0.0"
+global VERSAO_APP := "2.0.1"
 
 ; ─── Escala da interface (HUD + telas de configuração) ───────────────
 ; "pequeno" | "normal" | "grande" — "normal" preserva exatamente o
