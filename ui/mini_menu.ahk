@@ -32,6 +32,7 @@ global _hudEventCb      := 0   ; ponteiro do callback, criado uma única vez
 global _hudVisivel      := true  ; false enquanto a HUD está escondida (jogo fora de foco) — o pulso não redesenha
 global _hudDesenhando   := false ; trava de reentrância do _HudRedraw (ver comentário lá)
 global _hudRedrawPendente := false
+global _hudPulsoLigado  := false ; timer do pulso armado (ver _HudAtualizarPulso)
 
 ; Tooltip dos ícones da barra numa janela em camadas própria: desenhado no
 ; canvas da HUD ele ficava cortado, porque o canvas tem exatamente o tamanho
@@ -129,14 +130,13 @@ _HudAbrir() {
     OnMessage(0x2A3, _HudWM_MouseLeave)  ; WM_MOUSELEAVE
     OnMessage(0x0003, _HudWM_Move)       ; WM_MOVE
 
-    _HudRedraw()
-    SetTimer(_HudPulseTick, 80)
+    _HudRedraw()            ; também liga o pulso, se algum macro já estiver ligado
     _HudVisibilidade()      ; aplica visibilidade inicial
     _HudRegistrarHook()     ; e depois só reavalia quando a janela ativa mudar
 }
 
 _HudFechar() {
-    global miniGui, _hudCanvas, _hudDesenhando
+    global miniGui, _hudCanvas, _hudDesenhando, _hudPulsoLigado
     if (!miniGui)
         return
     ; Um frame interrompido (ex.: Ctrl+F12 no meio do desenho) ainda está
@@ -147,6 +147,7 @@ _HudFechar() {
     }
     _HudSalvarPos()
     SetTimer(_HudPulseTick, 0)
+    _hudPulsoLigado := false
     SetTimer(_HudFxTick, 0)
     _HudRemoverHook()
     _HudTipDestruir()
@@ -370,16 +371,30 @@ _HudFxTick() {
         SetTimer(_HudFxTick, 0)
 }
 
-_HudPulseTick() {
-    global macros, _hudVisivel
-    if !_hudVisivel
-        return
-    for nome, ligado in macros {
-        if (ligado) {
-            _HudRedraw()
-            return
-        }
+; O pulso (brilho dos macros ligados) só tem timer enquanto algum macro
+; está ligado — antes ele acordava o processo a cada 80ms pra sempre,
+; mesmo sem nada para animar. _HudRedraw chama isto a cada mudança de
+; estado (DefinirMacro, pânico, abrir a HUD), então liga/desliga sozinho.
+_HudAtualizarPulso() {
+    global miniGui, macros, _hudPulsoLigado
+    algum := false
+    if (miniGui) {
+        for nome, ligado in macros
+            if (ligado) {
+                algum := true
+                break
+            }
     }
+    if (algum != _hudPulsoLigado) {
+        _hudPulsoLigado := algum
+        SetTimer(_HudPulseTick, algum ? 80 : 0)
+    }
+}
+
+_HudPulseTick() {
+    global _hudVisivel
+    if _hudVisivel
+        _HudRedraw()
 }
 
 ; ── Ícone real (mesmos .png usados na janela principal) ───
@@ -394,29 +409,49 @@ _HudIconImg(nome, size) {
 ; Ícone da Rotação. Desligada: só o ícone, igual aos outros macros.
 ; Ligada: o ícone escurece e o número do próximo Ctrl+N vem por cima,
 ; em destaque — o aviso de "qual pokémon sai no próximo aperto". O
-; número é desenhado por frame (muda a cada pressionamento); o ícone
-; continua vindo do cache (_HudIconImg). Sem passo configurado: "—".
+; ícone ligado (escurecido + número) é montado uma vez por número/tamanho
+; e cacheado (_HudIconeRotacaoLigado) — o contorno são 9 DrawString, ~30%
+; do custo de um frame da HUD, e o pulso redesenha 12x/s com macro ligado.
+; Sem passo configurado: "—".
 _HudDesenharIconeRotacao(g, cx, cy, sz, ligado) {
-    global _HUD_SCALE
-    s := _HUD_SCALE
+    if ligado {
+        prox := RotacaoProxima()
+        img := _HudIconeRotacaoLigado(prox ? String(prox.slot) : "—", sz)
+    } else {
+        img := _HudIconImg("rotacao", sz)
+    }
+    Gdip_DrawImage(g, img, cx - sz / 2, cy - sz / 2, sz, sz)
+}
 
-    Gdip_DrawImage(g, _HudIconImg("rotacao", sz), cx - sz / 2, cy - sz / 2, sz, sz)
-    if !ligado
-        return
+; Bitmap sz×sz do ícone da Rotação escurecido com 'txt' por cima.
+; Cacheado pelo resto da sessão, como os ícones (Gdip_ScaledIcon): no
+; máximo 7 textos (1–6 e "—") por tamanho de interface.
+_HudIconeRotacaoLigado(txt, sz) {
+    global _HUD_SCALE
+    static cache := Map()
+    s := _HUD_SCALE
+    key := txt "@" sz "@" s
+    if cache.Has(key)
+        return cache[key].pBitmap
+
+    canvas := Gdip_NewLayeredCanvas(sz, sz)
+    g := canvas.pGraphics
+    Gdip_DrawImage(g, _HudIconImg("rotacao", sz), 0, 0, sz, sz)
 
     escuro := Gdip_BrushSolid(Gdip_Argb(165, "0x0f0d12"))
-    Gdip_FillEllipse(g, escuro, cx - sz / 2, cy - sz / 2, sz, sz)
+    Gdip_FillEllipse(g, escuro, 0, 0, sz, sz)
     Gdip_DeleteBrush(escuro)
 
-    prox := RotacaoProxima()
-    txt := prox ? String(prox.slot) : "—"
     ; contorno escuro (texto deslocado em volta) para o número se
     ; destacar sobre as cores do ícone
     fonte := 17 * s, d := 1.2 * s
     contorno := Gdip_Argb(255, "0x0a090c")
     for off in [[-d, 0], [d, 0], [0, -d], [0, d], [-d, -d], [d, d], [-d, d], [d, -d]]
-        Gdip_DrawText(g, txt, fonte, true, contorno, cx - sz / 2 + off[1], cy - sz / 2 + off[2], sz, sz, true)
-    Gdip_DrawText(g, txt, fonte, true, Gdip_Argb(255, "0xffffff"), cx - sz / 2, cy - sz / 2, sz, sz, true)
+        Gdip_DrawText(g, txt, fonte, true, contorno, off[1], off[2], sz, sz, true)
+    Gdip_DrawText(g, txt, fonte, true, Gdip_Argb(255, "0xffffff"), 0, 0, sz, sz, true)
+
+    cache[key] := canvas   ; mantém o canvas vivo (dono do bitmap)
+    return canvas.pBitmap
 }
 
 _HudDrawMiniBtn(g, kind, cx, cy, d, hoverT) {
@@ -460,6 +495,7 @@ _HudDrawMiniBtn(g, kind, cx, cy, d, hoverT) {
 ; reagendado para logo depois, então o estado novo nunca se perde.
 _HudRedraw() {
     global _hudDesenhando, _hudRedrawPendente
+    _HudAtualizarPulso()
     if (_hudDesenhando) {
         _hudRedrawPendente := true
         return
