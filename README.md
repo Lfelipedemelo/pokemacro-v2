@@ -242,12 +242,12 @@ Funciona exatamente igual ao **Combo Principal**, mas é uma configuração sepa
 **O que faz:** Move o mouse até uma posição configurada na tela, executa a ação de revive (clique direito ou Ctrl+1 dependendo do modo), e retorna o mouse à posição original.
 
 **Como funciona:**
-1. Ao pressionar a **Tecla do Macro**, o mouse se move instantaneamente para a posição do Pokémon a ser revivido.
+1. Ao pressionar a **Tecla do Macro**, o mouse se move instantaneamente para a posição do Pokémon a ser revivido e fica **travado** até o fim (mexer o mouse sem querer não tira o cursor do lugar, e cliques do mouse são ignorados).
 2. Executa o comando de revive conforme o **Modo Legado** configurado.
 3. Aguarda o **Delay** configurado.
 4. Pressiona a tecla de confirmação (Hotkey Revive).
 5. Repete o comando de revive para confirmar.
-6. O mouse retorna à posição original.
+6. O mouse retorna à posição original e é destravado.
 
 > 💡 **Interrupção de Combo:** Ao pressionar a tecla do Revive durante a execução de um Combo, o combo é interrompido imediatamente e o revive é executado.
 

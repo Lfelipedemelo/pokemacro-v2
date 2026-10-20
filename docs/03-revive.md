@@ -8,13 +8,13 @@ O Revive faz, com um único botão, toda a sequência de reviver o pokémon: rec
 
 ## 3.1 O que o revive faz, na ordem
 
-1. Move o mouse para a **Posição** configurada.
+1. Move o mouse para a **Posição** configurada — e **trava o mouse** até o fim da sequência: se você mexer ou clicar o mouse sem querer, o cursor não sai do lugar e o clique é ignorado (o revive não acaba clicando em outra coisa).
 2. **Recolhe** o pokémon (`Ctrl + 1`, ou clique direito no [Modo Legado](07-configuracoes-gerais.md#passo-2--modo-legado)).
    - Com a **detecção do pokémon** calibrada (veja 3.4), esse passo é **pulado** se o pokémon já estiver guardado ou morto — evita que a sequência saia invertida.
 3. Espera o **Delay entre Cliques**.
 4. Aperta a **Hotkey Revive** (a tecla do item de revive no jogo).
 5. **Solta** o pokémon de novo (`Ctrl + 1` ou clique direito).
-6. Devolve o mouse para a posição original.
+6. Devolve o mouse para a posição original e destrava o mouse.
 
 > 💡 Usar o Revive **no meio de um combo interrompe o combo** na hora e revive.
 
