@@ -5,14 +5,26 @@
 ; Todo acesso ao config.ini passa por CfgLer/SalvarCfg, que mantêm um
 ; cache em memória: IniRead é I/O de arquivo, e antes cada tecla de macro
 ; pressionada relia 100+ chaves do disco (GetCfg várias vezes por tecla)
-; bem no momento em que a latência importa. Agora o disco só é lido na
-; primeira vez que cada chave é pedida; escrever/resetar atualiza o cache.
+; bem no momento em que a latência importa.
+;
+; O arquivo inteiro é lido de uma vez na primeira leitura (_CfgCarregar).
+; Antes o cache enchia chave a chave, e o 1º aperto de cada macro depois
+; de abrir o app ainda lia ~25 chaves do disco (~2–3 ms). Carregado o
+; arquivo, chave fora do cache = chave ausente no INI (vale o padrão),
+; sem ir ao disco.
+;
+; Alterações NÃO recarregam o arquivo: este módulo é o único que escreve
+; no config.ini (#SingleInstance — um processo só), e SalvarCfg grava no
+; disco e no cache juntos, então os dois nunca divergem. Recarregar a
+; cada gravação só serviria para pegar edições feitas à mão com o app
+; aberto. Só o reset de seção recarrega tudo (raro, e mais simples do
+; que apagar do cache as chaves daquela seção).
 ;
 ; GetCfg retorna um Map.
 ; Acesso correto: cfg["toggleHotkey"]  (colchetes)
 
 global _cfgCache := Map()
-global _CFG_NIL  := Chr(1)   ; marca "chave ausente no INI" dentro do cache
+global _cfgCarregadoDe := ""   ; configFile já carregado no cache ("" = nenhum) — trocar configFile (gerador de imagens) recarrega sozinho
 
 global TEMPO_COOLDOWN_MAX := 60   ; segundos — faixa dos tempos de espera do Cooldown
 global TECLA_POKEMON_MAX  := 6    ; pokémons do time (Ctrl+1..Ctrl+6) — faixa das teclas do Cooldown e dos passos da Rotação
@@ -20,27 +32,59 @@ global DELAY_COMBO_ROTACAO_MAX := 2000   ; ms — faixa da espera entre a troca 
 global COMBOS_ROTACAO := ["comboPrincipal", "comboSecundario"]   ; seção do INI do combo 1/2 que a Rotação solta
 
 CfgLer(secao, chave, padrao := "") {
-    global configFile, _cfgCache, _CFG_NIL
+    global configFile, _cfgCache, _cfgCarregadoDe
+    if (_cfgCarregadoDe != configFile)
+        _CfgCarregar()
     k := StrLower(secao "|" chave)
-    if !_cfgCache.Has(k)
-        _cfgCache[k] := IniRead(configFile, secao, chave, _CFG_NIL)
-    v := _cfgCache[k]
-    return (v == _CFG_NIL) ? padrao : v
+    return _cfgCache.Has(k) ? _cfgCache[k] : padrao
 }
 
-; Salva uma chave simples no INI
+; Lê o config.ini inteiro para o cache (1 leitura por seção). Os valores
+; ficam iguais aos de um IniRead de chave única: espaços nas pontas
+; removidos e um par de aspas em volta retirado; chave repetida vale a
+; primeira. Arquivo inexistente = cache vazio (tudo no padrão).
+_CfgCarregar() {
+    global configFile, _cfgCache, _cfgCarregadoDe
+    _cfgCache.Clear()
+    _cfgCarregadoDe := configFile
+    try secoes := IniRead(configFile)
+    catch
+        return
+    for secao in StrSplit(secoes, "`n", "`r") {
+        if (secao = "")
+            continue
+        try linhas := IniRead(configFile, secao)
+        catch
+            continue
+        for linha in StrSplit(linhas, "`n", "`r") {
+            if !(p := InStr(linha, "="))
+                continue
+            chave := Trim(SubStr(linha, 1, p - 1), " `t")
+            valor := Trim(SubStr(linha, p + 1), " `t")
+            if (StrLen(valor) >= 2 && SubStr(valor, 1, 1) = SubStr(valor, -1) && InStr("`"'", SubStr(valor, 1, 1)))
+                valor := SubStr(valor, 2, -1)
+            k := StrLower(secao "|" chave)
+            if !_cfgCache.Has(k)
+                _cfgCache[k] := valor
+        }
+    }
+}
+
+; Salva uma chave simples no INI (e no cache — ver cabeçalho)
 SalvarCfg(secao, chave, valor) {
-    global configFile, _cfgCache
+    global configFile, _cfgCache, _cfgCarregadoDe
+    if (_cfgCarregadoDe != configFile)
+        _CfgCarregar()
     IniWrite(valor, configFile, secao, chave)
     _cfgCache[StrLower(secao "|" chave)] := String(valor)
 }
 
-; Remove uma seção inteira do INI e re-registra as hotkeys — as teclas
-; da seção deixam de existir.
+; Remove uma seção inteira do INI, recarrega o cache e re-registra as
+; hotkeys — as teclas da seção deixam de existir.
 ResetarSecao(secao) {
-    global configFile, _cfgCache
+    global configFile
     try IniDelete(configFile, secao)
-    _cfgCache.Clear()
+    _CfgCarregar()
     AtualizarHotkeyCombo()
 }
 
