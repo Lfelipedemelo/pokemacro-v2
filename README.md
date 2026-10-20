@@ -33,7 +33,7 @@ Tutoriais ilustrados de como configurar e usar cada função, tela por tela:
 | 4 | [Combo Revive](docs/04-combo-revive.md) | Reviver e já soltar um combo |
 | 5 | [Cooldown](docs/05-cooldown.md) | Rotação de pokémons com `Ctrl + N` e tempos por posição |
 | 6 | [Rotação](docs/06-rotacao.md) | Uma tecla que troca de pokémon numa ordem salva (e, se quiser, solta um combo logo depois), com o próximo `Ctrl + N` na HUD |
-| 7 | [Configurações Gerais](docs/07-configuracoes-gerais.md) | Prefixo F, Modo Legado, tamanho, HUD vertical, Tecla de Pânico, Full Attack/Defense |
+| 7 | [Configurações Gerais](docs/07-configuracoes-gerais.md) | Prefixo F, Modo Legado, tamanho, HUD vertical, Tecla de Pânico, Full Attack/Defense, atualizações |
 
 <p align="center"><img src="docs/img/hud-hover.png" width="480" alt="HUD do PokéMacro"></p>
 
@@ -81,6 +81,8 @@ Tutoriais ilustrados de como configurar e usar cada função, tela por tela:
 
 > O arquivo `config.ini` é criado automaticamente na primeira vez que você salva qualquer configuração. Não é necessário criá-lo manualmente.
 
+**Para atualizar** depois de instalado, não precisa baixar tudo de novo: em [Configurações Gerais](#configurações-gerais), clique em **VERIFICAR** e, se houver versão nova, em **ATUALIZAR**. Suas configurações são mantidas.
+
 ---
 
 ## Estrutura de Pastas
@@ -105,7 +107,8 @@ macro_modular/
 │   ├── gdip.ahk                 ← Wrapper GDI+ usado para desenhar a HUD
 │   ├── hint.ahk                 ← Notificações flutuantes na tela
 │   ├── window.ahk               ← Helpers de janela, detecção do jogo e checagem de admin
-│   └── input.ahk                ← Captura de teclas e posição do mouse
+│   ├── input.ahk                ← Captura de teclas e posição do mouse
+│   └── atualizacao.ahk          ← Verificar/instalar versão nova pelo GitHub
 │
 ├── ui\                          ← Telas da interface gráfica
 │   ├── mini_menu.ahk            ← HUD flutuante — interface principal (Ctrl+F12)
@@ -410,6 +413,17 @@ Define a tecla enviada **após** o término de qualquer combo ou ao iniciar o Co
 ### 5. Tecla de Pânico
 
 Uma tecla que **desliga todos os macros de uma vez** e interrompe o que estiver rodando (combo, cooldown). Só funciona com o jogo em foco.
+
+---
+
+### 6. Atualizações
+
+Cartão no fim da tela, com a versão instalada e dois botões:
+
+- **VERIFICAR** — consulta a última versão publicada no GitHub. Só acontece quando você clica.
+- **ATUALIZAR** — fica apagado até a verificação achar uma versão nova. Ao clicar, baixa a versão, substitui os arquivos e reinicia o macro sozinho. Seu `config.ini` e o `revive_dedo.bmp` são mantidos.
+
+Detalhes e mensagens de erro: [guia de Configurações Gerais](docs/07-configuracoes-gerais.md#passo-8--atualizações).
 
 ---
 

@@ -19,7 +19,7 @@ GetHudOrientacao() {
 }
 
 AbrirConfigGeral() {
-    _GCfg_Abrir(288, 476, _DesenharConfigGeral)
+    _GCfg_Abrir(288, 506, _DesenharConfigGeral)
 }
 
 ; ── Tamanho da interface (HUD + telas de config) ──
@@ -63,6 +63,47 @@ _GCfg_VisibilidadeItem(g, boxes, x, y, w, secao, label, hoverId) {
     return _GCfg_Toggle(g, boxes, "vis_" secao, x, y, w, label, "SIM", "NÃO", atual,
         (*) => (SalvarCfg(secao, "showInMini", "true"),  _RecriarMini(), _GCfg_Redraw()),
         (*) => (SalvarCfg(secao, "showInMini", "false"), _RecriarMini(), _GCfg_Redraw()), hoverId)
+}
+
+; Cartão de atualização: status na linha de cima e dois botões embaixo.
+; "VERIFICAR" consulta o GitHub; "ATUALIZAR" só fica clicável depois que
+; a verificação achou uma versão nova (ver lib\atualizacao.ahk).
+_ConfigGeral_CartaoAtualizacao(g, boxes, x, y, w, hoverId) {
+    ch := 44
+    cardBrush := Gdip_BrushSolid(Gdip_Argb(255, T()["BG2"]))
+    Gdip_FillRoundRect(g, cardBrush, x, y, w, ch, 8)
+    Gdip_DeleteBrush(cardBrush)
+
+    st := AtualizacaoStatus()
+    corSt := st.tipo = "erro" ? "0xff8484" : (st.tipo = "destaque" ? T()["ACCENT2"] : T()["MUTED"])
+    Gdip_DrawText(g, st.texto, 9, true, Gdip_Argb(255, corSt), x + 8, y + 5, w - 16, 14, false)
+
+    btnY := y + 21, btnH := 17, gap := 6
+    btnW := (w - 16 - gap) // 2
+    bxVer := x + 8, bxAtu := bxVer + btnW + gap
+
+    ocupado := AtualizacaoOcupada()
+    hovVer := !ocupado && (hoverId = "upd_verificar")
+    br := Gdip_BrushSolid(Gdip_Argb(255, hovVer ? T()["BG3"] : T()["BG"]))
+    Gdip_FillRoundRect(g, br, bxVer, btnY, btnW, btnH, 5)
+    Gdip_DeleteBrush(br)
+    Gdip_DrawText(g, "VERIFICAR", 9, true, Gdip_Argb(ocupado ? 90 : 255, hovVer ? T()["TEXT"] : T()["MUTED"]),
+        bxVer, btnY, btnW, btnH, true)
+    if (!ocupado)
+        boxes.Push({ id: "upd_verificar", x: bxVer, y: btnY, w: btnW, h: btnH, onClick: VerificarAtualizacao })
+
+    ; Desabilitado: fundo apagado, texto transparente e sem área de clique.
+    pode := AtualizacaoPodeInstalar()
+    hovAtu := pode && (hoverId = "upd_atualizar")
+    br := Gdip_BrushSolid(Gdip_Argb(255, pode ? (hovAtu ? T()["ACCENT"] : T()["ACCENT2"]) : T()["BG"]))
+    Gdip_FillRoundRect(g, br, bxAtu, btnY, btnW, btnH, 5)
+    Gdip_DeleteBrush(br)
+    Gdip_DrawText(g, "ATUALIZAR", 9, true, Gdip_Argb(pode ? 255 : 70, pode ? T()["TEXT"] : T()["MUTED"]),
+        bxAtu, btnY, btnW, btnH, true)
+    if (pode)
+        boxes.Push({ id: "upd_atualizar", x: bxAtu, y: btnY, w: btnW, h: btnH, onClick: InstalarAtualizacao })
+
+    return ch
 }
 
 _DesenharConfigGeral(g, w, h, hoverId) {
@@ -132,6 +173,11 @@ _DesenharConfigGeral(g, w, h, hoverId) {
 
     _GCfg_VisibilidadeItem(g, boxes, pad,  y, colW, itens[5]["secao"], itens[5]["label"], hoverId)
     _GCfg_VisibilidadeItem(g, boxes, col2, y, colW, itens[6]["secao"], itens[6]["label"], hoverId)
+    y += 44 + 8
+
+    Gdip_DrawText(g, "ATUALIZAÇÕES", 9, true, Gdip_Argb(255, T()["MUTED"]), pad, y, w - pad*2, 14, false)
+    y += 20
+    _ConfigGeral_CartaoAtualizacao(g, boxes, pad, y, w - pad*2, hoverId)
     y += 44
 
     Gdip_ResetClip(g)

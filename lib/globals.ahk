@@ -7,6 +7,12 @@
 ; caminho relativo faria o app ler/criar um config.ini em outro lugar.
 global configFile := A_ScriptDir "\config.ini"
 
+; Versão instalada. Ao lançar uma versão nova: suba este número, faça o
+; commit e crie uma Release no GitHub com a tag "v" + este número (ex.:
+; v2.1.0) — é ela que o botão "Verificar atualizações" procura (ver
+; lib\atualizacao.ahk).
+global VERSAO_APP := "2.0.0"
+
 ; ─── Escala da interface (HUD + telas de configuração) ───────────────
 ; "pequeno" | "normal" | "grande" — "normal" preserva exatamente o
 ; tamanho de hoje; os outros multiplicam por um fator fixo e modesto

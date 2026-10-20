@@ -26,6 +26,7 @@ SetWorkingDir(A_ScriptDir)
 #Include ..\..\lib\window.ahk
 #Include ..\..\lib\input.ahk
 #Include ..\..\lib\deteccao.ahk
+#Include ..\..\lib\atualizacao.ahk
 #Include ..\..\ui\mini_menu.ahk
 #Include ..\..\ui\config_combo.ahk
 #Include ..\..\ui\config_revive.ahk
@@ -262,8 +263,14 @@ RenderCfg("config-rotacao-3x3", 288, AlturaConfigRotacao(), _DesenharConfigRotac
      [7, 267, 271], [7, 267, 371], [7, 267, 471], [8, "delay"], [9, "showmini_a"]])
 SalvarCfg("Rotacao", "formato", "2x4")
 
-RenderCfg("config-geral", 288, 476, _DesenharConfigGeral,
-    [[1, "prefF_a"], [2, "legado_a"], [3, "escala_1"], [4, "orient_a"], [5, "panico"], [6, "fa"], [7, "fd"], [8, "vis_comboPrincipal_a"]])
+RenderCfg("config-geral", 288, 506, _DesenharConfigGeral,
+    [[1, "prefF_a"], [2, "legado_a"], [3, "escala_1"], [4, "orient_a"], [5, "panico"], [6, "fa"], [7, "fd"], [8, "vis_comboPrincipal_a"],
+     [9, 267, 455]])
+
+; Cartão de atualização depois de achar uma versão nova (ATUALIZAR liberado)
+_atualiz.nova := "2.1.0", _atualiz.estado := "disponivel"
+RenderCfg("config-geral-atualizacao", 288, 506, _DesenharConfigGeral, [[10, 267, 467]])
+_atualiz.nova := "", _atualiz.estado := "ocioso"
 
 ; hover num campo, para mostrar o destaque
 RenderCfg("config-combo-hover", 288, 308, _DesenharConfigCombo.Bind("comboPrincipal"), [], "hkmacro")

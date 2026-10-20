@@ -18,6 +18,8 @@ Opções **globais**, que valem para todos os macros. Para abrir: passe o mouse 
 | **6** | Full Attack | Tecla de Full Attack usada pelos combos |
 | **7** | Full Defense | Tecla de Full Defense usada pelos combos e pelo Cooldown |
 | **8** | Macros exibidos na interface | Mostra/esconde cada ícone da HUD |
+| **9** | Atualizações | Mostra a versão instalada; **VERIFICAR** procura uma versão nova |
+| **10** | Atualizar | Só fica clicável quando há versão nova — baixa, instala e reinicia |
 
 ---
 
@@ -76,6 +78,28 @@ Essas teclas são **definidas uma vez aqui** e cada macro decide se usa ou não:
 ### Passo 7 — Macros exibidos na interface
 
 Um cartão `SIM | NÃO` para cada macro. Com `NÃO`, o ícone some da HUD — útil para esconder macros que você não usa. É a mesma opção **Exibir no Mini Menu** que existe em cada tela de macro.
+
+### Passo 8 — Atualizações
+
+Não precisa mais baixar a pasta inteira do GitHub a cada versão nova:
+
+1. Clique em **VERIFICAR** (9). O macro consulta o GitHub (leva um segundo ou dois) e a linha de cima do cartão mostra o resultado:
+   - *"VERSÃO 2.0.0 · JÁ É A MAIS RECENTE"* — está tudo em dia;
+   - *"NOVA VERSÃO 2.1.0 DISPONÍVEL!"* — o botão **ATUALIZAR** acende.
+2. Clique em **ATUALIZAR** (10). O macro baixa a versão nova, troca os arquivos e **reinicia sozinho**. Ao voltar, aparece o aviso *"Atualizado para a versão 2.1.0"*.
+
+<p align="center"><img src="img/config-geral-atualizacao.png" width="340" alt="Cartão de atualizações com versão nova encontrada e o botão ATUALIZAR liberado"></p>
+
+O que é mantido na atualização: suas **configurações** (`config.ini`) e o **ícone do dedo** capturado para o Revive (`revive_dedo.bmp`). Nada é verificado nem baixado sem você clicar.
+
+Se algo der errado, a mensagem aparece em vermelho no cartão:
+
+| Mensagem | O que fazer |
+|----------|-------------|
+| SEM CONEXÃO COM O GITHUB / O GITHUB DEMOROU DEMAIS | Confira a internet e clique em **VERIFICAR** de novo |
+| GITHUB OCUPADO — TENTE DAQUI A POUCO | O GitHub limita consultas seguidas; espere alguns minutos |
+| SEM PERMISSÃO PARA GRAVAR NA PASTA | A pasta do macro está protegida (ex.: dentro de `Arquivos de Programas`). Mova-a para `Documentos` ou rode o macro como administrador |
+| PASTA DO GIT — USE GIT PULL | A pasta é um clone do repositório; atualize com `git pull` |
 
 ---
 
