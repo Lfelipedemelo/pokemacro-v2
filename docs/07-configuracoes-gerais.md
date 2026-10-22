@@ -17,9 +17,10 @@ Opções **globais**, que valem para todos os macros. Para abrir: passe o mouse 
 | **5** | Tecla de Pânico | Desliga tudo de uma vez |
 | **6** | Full Attack | Tecla de Full Attack usada pelos combos |
 | **7** | Full Defense | Tecla de Full Defense usada pelos combos e pelo Cooldown |
-| **8** | Macros exibidos na interface | Mostra/esconde cada ícone da HUD |
-| **9** | Atualizações | Mostra a versão instalada; **VERIFICAR** procura uma versão nova |
-| **10** | Atualizar | Só fica clicável quando há versão nova — baixa, instala e reinicia |
+| **8** | Tecla Pokestop (Rotação) | Tecla de Pokestop do jogo, apertada pela Rotação nos passos com `STOP` |
+| **9** | Macros exibidos na interface | Mostra/esconde cada ícone da HUD |
+| **10** | Atualizações | Mostra a versão instalada; **VERIFICAR** procura uma versão nova |
+| **11** | Atualizar | Só fica clicável quando há versão nova — baixa, instala e reinicia |
 
 ---
 
@@ -75,18 +76,24 @@ Essas teclas são **definidas uma vez aqui** e cada macro decide se usa ou não:
 | Combo Revive | Pílulas **Full Attack** / **Full Defense** na [tela do Combo Revive](04-combo-revive.md#42-configurando) |
 | Cooldown | Pílula **Full Defense (Cooldown)** na [tela do Cooldown](05-cooldown.md#52-configurando) |
 
-### Passo 7 — Macros exibidos na interface
+### Passo 7 — Tecla Pokestop
+
+Clique em **TECLA POKESTOP (ROTAÇÃO)** (8) e aperte a tecla de Pokestop do jogo. A [Rotação](06-rotacao.md#65-pokestop-depois-da-troca) aperta essa tecla logo depois de soltar o pokémon, nos passos em que o `STOP` estiver ligado (antes do combo pós-troca, se houver).
+
+É a **mesma** tecla do campo **Tecla Pokestop** da tela da Rotação: mudar em uma das telas muda na outra.
+
+### Passo 8 — Macros exibidos na interface
 
 Um cartão `SIM | NÃO` para cada macro. Com `NÃO`, o ícone some da HUD — útil para esconder macros que você não usa. É a mesma opção **Exibir no Mini Menu** que existe em cada tela de macro.
 
-### Passo 8 — Atualizações
+### Passo 9 — Atualizações
 
 Não precisa mais baixar a pasta inteira do GitHub a cada versão nova:
 
-1. Clique em **VERIFICAR** (9). O macro consulta o GitHub (leva um segundo ou dois) e a linha de cima do cartão mostra o resultado:
+1. Clique em **VERIFICAR** (10). O macro consulta o GitHub (leva um segundo ou dois) e a linha de cima do cartão mostra o resultado:
    - *"VERSÃO 2.0.0 · JÁ É A MAIS RECENTE"* — está tudo em dia;
    - *"NOVA VERSÃO 2.1.0 DISPONÍVEL!"* (em verde) — o botão **ATUALIZAR** acende.
-2. Clique em **ATUALIZAR** (10). O macro baixa a versão nova, troca os arquivos e **reinicia sozinho**. Ao voltar, aparece o aviso *"Atualizado para a versão 2.1.0"*.
+2. Clique em **ATUALIZAR** (11). O macro baixa a versão nova, troca os arquivos e **reinicia sozinho**. Ao voltar, aparece o aviso *"Atualizado para a versão 2.1.0"*.
 
 <p align="center"><img src="img/config-geral-atualizacao.png" width="340" alt="Cartão de atualizações com versão nova encontrada e o botão ATUALIZAR liberado"></p>
 

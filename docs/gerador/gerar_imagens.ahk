@@ -238,12 +238,14 @@ RenderCfg("config-cooldown-seletor", 288, 422, _DesenharConfigCooldown, [], "", 
 
 ; Padrão (1º de cada rotação à mão): sequência 2-3-4 | 2-5-6; dois apertos
 ; depois do início, o próximo é o Ctrl+4 da 1ª rotação (contorno verde).
-; Os marcadores 6 (pokémon) e 7 (combo pós-troca, linha de baixo) vão
-; em todos os cartões de rotação (um por rotação; cartões a cada 100).
+; Os marcadores 7 (pokémon), 8 (combo pós-troca) e 9 (Pokestop, última
+; linha) vão em todos os cartões de rotação (um por rotação; cartões a
+; cada 124).
 _rotacaoPos := 3
 RenderCfg("config-rotacao", 288, AlturaConfigRotacao(), _DesenharConfigRotacao,
-    [[1, "hkmacro"], [2, "toggle"], [3, "reiniciar"], [4, "formato_a"], [5, "primeiro_a"], [6, 267, 207], [6, 267, 307],
-     [7, 267, 271], [7, 267, 371], [8, "delay"], [9, "showmini_a"]])
+    [[1, "hkmacro"], [2, "toggle"], [3, "reiniciar"], [4, "pokestop"], [5, "formato_a"], [6, "primeiro_a"],
+     [7, 267, 207], [7, 267, 331], [8, 267, 271], [8, 267, 395], [9, 267, 295], [9, 267, 419],
+     [10, "delay"], [11, "showmini_a"]])
 
 ; Seletor aberto no 3º passo da 2ª rotação (Ctrl+5), mouse sobre o 6.
 RenderCfg("config-rotacao-seletor", 288, AlturaConfigRotacao(), _DesenharConfigRotacao, [], "", 0,
@@ -259,17 +261,18 @@ RenderCfg("config-rotacao-combo", 288, AlturaConfigRotacao(), _DesenharConfigRot
 SalvarCfg("Rotacao", "formato", "3x3")
 _rotacaoPos := 1
 RenderCfg("config-rotacao-3x3", 288, AlturaConfigRotacao(), _DesenharConfigRotacao,
-    [[1, "hkmacro"], [2, "toggle"], [3, "reiniciar"], [4, "formato_a"], [5, "primeiro_a"], [6, 267, 207], [6, 267, 307], [6, 267, 407],
-     [7, 267, 271], [7, 267, 371], [7, 267, 471], [8, "delay"], [9, "showmini_a"]])
+    [[1, "hkmacro"], [2, "toggle"], [3, "reiniciar"], [4, "pokestop"], [5, "formato_a"], [6, "primeiro_a"],
+     [7, 267, 207], [7, 267, 331], [7, 267, 455], [8, 267, 271], [8, 267, 395], [8, 267, 519],
+     [9, 267, 295], [9, 267, 419], [9, 267, 543], [10, "delay"], [11, "showmini_a"]])
 SalvarCfg("Rotacao", "formato", "2x4")
 
-RenderCfg("config-geral", 288, 506, _DesenharConfigGeral,
-    [[1, "prefF_a"], [2, "legado_a"], [3, "escala_1"], [4, "orient_a"], [5, "panico"], [6, "fa"], [7, "fd"], [8, "vis_comboPrincipal_a"],
-     [9, 267, 455]])
+RenderCfg("config-geral", 288, 558, _DesenharConfigGeral,
+    [[1, "prefF_a"], [2, "legado_a"], [3, "escala_1"], [4, "orient_a"], [5, "panico"], [6, "fa"], [7, "fd"], [8, "pokestop"],
+     [9, "vis_comboPrincipal_a"], [10, 267, 507]])
 
 ; Cartão de atualização depois de achar uma versão nova (ATUALIZAR liberado)
 _atualiz.nova := "2.1.0", _atualiz.estado := "disponivel"
-RenderCfg("config-geral-atualizacao", 288, 506, _DesenharConfigGeral, [[10, 267, 467]])
+RenderCfg("config-geral-atualizacao", 288, 558, _DesenharConfigGeral, [[11, 267, 519]])
 _atualiz.nova := "", _atualiz.estado := "ocioso"
 
 ; hover num campo, para mostrar o destaque

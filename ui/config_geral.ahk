@@ -19,7 +19,7 @@ GetHudOrientacao() {
 }
 
 AbrirConfigGeral() {
-    _GCfg_Abrir(288, 506, _DesenharConfigGeral)
+    _GCfg_Abrir(288, 558, _DesenharConfigGeral)
 }
 
 ; ── Tamanho da interface (HUD + telas de config) ──
@@ -162,6 +162,12 @@ _DesenharConfigGeral(g, w, h, hoverId) {
     fdVal := CfgLer("Geral", "fullDefense", "N/A")
     _GCfg_Field(g, boxes, "fd", col2, y, colW, "FULL DEFENSE", StrUpper(fdVal),
         (*) => (CapturarTecla("Geral", "fullDefense", 0, "FULL DEFENSE"), _GCfg_Redraw()), hoverId)
+    y += 44 + 8
+
+    ; Tecla Pokestop do jogo — a Rotação a aperta logo depois de soltar o
+    ; pokémon nos passos com STOP ligado. Também editável na tela da Rotação.
+    _GCfg_Field(g, boxes, "pokestop", pad, y, w - pad*2, "TECLA POKESTOP (ROTAÇÃO)", StrUpper(GetTeclaPokestop()),
+        (*) => (CapturarTecla("Geral", "teclaPokestop", 0, "POKESTOP"), _GCfg_Redraw()), hoverId)
     y += 44 + 8
 
     Gdip_DrawText(g, "MACROS EXIBIDOS NA INTERFACE", 9, true, Gdip_Argb(255, T()["MUTED"]), pad, y, w - pad*2, 14, false)

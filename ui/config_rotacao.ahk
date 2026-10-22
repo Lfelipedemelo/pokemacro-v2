@@ -2,13 +2,13 @@
 ; ui\config_rotacao.ahk — Config Rotação (GDI+)
 ; =====================================================
 
-; Altura: 510 com 2 rotações (2x4); cada rotação a mais soma um cartão (100).
+; Altura: 558 com 2 rotações (2x4); cada rotação a mais soma um cartão (124).
 AbrirConfigRotacao() {
     _GCfg_Abrir(288, AlturaConfigRotacao(), _DesenharConfigRotacao)
 }
 
 AlturaConfigRotacao() {
-    return 510 + (GetFormatoRotacao().rotacoes - 2) * 100
+    return 558 + (GetFormatoRotacao().rotacoes - 2) * 124
 }
 
 _DesenharConfigRotacao(g, w, h, hoverId) {
@@ -37,8 +37,12 @@ _DesenharConfigRotacao(g, w, h, hoverId) {
 
     ; Volta ao início da rotação no meio do jogo (ex.: se a ordem real
     ; dos pokémons saiu do compasso da HUD).
-    _GCfg_Field(g, boxes, "reiniciar", pad, y, w - pad*2, "TECLA REINICIAR ROTAÇÃO", _ComboDisplay(CfgLer("Rotacao", "teclaReiniciar", "N/A")),
+    _GCfg_Field(g, boxes, "reiniciar", pad, y, colW, "TECLA REINICIAR", _ComboDisplay(CfgLer("Rotacao", "teclaReiniciar", "N/A")),
         (*) => (CapturarCombo("Rotacao", "teclaReiniciar", 0, "REINICIAR ROTAÇÃO"), _GCfg_Redraw()), hoverId)
+    ; Tecla Pokestop do jogo: global ([Geral]), a mesma da tela de
+    ; Configurações Gerais — usada nos passos com STOP ligado.
+    _GCfg_Field(g, boxes, "pokestop", col2, y, colW, "TECLA POKESTOP", StrUpper(GetTeclaPokestop()),
+        (*) => (CapturarTecla("Geral", "teclaPokestop", 0, "POKESTOP"), _GCfg_Redraw()), hoverId)
     y += 44 + 8
 
     ; Formato: 2 rotações de 4 pokémons ou 3 de 3. Muda a quantidade de
@@ -59,11 +63,12 @@ _DesenharConfigRotacao(g, w, h, hoverId) {
     y += 44 + 8
 
     ; ── Um cartão por rotação (passos: Ctrl+1..6 ou vazio; embaixo de
-    ;    cada passo, o combo solto depois da troca: —, C1 ou C2) ──
+    ;    cada passo, o combo solto depois da troca: —, C1 ou C2; e por
+    ;    último o Pokestop do passo, liga/desliga) ──
     prox := RotacaoProxima()
     Loop fmt.rotacoes {
         rot := A_Index
-        cardH := 92
+        cardH := 116
         cardBrush := Gdip_BrushSolid(Gdip_Argb(255, T()["BG2"]))
         Gdip_FillRoundRect(g, cardBrush, pad, y, w - pad*2, cardH, 8)
         Gdip_DeleteBrush(cardBrush)
@@ -89,6 +94,7 @@ _DesenharConfigRotacao(g, w, h, hoverId) {
             ; enviado pelo macro — não tem como soltar combo depois dele
             enviado := slot > 0 && !(passo = 1 && !RotacaoEnviarPrimeiro())
             _DesenharChipComboRotacao(g, boxes, rot, passo, sx + 2, y + 64, slotW - 4, enviado, hoverId)
+            _DesenharChipStopRotacao(g, boxes, rot, passo, sx + 2, y + 88, slotW - 4, enviado, hoverId)
         }
         y += cardH + 8
     }
@@ -137,6 +143,36 @@ _DesenharChipComboRotacao(g, boxes, rot, passo, x, y, w, ativo, hoverId) {
     if (ativo)
         boxes.Push({ id: id, x: x, y: y, w: w, h: h,
             onClick: _EscolherComboRotacao.Bind(rot, passo, { x: x, y: y, w: w, h: h }) })
+}
+
+; Chip "Pokestop" sob o do combo: clicar liga/desliga. Ligado mostra
+; "STOP" na cor da Rotação, com contorno; desligado, "SEM STOP" apagado.
+; Passo que o macro não envia fica apagado e sem clique, como o do combo.
+_DesenharChipStopRotacao(g, boxes, rot, passo, x, y, w, ativo, hoverId) {
+    h := 20
+    id := "s" rot "p" passo
+    stop := _CfgPokestopRotacao(rot, passo)
+    hov := ativo && (hoverId = id)
+
+    br := Gdip_BrushSolid(Gdip_Argb(ativo ? 255 : 110, hov ? T()["BG3"] : T()["BG"]))
+    Gdip_FillRoundRect(g, br, x, y, w, h, 6)
+    Gdip_DeleteBrush(br)
+    if (ativo && stop) {
+        pen := Gdip_Pen(Gdip_Argb(150, ROTACAO_COR), 1)
+        Gdip_DrawRoundRect(g, pen, x, y, w, h, 6)
+        Gdip_DeletePen(pen)
+    }
+
+    cor := !ativo ? Gdip_Argb(90, T()["MUTED"])
+        : hov ? Gdip_Argb(255, T()["ACCENT"])
+        : stop ? Gdip_Argb(255, ROTACAO_COR)
+        : Gdip_Argb(255, T()["MUTED"])
+    Gdip_DrawText(g, stop ? "STOP" : "SEM STOP", 8, true, cor, x, y, w, h, true)
+
+    ; Não mexe na ordem da sequência, então não reinicia a rotação.
+    if (ativo)
+        boxes.Push({ id: id, x: x, y: y, w: w, h: h,
+            onClick: (*) => SalvarCfg("Rotacao", _ChaveSlotRotacao(rot, passo) "s", stop ? "false" : "true") })
 }
 
 _EscolherComboRotacao(rot, passo, ancora, *) {

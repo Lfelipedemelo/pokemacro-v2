@@ -32,8 +32,8 @@ Tutoriais ilustrados de como configurar e usar cada função, tela por tela:
 | 3 | [Revive](docs/03-revive.md) | Reviver com um botão + detecção do pokémon (ícone do dedo) |
 | 4 | [Combo Revive](docs/04-combo-revive.md) | Reviver e já soltar um combo |
 | 5 | [Cooldown](docs/05-cooldown.md) | Rotação de pokémons com `Ctrl + N` e tempos por posição |
-| 6 | [Rotação](docs/06-rotacao.md) | Uma tecla que troca de pokémon numa ordem salva (e, se quiser, solta um combo logo depois), com o próximo `Ctrl + N` na HUD |
-| 7 | [Configurações Gerais](docs/07-configuracoes-gerais.md) | Prefixo F, Modo Legado, tamanho, HUD vertical, Tecla de Pânico, Full Attack/Defense, atualizações |
+| 6 | [Rotação](docs/06-rotacao.md) | Uma tecla que troca de pokémon numa ordem salva (e, se quiser, aperta o Pokestop e solta um combo logo depois), com o próximo `Ctrl + N` na HUD |
+| 7 | [Configurações Gerais](docs/07-configuracoes-gerais.md) | Prefixo F, Modo Legado, tamanho, HUD vertical, Tecla de Pânico, Full Attack/Defense, Tecla Pokestop, atualizações |
 
 <p align="center"><img src="docs/img/hud-hover.png" width="480" alt="HUD do PokéMacro"></p>
 
@@ -341,9 +341,10 @@ Funciona exatamente igual ao **Combo Principal**, mas é uma configuração sepa
 **Como funciona:**
 1. Dois formatos: **2 × 4** (2 rotações de 4 pokémons, padrão `1-2-3-4 | 1-2-5-6`) ou **3 × 3** (3 rotações de 3, padrão `1-2-3 | 1-4-5 | 1-—-6`). As rotações seguem uma depois da outra, voltando ao início depois da última. Cada formato guarda sua própria configuração.
 2. Passos vazios (`—`) são pulados — ex.: o 2º passo da 3ª rotação no 3 × 3 (o pokémon repetido) vem vazio; com um `Ctrl+N` nele, a repetição passa a sair.
-3. Ligar a Rotação sempre começa do início; a **Tecla Reiniciar Rotação** faz o mesmo no meio do jogo. Por padrão o macro **pula o 1º passo de todas as rotações** (você puxa esse pokémon à mão no começo de cada rotação): no 2 × 4 os apertos enviam `2-3-4 | 2-5-6`, no 3 × 3 `2-3 | 4-5 | 6`, e voltam para o `2`.
+3. Ligar a Rotação sempre começa do início; a **Tecla Reiniciar** faz o mesmo no meio do jogo. Por padrão o macro **pula o 1º passo de todas as rotações** (você puxa esse pokémon à mão no começo de cada rotação): no 2 × 4 os apertos enviam `2-3-4 | 2-5-6`, no 3 × 3 `2-3 | 4-5 | 6`, e voltam para o `2`.
 4. Cada aperto **interrompe o combo em andamento**, para as skills restantes não saírem no pokémon que acabou de entrar.
 5. **Combo depois da troca (opcional, por passo):** cada passo pode soltar o **Combo 1** (config do Combo Principal) ou o **Combo 2** (config do Combo Secundário) logo depois do `Ctrl+N`, após a **Espera antes do combo**. Apertar a Tecla Macro de novo no meio do combo para ele e já faz a próxima troca.
+6. **Pokestop (opcional, por passo):** com o `STOP` ligado num passo, o macro aperta a **Tecla Pokestop** logo depois do `Ctrl+N` — antes do combo pós-troca, se houver.
 
 #### Opções de Configuração
 
@@ -351,11 +352,13 @@ Funciona exatamente igual ao **Combo Principal**, mas é uma configuração sepa
 |-------|----------------|
 | **Tecla Macro** | Tecla que envia o próximo pokémon da rotação |
 | **Ligar/Desligar** | Tecla para ativar/desativar o macro |
-| **Tecla Reiniciar Rotação** | Volta a rotação ao início (só com a Rotação ligada) |
+| **Tecla Reiniciar** | Volta a rotação ao início (só com a Rotação ligada) |
+| **Tecla Pokestop** | Tecla de Pokestop do jogo (a mesma das Configurações Gerais) |
 | **Rotações** | Formato `2 × 4` ou `3 × 3` — a tela mostra um cartão por rotação |
 | **1º Pokémon** | `PULAR` (padrão): o 1º passo das rotações nunca é enviado (puxado à mão). `SOLTAR`: o 1º passo sai normalmente |
 | **Cartões das rotações** | O `Ctrl+N` de cada passo. Clicar num passo abre um seletor com `1` a `6` e `—` (vazio); clicar fora ou `Esc` fecha. Mexer em um passo reinicia a rotação |
 | **Combo depois da troca** | Linha de baixo de cada cartão: `—` (nenhum), `COMBO 1` ou `COMBO 2` — o combo solto logo depois de trocar para aquele passo. Não reinicia a rotação |
+| **Pokestop** | Última linha de cada cartão: `STOP` (aperta a Tecla Pokestop logo depois da troca, antes do combo) ou `SEM STOP` (padrão). Clique para alternar |
 | **Espera antes do combo** | Tempo (0–2000 ms, padrão 500) entre a troca e o combo, para o pokémon já estar fora |
 
 ---
@@ -416,7 +419,13 @@ Uma tecla que **desliga todos os macros de uma vez** e interrompe o que estiver 
 
 ---
 
-### 6. Atualizações
+### 6. Tecla Pokestop (Rotação)
+
+Tecla de Pokestop do jogo. A **Rotação** a aperta logo depois de soltar o pokémon (e antes do combo pós-troca) nos passos com `STOP` ligado. É a mesma tecla do campo **Tecla Pokestop** da tela da Rotação — dá para mudar em qualquer uma das duas.
+
+---
+
+### 7. Atualizações
 
 Cartão no fim da tela, com a versão instalada e dois botões:
 
@@ -424,7 +433,7 @@ Cartão no fim da tela, com a versão instalada e dois botões:
 - **ATUALIZAR** — fica apagado até a verificação achar uma versão nova. Ao clicar, baixa a versão, substitui os arquivos e reinicia o macro sozinho. Seu `config.ini` e o `revive_dedo.bmp` são mantidos.
 - Cada tentativa fica registrada em **`atualizacao.log`**, na pasta do macro. Se der erro, mande esse arquivo: ele mostra onde e por que falhou.
 
-Detalhes e mensagens de erro: [guia de Configurações Gerais](docs/07-configuracoes-gerais.md#passo-8--atualizações).
+Detalhes e mensagens de erro: [guia de Configurações Gerais](docs/07-configuracoes-gerais.md#passo-9--atualizações).
 
 ---
 

@@ -187,6 +187,19 @@ _CfgComboRotacao(rot, passo) {
     return (v = 1 || v = 2) ? v : 0
 }
 
+; Pokestop do passo: true = logo depois do Ctrl+N (antes do combo
+; pós-troca) a Rotação aperta a tecla Pokestop (GetTeclaPokestop). Padrão
+; desligado. Chave do INI = chave do passo + "s" ("r1p2s", "t2p3s"...).
+_CfgPokestopRotacao(rot, passo) {
+    return CfgLer("Rotacao", _ChaveSlotRotacao(rot, passo) "s", "false") = "true"
+}
+
+; Tecla Pokestop do jogo (global, em [Geral]) — editável tanto na tela de
+; Configurações Gerais quanto na da Rotação. "N/A" = não definida.
+GetTeclaPokestop() {
+    return CfgLer("Geral", "teclaPokestop", "N/A")
+}
+
 ; Espera (ms) entre a troca de pokémon e o 1º botão do combo pós-troca —
 ; o pokémon precisa ter saído da pokébola antes das skills.
 GetDelayComboRotacao() {

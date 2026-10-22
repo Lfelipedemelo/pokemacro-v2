@@ -8,16 +8,17 @@
 ; volta ao começo depois do último passo — ex.: 1-2-3-4 | 1-2-5-6 (2x4)
 ; ou 1-2-3 | 1-4-5 | 1-—-6 (3x3).
 ; A HUD mostra no ícone qual Ctrl+N sai no próximo pressionamento.
-; Cada pressionamento também interrompe o combo em andamento e, se o
-; passo tiver um combo marcado (Combo 1/2), solta esse combo logo depois
-; da troca.
+; Cada pressionamento também interrompe o combo em andamento; se o passo
+; tiver Pokestop ligado, aperta a tecla Pokestop logo depois da troca, e
+; se tiver um combo marcado (Combo 1/2), solta esse combo em seguida.
 
 global _rotacaoPos := 1   ; índice, na sequência, do próximo passo a enviar
 global _rotacaoComboPendente := 0   ; { combo, gen } a soltar pelo timer (ver _RodarComboRotacao) ou 0
 
 ; Sequência completa (todas as rotações, em ordem), sem os passos vazios.
 ; Formato 2x4 (2 rotações de 4) ou 3x3 (3 de 3) — ver GetFormatoRotacao.
-; Cada item: { slot: N do Ctrl+N, rot: 1..3, passo: 1..4, combo: 0..2 }.
+; Cada item: { slot: N do Ctrl+N, rot: 1..3, passo: 1..4, combo: 0..2,
+; stop: aperta a tecla Pokestop depois da troca }.
 ; Com "1º POKÉMON = PULAR" (padrão) o 1º passo de CADA rotação
 ; fica de fora: o jogador puxa esse pokémon à mão no começo de toda
 ; rotação, então o macro só chama do 2º em diante — ex.: 2-3-4 | 2-5-6.
@@ -32,7 +33,8 @@ RotacaoSequencia() {
                 continue
             slot := _CfgSlotRotacao(rot, A_Index)
             if (slot > 0)
-                seq.Push({ slot: slot, rot: rot, passo: A_Index, combo: _CfgComboRotacao(rot, A_Index) })
+                seq.Push({ slot: slot, rot: rot, passo: A_Index, combo: _CfgComboRotacao(rot, A_Index),
+                    stop: _CfgPokestopRotacao(rot, A_Index) })
         }
     }
     return seq
@@ -67,6 +69,15 @@ ExecutarRotacao() {
     ; sairiam no pokémon que acabou de entrar.
     gen := InterromperCombo()
     SendEvent("^" prox.slot)
+    ; Pokestop do passo: sai logo depois de soltar o pokémon e antes do
+    ; combo pós-troca (que só começa depois da Espera antes do combo).
+    if (prox.stop) {
+        teclaStop := GetTeclaPokestop()
+        if (teclaStop = "N/A" || teclaStop = "")
+            ShowHint("ROTAÇÃO: configure a tecla POKESTOP", 1800, "danger")
+        else
+            SendEvent("{" teclaStop "}")
+    }
     _rotacaoPos := Mod(_rotacaoPos, RotacaoSequencia().Length) + 1
     _HudRedraw()
 
