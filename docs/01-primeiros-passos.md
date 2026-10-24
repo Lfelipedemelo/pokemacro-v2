@@ -45,7 +45,9 @@ Na imagem acima, **Combo Principal**, **Reviver** e **Rotação** estão ligados
 
 > 💡 Clicar na HUD **não tira o foco do jogo** — você pode ligar/desligar macros no meio da partida.
 >
-> 💡 **Combo Principal, Combo Secundário e Combo Revive são exclusivos**: ligar um desliga os outros dois automaticamente.
+> 💡 **Combo Principal e Combo Secundário são exclusivos**: ligar um desliga o outro automaticamente. O Combo Revive pode ficar ligado junto com eles.
+>
+> 💡 **Macros com a mesma Tecla do Macro não ficam ligados juntos**: os combos, o Revive e o Combo Revive podem usar a mesma tecla, e ligar um deles desliga o outro que usa essa tecla.
 
 ### Botões que aparecem com o mouse sobre a barra
 

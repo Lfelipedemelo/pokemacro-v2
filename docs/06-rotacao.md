@@ -121,7 +121,7 @@ Cada passo pode soltar um combo logo depois de trocar de pokémon. Ex.: na image
 
 Cada passo pode apertar a **Tecla Pokestop** do jogo logo depois de soltar o pokémon. Ex.: na imagem do 6.2, o `Ctrl+3` da 1ª rotação e o `Ctrl+5` da 2ª estão com `STOP`.
 
-- Ordem de cada aperto: para o combo que estiver rodando → envia o `Ctrl + N` → **aperta a Tecla Pokestop** (se o passo tiver `STOP`) → espera a **Espera antes do combo** → solta o combo (se o passo tiver um).
+- Ordem de cada aperto: para o combo que estiver rodando → envia o `Ctrl + N` → espera ~0,4 s (tempo do jogo processar a troca) e **aperta a Tecla Pokestop** (se o passo tiver `STOP`) → espera a **Espera antes do combo** → solta o combo (se o passo tiver um).
 - A **Tecla Pokestop** é uma só para todos os passos. Ela pode ser definida aqui (4) ou nas [Configurações Gerais](07-configuracoes-gerais.md#passo-7--tecla-pokestop) — é a mesma configuração.
 - Se um passo tem `STOP` mas a tecla não foi definida, a troca acontece normalmente e aparece o aviso *"ROTAÇÃO: configure a tecla POKESTOP"*.
 - A opção é guardada **por passo e por formato**, como o combo. Mudar o `STOP` de um passo **não** reinicia a rotação.

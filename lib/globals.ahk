@@ -11,7 +11,7 @@ global configFile := A_ScriptDir "\config.ini"
 ; commit e crie uma Release no GitHub com a tag "v" + este número (ex.:
 ; v2.1.0) — é ela que o botão "Verificar atualizações" procura (ver
 ; lib\atualizacao.ahk).
-global VERSAO_APP := "2.1.0"
+global VERSAO_APP := "2.2.0"
 
 ; ─── Escala da interface (HUD + telas de configuração) ───────────────
 ; "pequeno" | "normal" | "grande" — "normal" preserva exatamente o
@@ -62,8 +62,14 @@ global MACROS_INFO := Map(
 ; de um macro ligado (ver ProcessarPressionamento).
 global MACROS_ORDEM := ["comboPrincipal", "comboSecundario", "comboRevive", "revive", "cooldown", "rotacao"]
 
-; Os três combos são mutuamente exclusivos (ligar um desliga os outros).
-global COMBOS_EXCLUSIVOS := ["comboPrincipal", "comboSecundario", "comboRevive"]
+; Combo Principal e Secundário são mutuamente exclusivos (ligar um desliga
+; o outro). O Combo Revive pode ficar ligado junto com eles.
+global COMBOS_EXCLUSIVOS := ["comboPrincipal", "comboSecundario"]
+
+; Macros que podem usar a mesma tecla de executar entre si. Dois deles com
+; a mesma tecla nunca ficam ligados juntos: ligar um desliga o outro
+; (senão o despachante não saberia qual rodar).
+global MACROS_TECLA_COMUM := ["comboPrincipal", "comboSecundario", "comboRevive", "revive"]
 
 ; Cor da Rotação (verde-água das setas de icons\rotacao.png): faixa do
 ; cabeçalho da tela de config e contorno do próximo passo nela.

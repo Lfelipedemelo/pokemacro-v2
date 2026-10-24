@@ -19,7 +19,9 @@ O Combo Revive junta os dois: **revive o pokémon e, logo em seguida, solta um c
 2. Espera o **Delay Após Revive** (tempo do pokémon voltar ao campo).
 3. Executa o combo, com as mesmas regras do [Combo Principal](02-combos.md#21-o-que-o-combo-faz-na-ordem).
 
-> 💡 O Combo Revive é **exclusivo** com os Combos Principal e Secundário: ligar um desliga os outros. Ele pode usar a mesma **Tecla do Macro** que eles.
+> 💡 O Combo Revive pode ficar **ligado junto** com o Combo Principal ou o Secundário, desde que cada um tenha a sua **Tecla do Macro**. Apertar a tecla do Combo Revive no meio de outro combo interrompe esse combo.
+>
+> 💡 Ele também pode usar a **mesma Tecla do Macro** do [Revive](03-revive.md) ou de um combo. Nesse caso os dois não ficam ligados juntos: ligar um desliga o outro — útil para alternar entre Revive e Combo Revive pela HUD sem trocar de tecla.
 
 ---
 

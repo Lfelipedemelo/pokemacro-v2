@@ -31,7 +31,7 @@ Passe o mouse na HUD e clique no **⚙ abaixo do ícone do Reviver**:
 | **1** | **Posição** | Ponto da tela onde o mouse vai durante o revive — clique sobre o pokémon que será revivido |
 | **2** | **Hotkey Revive** | A tecla do jogo que usa o item de revive |
 | **3** | **Delay entre Cliques** | Espera entre recolher o pokémon e usar o item (0 a 300 ms, padrão 50 ms) |
-| **4** | **Tecla do Macro** | A tecla/botão que dispara o revive (ex.: `XButton1`) |
+| **4** | **Tecla do Macro** | A tecla/botão que dispara o revive (ex.: `XButton1`). Pode ser a mesma do [Combo Revive](04-combo-revive.md) — aí ligar um desliga o outro |
 | **5** | **Ligar/Desligar** | Atalho para ligar/desligar o Revive sem abrir a HUD |
 | **6** | **Detectar Pokémon** | Captura o ícone do "dedo" da barra de habilidades (veja 3.4). Mostra `CAPTURAR DEDO` antes da primeira captura e `RECAPTURAR` depois |
 | **7** | **Detecção** | `INATIVA` enquanto não houver captura; depois vira `TESTAR`, que mostra se o pokémon está fora agora |

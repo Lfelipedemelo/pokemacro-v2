@@ -23,8 +23,10 @@ _SalvarTeclaCapturada(secao, chave, tecla, label) {
         }
     }
     SalvarCfg(secao, chave, tecla)
-    if (ehHotkey)
+    if (ehHotkey) {
         AtualizarHotkeyCombo()
+        ResolverTeclaComum(secao, chave)
+    }
     ShowHint(label ": " _ComboDisplay(tecla), 1300, "success")
     return true
 }

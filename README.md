@@ -144,7 +144,9 @@ macro_modular/
 2. O ícone ganha um anel/brilho na cor de destaque do tema quando ativo.
 3. Clique novamente para **desativar**.
 
-> 💡 **Exclusividade entre Combos:** Combo Principal, Combo Secundário e Combo Revive são mutuamente exclusivos — ativar um desliga automaticamente os outros.
+> 💡 **Exclusividade entre Combos:** Combo Principal e Combo Secundário são mutuamente exclusivos — ativar um desliga automaticamente o outro. O Combo Revive pode ficar ligado junto com qualquer um deles.
+>
+> 💡 **Mesma Tecla do Macro:** os combos, o Revive e o Combo Revive podem usar a mesma Tecla do Macro. Macros com a mesma tecla não ficam ligados juntos — ativar um desliga o outro (ex.: Revive e Combo Revive na mesma tecla viram "um ou outro").
 
 > 💡 **Dica:** Passe o mouse sobre um ícone da barra para ver em um tooltip o nome do macro.
 
@@ -344,7 +346,7 @@ Funciona exatamente igual ao **Combo Principal**, mas é uma configuração sepa
 3. Ligar a Rotação sempre começa do início; a **Tecla Reiniciar** faz o mesmo no meio do jogo. Por padrão o macro **pula o 1º passo de todas as rotações** (você puxa esse pokémon à mão no começo de cada rotação): no 2 × 4 os apertos enviam `2-3-4 | 2-5-6`, no 3 × 3 `2-3 | 4-5 | 6`, e voltam para o `2`.
 4. Cada aperto **interrompe o combo em andamento**, para as skills restantes não saírem no pokémon que acabou de entrar.
 5. **Combo depois da troca (opcional, por passo):** cada passo pode soltar o **Combo 1** (config do Combo Principal) ou o **Combo 2** (config do Combo Secundário) logo depois do `Ctrl+N`, após a **Espera antes do combo**. Apertar a Tecla Macro de novo no meio do combo para ele e já faz a próxima troca.
-6. **Pokestop (opcional, por passo):** com o `STOP` ligado num passo, o macro aperta a **Tecla Pokestop** logo depois do `Ctrl+N` — antes do combo pós-troca, se houver.
+6. **Pokestop (opcional, por passo):** com o `STOP` ligado num passo, o macro aperta a **Tecla Pokestop** ~0,4 s depois do `Ctrl+N` (tempo do jogo processar a troca) — antes do combo pós-troca, se houver.
 
 #### Opções de Configuração
 
@@ -463,7 +465,7 @@ Ao pressionar **▶ DEFINIR** em qualquer campo de tecla, o sistema aguarda voc�
 
 O sistema possui proteção avançada contra conflito de hotkeys:
 
-- **Tecla já usada:** ao definir uma hotkey (tecla do macro, ligar/desligar, reiniciar rotação ou pânico) que já pertence a outra, o sistema avisa e não salva. A única exceção é a tecla do macro dos três combos, que pode ser a mesma (só um combo fica ligado por vez).
+- **Tecla já usada:** ao definir uma hotkey (tecla do macro, ligar/desligar, reiniciar rotação ou pânico) que já pertence a outra, o sistema avisa e não salva. A única exceção é a tecla do macro dos três combos e do Revive, que pode ser a mesma — macros com a mesma tecla não ficam ligados juntos (ligar um desliga o outro).
 - **Mesma tecla no macro e no jogo:** Se a Tecla do Macro for a mesma que uma ação do jogo (ex: `F3` é hotkey e primeira habilidade do combo), o sistema usa supressão de input — a tecla não é enviada ao jogo duas vezes.
 - **Re-entrada bloqueada:** Enquanto um combo está em execução, apertar a tecla de qualquer combo é ignorado — não interrompe nem inicia outro combo por cima.
 - **Revive e Rotação interrompem o Combo:** Pressionar a tecla do Revive, do Combo Revive ou da Rotação durante a execução de um combo **interrompe o combo imediatamente** e executa o revive / a troca de pokémon.

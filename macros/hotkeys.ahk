@@ -21,6 +21,8 @@ DefinirMacro(nome, ligado) {
             }
         }
     }
+    if (ligado)
+        _DesligarMesmaTecla(nome)
 
     ; Ligar a Rotação sempre começa do 1º passo da 1ª rotação.
     if (ligado && nome = "rotacao")
@@ -29,7 +31,7 @@ DefinirMacro(nome, ligado) {
     ; Desligar também para o que estiver rodando daquele macro.
     ; (a Rotação também: ela pode estar soltando o combo pós-troca)
     if (!ligado) {
-        if (_EhComboExclusivo(nome) || nome = "rotacao")
+        if (_EhComboExclusivo(nome) || nome = "comboRevive" || nome = "rotacao")
             InterromperCombo()
         if (nome = "cooldown")
             executandoCooldown := false
@@ -50,6 +52,44 @@ _EhComboExclusivo(nome) {
         if (c = nome)
             return true
     return false
+}
+
+_TemTeclaComum(nome) {
+    global MACROS_TECLA_COMUM
+    for m in MACROS_TECLA_COMUM
+        if (m = nome)
+            return true
+    return false
+}
+
+; Desliga os outros macros ligados que usam a mesma tecla de executar que
+; 'nome' (só entre os de MACROS_TECLA_COMUM — os demais nunca repetem
+; tecla). Ex.: Revive e Combo Revive na mesma tecla viram "um ou outro".
+_DesligarMesmaTecla(nome) {
+    global macros, MACROS_TECLA_COMUM
+    if !_TemTeclaComum(nome)
+        return
+    tecla := _TeclaExec(nome)
+    if (tecla = "" || tecla = "N/A")
+        return
+    for outro in MACROS_TECLA_COMUM {
+        if (outro != nome && macros[outro] && _TeclaExec(outro) = tecla) {
+            macros[outro] := false
+            InterromperCombo()
+        }
+    }
+}
+
+; Chamado depois de salvar uma tecla: se ela passou a ser igual à de outro
+; macro ligado, desliga o outro (fica valendo o que acabou de ser editado).
+ResolverTeclaComum(secao, chave) {
+    global macros, MACROS_INFO
+    for nome, info in MACROS_INFO {
+        if (info.secao = secao && info.exec = chave && macros[nome]) {
+            _DesligarMesmaTecla(nome)
+            _HudRedraw()
+        }
+    }
 }
 
 ; ─── Tecla de pânico: desliga tudo e para o que estiver rodando ──
@@ -87,8 +127,9 @@ HotkeySlotExiste(secao, chave) {
 }
 
 ; Devolve o rótulo da hotkey que já usa 'tecla', ou "" se estiver livre.
-; Única exceção permitida: a tecla de executar dos três combos pode ser a
-; mesma, já que só um deles fica ligado por vez (o despachante sabe qual).
+; Única exceção permitida: a tecla de executar dos combos e do Revive
+; (MACROS_TECLA_COMUM) pode ser a mesma — macros com a mesma tecla nunca
+; ficam ligados juntos (_DesligarMesmaTecla), então o despachante sabe qual.
 ConflitoDeTecla(secao, chave, tecla) {
     atual := 0
     for s in _HotkeySlots()
@@ -102,7 +143,7 @@ ConflitoDeTecla(secao, chave, tecla) {
             continue
         if (CfgLer(s.secao, s.chave, "") != tecla)
             continue
-        if (s.tipo = "exec" && atual.tipo = "exec" && _EhComboExclusivo(s.macro) && _EhComboExclusivo(atual.macro))
+        if (s.tipo = "exec" && atual.tipo = "exec" && _TemTeclaComum(s.macro) && _TemTeclaComum(atual.macro))
             continue
         return s.label
     }

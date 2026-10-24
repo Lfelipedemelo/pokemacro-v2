@@ -75,8 +75,13 @@ ExecutarRotacao() {
         teclaStop := GetTeclaPokestop()
         if (teclaStop = "N/A" || teclaStop = "")
             ShowHint("ROTAÇÃO: configure a tecla POKESTOP", 1800, "danger")
-        else
+        else {
+            ; Espera o jogo processar a troca antes do Pokestop: apertado
+            ; logo após o Ctrl+N o jogo ignorava. Rotacao/delayPokestop no
+            ; config.ini (ms) ajusta; sem tela própria.
+            Sleep(Integer(CfgLer("Rotacao", "delayPokestop", "400")))
             SendEvent("{" teclaStop "}")
+        }
     }
     _rotacaoPos := Mod(_rotacaoPos, RotacaoSequencia().Length) + 1
     _HudRedraw()
