@@ -13,7 +13,11 @@ ExecutarCombo(tipo) {
     if !macros[tipo]
         return
 
-    _RodarSequenciaCombo(GetCfg(tipo), InterromperCombo())
+    ; Na vez do elixir da Rotação (passo de ITEM), usa o elixir antes das
+    ; skills — ver RotacaoUsarElixir.
+    gen := InterromperCombo()
+    if RotacaoUsarElixir(gen)
+        _RodarSequenciaCombo(GetCfg(tipo), gen)
 }
 
 ; ─── Interrupção de combo por "geração" ──────────────────

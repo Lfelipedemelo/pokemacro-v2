@@ -29,7 +29,7 @@ Passe o mouse na HUD e clique no **⚙ abaixo do ícone do Reviver**:
 | # | Campo | O que configurar |
 |:-:|-------|------------------|
 | **1** | **Posição** | Ponto da tela onde o mouse vai durante o revive — clique sobre o pokémon que será revivido |
-| **2** | **Hotkey Revive** | A tecla do jogo que usa o item de revive |
+| **2** | **Hotkey Revive** | A tecla do jogo que usa o item de revive. A posição (1), esta tecla e o delay (3) também valem para o revive do passo `E/R` da [Rotação](06-rotacao.md#66-elixir--revive-passo-er) — é só aqui que eles se configuram |
 | **3** | **Delay entre Cliques** | Espera entre recolher o pokémon e usar o item (0 a 300 ms, padrão 50 ms) |
 | **4** | **Tecla do Macro** | A tecla/botão que dispara o revive (ex.: `XButton1`). Pode ser a mesma do [Combo Revive](04-combo-revive.md) — aí ligar um desliga o outro |
 | **5** | **Ligar/Desligar** | Atalho para ligar/desligar o Revive sem abrir a HUD |

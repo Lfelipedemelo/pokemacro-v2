@@ -46,6 +46,21 @@ global _gcfgEdit    := 0   ; chip de slider sendo editado pelo teclado (ver _GCf
 global _gcfgSeletor := 0   ; seletor de opções aberto sobre um botão (ver _GCfg_AbrirSeletor) ou 0
 global _gcfgCanvas  := 0   ; canvas GDI+ reaproveitado entre redesenhos (ver _GCfg_Redraw)
 
+; ── Rolagem ──
+; Tela mais alta que a área de trabalho do monitor (ex.: Rotação 3x3 com
+; passo de ITEM): a janela fica com a altura que cabe (_gcfgVisH, lógica)
+; e o conteúdo rola por baixo do cabeçalho, que fica fixo (com o × e o
+; ↺ sempre à vista). A tela inteira é desenhada num canvas à parte
+; (_gcfgConteudo) e a janela recebe só o cabeçalho + a faixa visível do
+; corpo — drawFn não sabe de rolagem e as telas não mudam. Rola pela
+; roda do mouse ou arrastando a barra à direita.
+global _GCFG_HEADER_H := 34   ; altura do cabeçalho (_GCfg_Header) — fica fixo ao rolar
+global _gcfgVisH      := 0    ; altura lógica visível da janela (= _gcfgH quando cabe)
+global _gcfgScroll    := 0    ; deslocamento lógico do corpo (0 .. _gcfgH - _gcfgVisH)
+global _gcfgConteudo  := 0    ; canvas da tela inteira, quando rola
+global _gcfgScrollDrag := 0   ; arraste da barra em andamento ({y0, s0}) ou 0
+global _gcfgBoxesTela := false   ; _gcfgBoxes em coordenadas da janela (confirmação), não do conteúdo
+
 ; Fator de escala aplicado a todas as telas de configuração. Widgets
 ; continuam desenhando em coordenadas "lógicas" (as mesmas de sempre);
 ; é o Graphics inteiro que é ampliado antes de chamar drawFn, então
@@ -69,34 +84,47 @@ global _GCFG_SCALE      := _GCFG_SCALE_BASE * EscalaFator()
 ; ele (em vez de ficar sem efeito porque "já tinha algo aberto").
 _GCfg_Abrir(w, h, drawFn) {
     global _gcfgGui, _gcfgW, _gcfgH, _gcfgX, _gcfgY, _gcfgBoxes, _gcfgHoverId, _gcfgDraw, _gcfgDragBox, _GCFG_SCALE, _gcfgConfirm, _gcfgEdit, _gcfgSeletor
+    global _gcfgVisH, _gcfgScroll, _gcfgScrollDrag, _gcfgBoxesTela
 
+    ; A mesma tela reaberta (ex.: Rotação ao trocar de formato) mantém a
+    ; rolagem — senão voltaria ao topo a cada mudança lá embaixo.
+    mesmaTela := (_gcfgGui && drawFn = _gcfgDraw)
+    scrollAnterior := mesmaTela ? _gcfgScroll : 0
     if (_gcfgGui)
         _GCfg_Fechar()
     _gcfgConfirm := 0
     _gcfgEdit    := 0
     _gcfgSeletor := 0
+    _gcfgScrollDrag := 0
+    _gcfgBoxesTela  := false
 
     Gdip_EnsureStarted()
 
     _gcfgW := w, _gcfgH := h
-    physW := Round(w * _GCFG_SCALE), physH := Round(h * _GCFG_SCALE)
+    physW := Round(w * _GCFG_SCALE)
 
     ; Reabre no mesmo lugar onde a última tela de config (qualquer uma —
     ; só existe uma por vez, ver comentário no topo do arquivo) foi
-    ; fechada. Clampado contra o tamanho atual da tela pra não deixar a
-    ; janela presa fora da área visível se a resolução/monitor mudou. Usa a
-    ; área virtual (todos os monitores), como a HUD — clampar só pelo
-    ; monitor principal puxava de volta uma tela deixada no segundo monitor.
+    ; fechada; sem posição salva, centraliza no monitor principal.
     savedX := CfgLer("Geral", "configPosX", "")
     savedY := CfgLer("Geral", "configPosY", "")
     if (IsInteger(savedX) && IsInteger(savedY)) {
-        vx := SysGet(76), vy := SysGet(77), vw := SysGet(78), vh := SysGet(79)
-        _gcfgX := Max(vx, Min(Integer(savedX), vx + vw - physW))
-        _gcfgY := Max(vy, Min(Integer(savedY), vy + vh - physH))
+        _gcfgX := Integer(savedX), _gcfgY := Integer(savedY)
     } else {
         _gcfgX := (A_ScreenWidth  - physW) // 2
-        _gcfgY := (A_ScreenHeight - physH) // 2
+        _gcfgY := (A_ScreenHeight - Round(h * _GCFG_SCALE)) // 2
     }
+    ; A altura cabe na área de trabalho do monitor onde a janela vai abrir
+    ; (sem a barra de tarefas); o que passar disso rola (ver _gcfgVisH).
+    ; Depois clampa a posição dentro desse monitor — não deixa a janela
+    ; presa fora da tela se a resolução/monitor mudou, e uma tela deixada
+    ; no segundo monitor continua nele.
+    area := _GCfg_AreaTrabalho(_gcfgX + physW // 2, _gcfgY)
+    _gcfgVisH := Min(h, Floor((area.b - area.t - 16) / _GCFG_SCALE))
+    _gcfgScroll := Max(0, Min(scrollAnterior, h - _gcfgVisH))
+    physH := Round(_gcfgVisH * _GCFG_SCALE)
+    _gcfgX := Max(area.l, Min(_gcfgX, area.r - physW))
+    _gcfgY := Max(area.t, Min(_gcfgY, area.b - physH))
     _gcfgBoxes   := []
     _gcfgHoverId := ""
     _gcfgDraw    := drawFn
@@ -114,13 +142,40 @@ _GCfg_Abrir(w, h, drawFn) {
     OnMessage(0x0100, _GCfg_WM_KeyDown)    ; WM_KEYDOWN (edição do valor de slider)
     OnMessage(0x0102, _GCfg_WM_Char)       ; WM_CHAR    (idem)
     OnMessage(0x0006, _GCfg_WM_Activate)   ; WM_ACTIVATE
+    OnMessage(0x020A, _GCfg_WM_MouseWheel) ; WM_MOUSEWHEEL (rolagem)
 
     _GCfg_Redraw()
     return true
 }
 
+; Área de trabalho {l, t, r, b} (física) do monitor que contém o ponto;
+; fora de todos, a do monitor principal. ("topo", não "t": uma variável
+; t local quebraria o T() do tema — ver _GCfg_SliderSetFromX.)
+_GCfg_AreaTrabalho(x, y) {
+    Loop MonitorGetCount() {
+        MonitorGetWorkArea(A_Index, &esq, &topo, &dir, &base)
+        if (x >= esq && x < dir && y >= topo && y < base)
+            return { l: esq, t: topo, r: dir, b: base }
+    }
+    MonitorGetWorkArea(MonitorGetPrimary(), &esq, &topo, &dir, &base)
+    return { l: esq, t: topo, r: dir, b: base }
+}
+
+; A tela atual rola? (mais alta que a janela)
+_GCfg_Rola() {
+    global _gcfgH, _gcfgVisH
+    return _gcfgVisH < _gcfgH
+}
+
+; Limite inferior (lógico, em coordenadas do conteúdo) do que está à
+; vista — o seletor abre para cima quando não caberia abaixo disso.
+_GCfg_LimiteVisivel(h) {
+    global _gcfgScroll, _gcfgVisH
+    return _GCfg_Rola() ? Min(h, _gcfgScroll + _gcfgVisH) : h
+}
+
 _GCfg_Fechar() {
-    global _gcfgGui, _gcfgDragBox, _gcfgX, _gcfgY, _gcfgConfirm, _gcfgCanvas, _gcfgSeletor
+    global _gcfgGui, _gcfgDragBox, _gcfgX, _gcfgY, _gcfgConfirm, _gcfgCanvas, _gcfgSeletor, _gcfgConteudo
     if (!_gcfgGui)
         return
     _GCfg_ConfirmarEdicao()   ; fechar com um valor digitado e não confirmado salva ele
@@ -135,6 +190,10 @@ _GCfg_Fechar() {
         Gdip_DestroyLayeredCanvas(_gcfgCanvas)
         _gcfgCanvas := 0
     }
+    if (_gcfgConteudo) {
+        Gdip_DestroyLayeredCanvas(_gcfgConteudo)
+        _gcfgConteudo := 0
+    }
 }
 
 ; ── Desenho ────────────────────────────────────────────
@@ -142,6 +201,10 @@ _GCfg_Redraw() {
     global _gcfgGui, _gcfgW, _gcfgH, _gcfgX, _gcfgY, _gcfgBoxes, _gcfgDraw, _gcfgHoverId, _GCFG_SCALE, _gcfgConfirm, _gcfgCanvas, _gcfgSeletor
     if (!_gcfgGui || !_gcfgDraw)
         return
+    if _GCfg_Rola() {
+        _GCfg_RedrawRolando()
+        return
+    }
     Critical "On"
     try {
         physW := Round(_gcfgW * _GCFG_SCALE), physH := Round(_gcfgH * _GCFG_SCALE)
@@ -168,6 +231,124 @@ _GCfg_Redraw() {
         ; (as hotkeys dos macros ficariam presas atrás dele).
         Critical "Off"
     }
+}
+
+; Redesenho de tela que rola: a tela inteira (com o seletor, que rola
+; junto) vai para _gcfgConteudo; a janela recebe o cabeçalho fixo e, por
+; baixo dele, a faixa [cabeçalho + rolagem ...] do corpo, recortados na
+; moldura arredondada. A confirmação é desenhada direto na janela
+; (centralizada no que está à vista), com os botões em coordenadas da
+; janela (_gcfgBoxesTela).
+_GCfg_RedrawRolando() {
+    global _gcfgGui, _gcfgW, _gcfgH, _gcfgX, _gcfgY, _gcfgBoxes, _gcfgDraw, _gcfgHoverId, _GCFG_SCALE, _gcfgConfirm, _gcfgCanvas, _gcfgSeletor
+    global _gcfgVisH, _gcfgScroll, _gcfgConteudo, _gcfgBoxesTela, _GCFG_HEADER_H
+    Critical "On"
+    try {
+        s := _GCFG_SCALE
+        physW := Round(_gcfgW * s), physH := Round(_gcfgH * s), physVisH := Round(_gcfgVisH * s)
+
+        if (_gcfgConteudo) {
+            Gdip_ResetClip(_gcfgConteudo.pGraphics)
+            DllCall("gdiplus\GdipResetWorldTransform", "Ptr", _gcfgConteudo.pGraphics)
+        }
+        cont := Gdip_ResizeCanvas(&_gcfgConteudo, physW, physH)
+        Gdip_ScaleTransform(cont.pGraphics, s, s)
+        _gcfgBoxes := _gcfgDraw.Call(cont.pGraphics, _gcfgW, _gcfgH, _gcfgHoverId)
+        if (!_gcfgConfirm && _gcfgSeletor)
+            _gcfgBoxes := _GCfg_DesenharSeletor(cont.pGraphics, _gcfgW, _gcfgH, _gcfgHoverId)
+
+        if (_gcfgCanvas) {
+            Gdip_ResetClip(_gcfgCanvas.pGraphics)
+            DllCall("gdiplus\GdipResetWorldTransform", "Ptr", _gcfgCanvas.pGraphics)
+        }
+        canvas := Gdip_ResizeCanvas(&_gcfgCanvas, physW, physVisH)
+        g := canvas.pGraphics
+        ; cópia 1:1 dos pixels — sem suavização na cópia
+        DllCall("gdiplus\GdipSetInterpolationMode", "Ptr", g, "Int", 5)   ; NearestNeighbor
+        Gdip_SetClipRoundRect(g, 0, 0, physW, physVisH, 14 * s)
+        hdrP := Round(_GCFG_HEADER_H * s)
+        _GCfg_CopiarFaixa(g, cont.pBitmap, 0, 0, physW, hdrP)
+        _GCfg_CopiarFaixa(g, cont.pBitmap, hdrP + Round(_gcfgScroll * s), hdrP, physW, physVisH - hdrP)
+        Gdip_ResetClip(g)
+        DllCall("gdiplus\GdipSetInterpolationMode", "Ptr", g, "Int", 7)   ; volta ao HighQualityBicubic
+
+        Gdip_ScaleTransform(g, s, s)
+        _GCfg_DesenharBarraRolagem(g)
+        borda := Gdip_Pen(Gdip_Argb(255, T()["SEP"]), 1)
+        Gdip_DrawRoundRect(g, borda, 0.5, 0.5, _gcfgW - 1, _gcfgVisH - 1, 14)
+        Gdip_DeletePen(borda)
+
+        _gcfgBoxesTela := false
+        if (_gcfgConfirm) {
+            _gcfgBoxes := _GCfg_DesenharConfirmacao(g, _gcfgW, _gcfgVisH, _gcfgHoverId)
+            _gcfgBoxesTela := true
+        }
+        Gdip_PresentLayeredCanvas(canvas, _gcfgGui.Hwnd, _gcfgX, _gcfgY)
+    } finally {
+        Critical "Off"
+    }
+}
+
+; Copia a faixa de 'altura' px a partir de srcY do bitmap da tela inteira
+; para a janela em dstY (pixels físicos).
+_GCfg_CopiarFaixa(g, pBitmap, srcY, dstY, largura, altura) {
+    if (altura <= 0)
+        return
+    DllCall("gdiplus\GdipDrawImageRectRectI", "Ptr", g, "Ptr", pBitmap,
+        "Int", 0, "Int", dstY, "Int", largura, "Int", altura,
+        "Int", 0, "Int", srcY, "Int", largura, "Int", altura,
+        "Int", 2, "Ptr", 0, "Ptr", 0, "Ptr", 0)   ; UnitPixel
+}
+
+; Trilho da barra de rolagem (lógico, na janela): coluna estreita na
+; borda direita, abaixo do cabeçalho — fora dos cartões (pad de 14).
+_GCfg_TrilhoRolagem() {
+    global _gcfgW, _gcfgH, _gcfgVisH, _gcfgScroll, _GCFG_HEADER_H
+    y := _GCFG_HEADER_H + 6, h := _gcfgVisH - y - 8
+    tH := Max(24, h * _gcfgVisH / _gcfgH)
+    maxS := _gcfgH - _gcfgVisH
+    tY := y + (h - tH) * (maxS ? _gcfgScroll / maxS : 0)
+    return { x: _gcfgW - 9, y: y, w: 5, h: h, tY: tY, tH: tH, area: 12 }
+}
+
+_GCfg_DesenharBarraRolagem(g) {
+    global _gcfgScrollDrag, _gcfgHoverId
+    tr := _GCfg_TrilhoRolagem()
+    br := Gdip_BrushSolid(Gdip_Argb(255, T()["BG2"]))
+    Gdip_FillRoundRect(g, br, tr.x, tr.y, tr.w, tr.h, tr.w / 2)
+    Gdip_DeleteBrush(br)
+    ativo := _gcfgScrollDrag || _gcfgHoverId = "_rolagem"
+    br := Gdip_BrushSolid(Gdip_Argb(255, ativo ? T()["ACCENT"] : T()["MUTED"]))
+    Gdip_FillRoundRect(g, br, tr.x, tr.tY, tr.w, tr.tH, tr.w / 2)
+    Gdip_DeleteBrush(br)
+}
+
+; Muda a rolagem (lógica), limitada à faixa válida, e redesenha.
+_GCfg_Rolar(novo) {
+    global _gcfgScroll, _gcfgH, _gcfgVisH
+    novo := Max(0, Min(Round(novo), _gcfgH - _gcfgVisH))
+    if (novo = _gcfgScroll)
+        return
+    _gcfgScroll := novo
+    _GCfg_Redraw()
+}
+
+; O ponto (lógico, na janela) está sobre a coluna da barra de rolagem?
+_GCfg_NaBarraRolagem(mx, my) {
+    global _gcfgW, _gcfgConfirm
+    if (!_GCfg_Rola() || _gcfgConfirm)
+        return false
+    tr := _GCfg_TrilhoRolagem()
+    return mx >= _gcfgW - tr.area && my >= tr.y && my <= tr.y + tr.h
+}
+
+; Ponto da janela (lógico) → coordenadas dos boxes: o corpo rolado é
+; deslocado; o cabeçalho e a confirmação (_gcfgBoxesTela) não.
+_GCfg_ParaConteudo(mx, my) {
+    global _gcfgScroll, _gcfgBoxesTela, _GCFG_HEADER_H
+    if (_GCfg_Rola() && !_gcfgBoxesTela && my >= _GCFG_HEADER_H)
+        my += _gcfgScroll
+    return [mx, my]
 }
 
 ; ── Confirmação (sobreposta à tela de config aberta) ────
@@ -252,11 +433,13 @@ _GCfg_DesenharConfirmacao(g, w, h, hoverId) {
 ; índice 1-based) fica destacada. Clicar numa opção chama onEscolher(idx)
 ; e fecha; clicar fora ou Esc só fecha. Enquanto aberto, só o painel
 ; recebe clique — mesmo esquema da confirmação.
-_GCfg_AbrirSeletor(ancora, titulo, opcoes, sel, onEscolher) {
+; 'chipW': largura máxima de cada chip — 28 cabe um número; opções com
+; palavra (ex.: ELIXIR/REVIVE) passam mais.
+_GCfg_AbrirSeletor(ancora, titulo, opcoes, sel, onEscolher, chipW := 28) {
     global _gcfgSeletor, _gcfgHoverId, _gcfgGui
     if (!_gcfgGui)
         return
-    _gcfgSeletor := { ancora: ancora, titulo: titulo, opcoes: opcoes, sel: sel, onEscolher: onEscolher }
+    _gcfgSeletor := { ancora: ancora, titulo: titulo, opcoes: opcoes, sel: sel, onEscolher: onEscolher, chipW: chipW }
     _gcfgHoverId := ""
     _GCfg_Redraw()
 }
@@ -295,14 +478,16 @@ _GCfg_DesenharSeletor(g, w, h, hoverId) {
 
     n := s.opcoes.Length
     chipH := 24, gap := 4, padI := 8, tituloH := 18
-    ; chips de 28px, encolhidos quando muitas opções não caberiam na
-    ; largura da tela
-    chipW := Min(28, Floor((w - 16 - padI * 2 - (n - 1) * gap) / n))
+    ; chips de s.chipW (28px por padrão), encolhidos quando muitas opções
+    ; não caberiam na largura da tela; o painel alarga para caber o título
+    ; (com poucos chips ele seria mais estreito que o texto)
+    chipW := Min(s.chipW, Floor((w - 16 - padI * 2 - (n - 1) * gap) / n))
     pw := padI * 2 + n * chipW + (n - 1) * gap
+    pw := Min(w - 16, Max(pw, Ceil(Gdip_MeasureText(s.titulo, 8, true)[1]) + padI * 2))
     ph := padI + tituloH + chipH + padI
     px := Max(8, Min(a.x + a.w / 2 - pw / 2, w - 8 - pw))
     py := a.y + a.h + 4
-    if (py + ph > h - 8)
+    if (py + ph > _GCfg_LimiteVisivel(h) - 8)   ; com rolagem, o limite é o fim do que está à vista
         py := a.y - 4 - ph
 
     sombra := Gdip_BrushSolid(Gdip_Argb(120, "0x000000"))
@@ -320,7 +505,7 @@ _GCfg_DesenharSeletor(g, w, h, hoverId) {
     cy := py + padI + tituloH
     Loop n {
         idx := A_Index
-        cx := px + padI + (idx - 1) * (chipW + gap)
+        cx := px + (pw - (n * chipW + (n - 1) * gap)) / 2 + (idx - 1) * (chipW + gap)   ; centralizados (= padI sem título largo)
         id := "sel_" idx
         ativo := (idx = s.sel), hov := (hoverId = id)
         cor := ativo ? T()["ACCENT2"] : (hov ? T()["BG2"] : T()["BG"])
@@ -353,12 +538,33 @@ _GCfg_HitTest(x, y) {
 }
 
 _GCfg_WM_MouseMove(wParam, lParam, msg, hwnd) {
-    global _gcfgGui, _gcfgHoverId, _gcfgDragBox, _GCFG_SCALE
+    global _gcfgGui, _gcfgHoverId, _gcfgDragBox, _GCFG_SCALE, _gcfgScrollDrag, _gcfgH, _gcfgVisH
     if (!_gcfgGui || hwnd != _gcfgGui.Hwnd)
         return
     Win_ArmarMouseLeave(hwnd)
     xy := Win_DecodeXY(lParam)
     mx := xy[1] / _GCFG_SCALE, my := xy[2] / _GCFG_SCALE   ; físico → lógico
+
+    ; Arrastando a barra de rolagem: o deslocamento do mouse no trilho
+    ; vira deslocamento proporcional do conteúdo.
+    if (_gcfgScrollDrag) {
+        if !(wParam & 0x1) {
+            _gcfgScrollDrag := 0
+            _GCfg_Redraw()
+            return
+        }
+        tr := _GCfg_TrilhoRolagem()
+        _GCfg_Rolar(_gcfgScrollDrag.s0 + (my - _gcfgScrollDrag.y0) * (_gcfgH - _gcfgVisH) / Max(1, tr.h - tr.tH))
+        return
+    }
+    if _GCfg_NaBarraRolagem(mx, my) {
+        if (_gcfgHoverId != "_rolagem") {
+            _gcfgHoverId := "_rolagem"
+            _GCfg_Redraw()
+        }
+        return
+    }
+    p := _GCfg_ParaConteudo(mx, my), mx := p[1], my := p[2]
 
     if (_gcfgDragBox) {
         if !(wParam & 0x1) {   ; botão esquerdo não está mais pressionado
@@ -378,11 +584,28 @@ _GCfg_WM_MouseMove(wParam, lParam, msg, hwnd) {
 }
 
 _GCfg_WM_LButtonDown(wParam, lParam, msg, hwnd) {
-    global _gcfgGui, _gcfgDragBox, _GCFG_SCALE, _gcfgEdit
+    global _gcfgGui, _gcfgDragBox, _GCFG_SCALE, _gcfgEdit, _gcfgScrollDrag, _gcfgScroll, _gcfgVisH, _GCFG_HEADER_H
     if (!_gcfgGui || hwnd != _gcfgGui.Hwnd)
         return
     xy := Win_DecodeXY(lParam)
     mx := xy[1] / _GCFG_SCALE, my := xy[2] / _GCFG_SCALE   ; físico → lógico
+
+    ; Barra de rolagem: no polegar, começa o arraste; no trilho, pula uma
+    ; página para aquele lado.
+    if _GCfg_NaBarraRolagem(mx, my) {
+        tr := _GCfg_TrilhoRolagem()
+        pagina := _gcfgVisH - _GCFG_HEADER_H - 20
+        if (my < tr.tY)
+            _GCfg_Rolar(_gcfgScroll - pagina)
+        else if (my > tr.tY + tr.tH)
+            _GCfg_Rolar(_gcfgScroll + pagina)
+        else {
+            _gcfgScrollDrag := { y0: my, s0: _gcfgScroll }
+            _GCfg_Redraw()
+        }
+        return
+    }
+    p := _GCfg_ParaConteudo(mx, my), mx := p[1], my := p[2]
     box := _GCfg_HitTest(mx, my)
 
     ; Clique fora do chip em edição confirma o valor digitado antes de
@@ -411,10 +634,27 @@ _GCfg_WM_LButtonDown(wParam, lParam, msg, hwnd) {
 }
 
 _GCfg_WM_LButtonUp(wParam, lParam, msg, hwnd) {
-    global _gcfgGui, _gcfgDragBox
+    global _gcfgGui, _gcfgDragBox, _gcfgScrollDrag
     if (!_gcfgGui || hwnd != _gcfgGui.Hwnd)
         return
     _gcfgDragBox := 0
+    if (_gcfgScrollDrag) {
+        _gcfgScrollDrag := 0
+        _GCfg_Redraw()
+    }
+}
+
+; Roda do mouse: rola o corpo (só em tela que rola). O Windows 10/11
+; manda a roda para a janela sob o cursor, mesmo sem foco.
+_GCfg_WM_MouseWheel(wParam, lParam, msg, hwnd) {
+    global _gcfgGui, _gcfgScroll
+    if (!_gcfgGui || hwnd != _gcfgGui.Hwnd || !_GCfg_Rola())
+        return
+    delta := (wParam >> 16) & 0xFFFF
+    if (delta >= 0x8000)
+        delta -= 0x10000
+    _GCfg_Rolar(_gcfgScroll - delta / 120 * 48)
+    return 0
 }
 
 _GCfg_WM_MouseLeave(wParam, lParam, msg, hwnd) {
@@ -650,7 +890,7 @@ _GCfg_WM_Activate(wParam, lParam, msg, hwnd) {
 ; opcional — passe 0 para omitir, como na tela Configurações Gerais).
 ; Devolve a altura ocupada.
 _GCfg_Header(g, boxes, w, titulo, corFaixa, onReset, onFechar, hoverId) {
-    hH := 34
+    hH := _GCFG_HEADER_H
 
     hdrBrush := Gdip_BrushSolid(Gdip_Argb(255, T()["BG2"]))
     Gdip_FillRect(g, hdrBrush, 0, 0, w, hH)

@@ -54,10 +54,13 @@ _IgnorarModsNoHook(ih) {
 ; Aguarda o usuário pressionar uma tecla/botão do mouse e salva no INI.
 ; Se (secao, chave) for uma hotkey, aceita combinação com Ctrl/Alt/Shift
 ; (ex.: "^y", "+XButton1"); teclas que o macro ENVIA ao jogo ficam
-; sempre com uma tecla só.
+; com uma tecla só — exceto com 'comMods' (ex.: tecla Elixir da Rotação,
+; "^XButton2"), que aceita modificadores e também o botão direito (só é
+; enviado, nunca vira hotkey, então não deixa de chegar ao jogo). Quem
+; envia uma tecla dessas usa _TeclaParaSend.
 ; Se 'uiText' for um objeto de controle, atualiza seu valor visual.
-CapturarTecla(configSection, configKey, uiText := 0, label := "Tecla") {
-    aceitaMods := HotkeySlotExiste(configSection, configKey)
+CapturarTecla(configSection, configKey, uiText := 0, label := "Tecla", comMods := false) {
+    aceitaMods := comMods || HotkeySlotExiste(configSection, configKey)
     ShowHint(aceitaMods
         ? "Pressione tecla, botão do mouse ou combinação com Ctrl/Alt/Shift (ESC cancela)"
         : "Pressione tecla ou botão do mouse (ESC cancela)", 999999)
@@ -109,12 +112,16 @@ CapturarTecla(configSection, configKey, uiText := 0, label := "Tecla") {
         ShowHint("Nenhuma tecla detectada", 1000, "warn")
         return
     }
-    if _BotaoProibido(tecla) {
+    if (comMods ? tecla = "LButton" : _BotaoProibido(tecla)) {
         while GetKeyState(tecla, "P")
             Sleep(10)
-        ShowHint("Clique esquerdo/direito não pode ser usado", 1800, "warn")
+        ShowHint(comMods ? "Clique esquerdo não pode ser usado" : "Clique esquerdo/direito não pode ser usado", 1800, "warn")
         return
     }
+    ; botão do mouse capturado: espera soltar (o clique não cai na tela)
+    if (tecla ~= "Button$")
+        while GetKeyState(tecla, "P")
+            Sleep(10)
 
     tecla := mods . tecla
     if !_SalvarTeclaCapturada(configSection, configKey, tecla, label)
@@ -228,6 +235,14 @@ CapturarCombo(configSection, configKey, uiText := 0, label := "Hotkey") {
 
     if IsObject(uiText)
         uiText.Value := label ": [ " _ComboDisplay(resultado) " ]"
+}
+
+; Tecla salva → texto do Send: modificadores fora das chaves
+; ("^XButton2" → "^{XButton2}", "f8" → "{f8}").
+_TeclaParaSend(tecla) {
+    if !RegExMatch(tecla, "^([\^!+]*)(.+)$", &m)
+        return "{" tecla "}"
+    return m[1] "{" m[2] "}"
 }
 
 _NormalizarTecla(k) {

@@ -86,6 +86,7 @@ Todas as telas de configuração seguem o mesmo padrão. Exemplo com a tela do C
 - **Barras deslizantes** (delays): arraste a bolinha **ou clique no número** à direita para digitar o valor — `Enter` salva, `Esc` cancela.
 - **Tudo é salvo na hora** — não existe botão "Salvar". Feche com **×** quando terminar.
 - A tela pode ser **arrastada** clicando em qualquer área vazia dela, e reabre no mesmo lugar da última vez.
+- Se a tela for **mais alta que o monitor** (ex.: a da Rotação no 3 × 3 com um passo `E/R`, em telas de 1080p ou com o **Tamanho da Interface** em grande), ela abre com a altura que cabe e ganha uma **barra de rolagem** à direita: role com a **roda do mouse**, arraste a barra ou clique no trilho acima/abaixo dela. O cabeçalho (com o **×** e o **↺**) fica sempre à vista.
 
 Ao passar o mouse sobre um cartão clicável, ele clareia e o valor fica azul:
 
@@ -101,7 +102,7 @@ Sempre que clicar num cartão de tecla (ex.: **TECLA DO MACRO**):
 
    <p align="center"><img src="img/hint-tecla.png" width="520" alt="Aviso: pressione tecla ou botão do mouse"></p>
 
-   Nos campos de **Ligar/Desligar** e **Tecla de Pânico** você também pode usar combinações com `Ctrl`, `Alt` ou `Shift` (ex.: `Alt + 1`), e o aviso muda para:
+   Nos campos de **Ligar/Desligar** e **Tecla de Pânico** (e na **Tecla Elixir** da Rotação, que também aceita o botão direito do mouse) você também pode usar combinações com `Ctrl`, `Alt` ou `Shift` (ex.: `Alt + 1`), e o aviso muda para:
 
    <p align="center"><img src="img/hint-combo.png" width="640" alt="Aviso: pressione tecla ou combinação"></p>
 

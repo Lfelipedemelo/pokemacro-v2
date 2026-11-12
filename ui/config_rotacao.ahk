@@ -2,13 +2,14 @@
 ; ui\config_rotacao.ahk — Config Rotação (GDI+)
 ; =====================================================
 
-; Altura: 558 com 2 rotações (2x4); cada rotação a mais soma um cartão (124).
+; Altura: 558 com 2 rotações (2x4); cada rotação a mais soma um cartão
+; (124) e um passo de ITEM soma as 2 linhas do elixir/revive (104).
 AbrirConfigRotacao() {
     _GCfg_Abrir(288, AlturaConfigRotacao(), _DesenharConfigRotacao)
 }
 
 AlturaConfigRotacao() {
-    return 558 + (GetFormatoRotacao().rotacoes - 2) * 124
+    return 558 + (GetFormatoRotacao().rotacoes - 2) * 124 + (RotacaoTemItem() ? 104 : 0)
 }
 
 _DesenharConfigRotacao(g, w, h, hoverId) {
@@ -73,6 +74,7 @@ _DesenharConfigRotacao(g, w, h, hoverId) {
         Gdip_FillRoundRect(g, cardBrush, pad, y, w - pad*2, cardH, 8)
         Gdip_DeleteBrush(cardBrush)
         Gdip_DrawText(g, rot "ª ROTAÇÃO", 9, true, Gdip_Argb(255, T()["MUTED"]), pad + 8, y + 6, w - pad*2 - 16, 14, false)
+        _DesenharChipAtualRotacao(g, boxes, rot, prox, w - pad - 8 - 84, y + 5, 84, hoverId)
 
         slotW := (w - pad*2 - 16) // fmt.passos
         Loop fmt.passos {
@@ -82,8 +84,10 @@ _DesenharConfigRotacao(g, w, h, hoverId) {
             ; o passo que sai no próximo pressionamento ganha contorno na
             ; cor da Rotação (mesma do ícone na HUD)
             ehProx := (prox && prox.rot = rot && prox.passo = passo)
-            _GCfg_MiniButton(g, boxes, "r" rot "p" passo, sx + 2, y + 24, slotW - 4, passo "º",
-                slot ? "Ctrl+" slot : "—",
+            ; passo de ITEM mostra o que ele faz nesta volta
+            txt := (slot = ROTACAO_ITEM) ? (RotacaoVezDoElixir() ? "ELIXIR" : "REVIVE")
+                : slot ? "Ctrl+" slot : "—"
+            _GCfg_MiniButton(g, boxes, "r" rot "p" passo, sx + 2, y + 24, slotW - 4, passo "º", txt,
                 _EscolherSlotRotacao.Bind(rot, passo, { x: sx + 2, y: y + 24 + 15, w: slotW - 4, h: 21 }), hoverId)
             if (ehProx) {
                 proxPen := Gdip_Pen(Gdip_Argb(255, ROTACAO_COR), 1.5)
@@ -97,6 +101,27 @@ _DesenharConfigRotacao(g, w, h, hoverId) {
             _DesenharChipStopRotacao(g, boxes, rot, passo, sx + 2, y + 88, slotW - 4, enviado, hoverId)
         }
         y += cardH + 8
+    }
+
+    ; ── Passo de ITEM: elixir nas voltas ímpares (na tecla do combo, no
+    ;    pokémon antes do ITEM), revive nas pares (na tecla da Rotação).
+    ;    Cada um MACRO ou MÃO (o macro pula aquela volta). ──
+    if RotacaoTemItem() {
+        ; Aceita Ctrl/Alt/Shift e botão direito (comMods): é comum o
+        ; elixir estar num atalho como Ctrl + botão do mouse no jogo.
+        _GCfg_Field(g, boxes, "elixir", pad, y, colW, "TECLA ELIXIR", _ComboDisplay(CfgLer("Rotacao", "teclaElixir", "N/A")),
+            (*) => (CapturarTecla("Rotacao", "teclaElixir", 0, "ELIXIR DE ATAQUE", true), _GCfg_Redraw()), hoverId)
+        _GCfg_Toggle(g, boxes, "elixirModo", col2, y, colW, "ELIXIR", "MACRO", "MÃO", RotacaoElixirPeloMacro(),
+            (*) => SalvarCfg("Rotacao", "elixirModo", "macro"),
+            (*) => SalvarCfg("Rotacao", "elixirModo", "mao"), hoverId)
+        y += 44 + 8
+        ; O revive usa tudo da tela do Revive (posição, hotkey, delay) —
+        ; aqui só se o macro faz ou não. Muda quais passos a tecla da
+        ; Rotação pula — o próximo da HUD pode mudar.
+        _GCfg_Toggle(g, boxes, "reviveModo", pad, y, w - pad*2, "REVIVE (USA A CONFIG DO MACRO REVIVE)", "MACRO", "MÃO", RotacaoRevivePeloMacro(),
+            (*) => (SalvarCfg("Rotacao", "reviveModo", "macro"), _HudRedraw()),
+            (*) => (SalvarCfg("Rotacao", "reviveModo", "mao"), _HudRedraw()), hoverId)
+        y += 44 + 8
     }
 
     ; Só pesa nos passos com combo marcado: tempo para o pokémon sair da
@@ -175,6 +200,59 @@ _DesenharChipStopRotacao(g, boxes, rot, passo, x, y, w, ativo, hoverId) {
             onClick: (*) => SalvarCfg("Rotacao", _ChaveSlotRotacao(rot, passo) "s", stop ? "false" : "true") })
 }
 
+; Chip no canto do cartão: a rotação do próximo aperto mostra "ATUAL" (na
+; cor da Rotação, sem clique); as outras, "COMEÇAR AQUI" — leva a posição
+; ao 1º passo dela (RotacaoIrPara), para quando uma rotação foi feita à
+; mão. Rotação sem passo enviado fica sem chip.
+; Rotação com passo de ITEM: o clique abre ELIXIR/REVIVE para escolher
+; também a vez — e aí até o "ATUAL" é clicável (troca só a vez).
+_DesenharChipAtualRotacao(g, boxes, rot, prox, x, y, w, hoverId) {
+    static h := 16
+    atual := prox && prox.rot = rot
+    temPasso := false
+    for e in RotacaoSequencia()
+        if (e.rot = rot)
+            temPasso := true
+    if (!temPasso)
+        return
+    temItem := RotacaoTemItemNa(rot)
+    clicavel := !atual || temItem
+    id := "atual" rot
+    hov := clicavel && hoverId = id
+
+    br := Gdip_BrushSolid(Gdip_Argb(255, hov ? T()["BG3"] : T()["BG"]))
+    Gdip_FillRoundRect(g, br, x, y, w, h, 5)
+    Gdip_DeleteBrush(br)
+    if (atual) {
+        pen := Gdip_Pen(Gdip_Argb(150, ROTACAO_COR), 1)
+        Gdip_DrawRoundRect(g, pen, x, y, w, h, 5)
+        Gdip_DeletePen(pen)
+    }
+    cor := hov ? Gdip_Argb(255, T()["ACCENT"]) : atual ? Gdip_Argb(255, ROTACAO_COR) : Gdip_Argb(255, T()["MUTED"])
+    Gdip_DrawText(g, atual ? "ATUAL" : "COMEÇAR AQUI", 7.5, true, cor, x, y, w, h, true)
+
+    if (!clicavel)
+        return
+    if (temItem)
+        onClick := (*) => _GCfg_AbrirSeletor({ x: x, y: y, w: w, h: h },
+            atual ? "VEZ DO E/R NESTA VOLTA" : "COMEÇAR NA " rot "ª ROTAÇÃO COM",
+            ["ELIXIR", "REVIVE"], RotacaoVezDoElixir() ? 1 : 2,
+            _ComecarRotacaoComVez.Bind(rot, atual), 58)
+    else
+        onClick := (*) => (RotacaoIrPara(rot), ShowHint("ROTAÇÃO: começando na " rot "ª rotação", 1200, "info"))
+    boxes.Push({ id: id, x: x, y: y, w: w, h: h, onClick: onClick })
+}
+
+; Escolha do seletor do chip (1 = ELIXIR, 2 = REVIVE). No "ATUAL" só a
+; vez muda — a posição fica onde está.
+_ComecarRotacaoComVez(rot, soVez, idx) {
+    if (!soVez)
+        RotacaoIrPara(rot)
+    RotacaoDefinirVez(idx = 1)
+    vez := (idx = 1) ? "ELIXIR" : "REVIVE"
+    ShowHint(soVez ? "ROTAÇÃO: vez do " vez : "ROTAÇÃO: começando na " rot "ª rotação (" vez ")", 1400, "info")
+}
+
 _EscolherComboRotacao(rot, passo, ancora, *) {
     atual := _CfgComboRotacao(rot, passo)
     _GCfg_AbrirSeletor(ancora, "SOLTAR COMBO", ["—", "C1", "C2"],
@@ -187,24 +265,34 @@ _DefinirComboRotacao(rot, passo, idx) {
     SalvarCfg("Rotacao", _ChaveSlotRotacao(rot, passo) "c", idx - 1)
 }
 
-; Clicar num passo abre o seletor (Ctrl+1..6 ou — vazio) logo abaixo do
-; botão; 'ancora' é o retângulo do botão, para o painel se posicionar.
+; Clicar num passo abre o seletor (Ctrl+1..6, E/R = passo de ITEM — só do
+; 2º passo em diante — ou — vazio) logo abaixo do botão; 'ancora' é o
+; retângulo do botão, para o painel se posicionar.
 _EscolherSlotRotacao(rot, passo, ancora, *) {
     opcoes := []
     Loop TECLA_POKEMON_MAX
         opcoes.Push(String(A_Index))
+    if (passo > 1)
+        opcoes.Push("E/R")
     opcoes.Push("—")
     atual := _CfgSlotRotacao(rot, passo)
-    _GCfg_AbrirSeletor(ancora, "POKÉMON DO " passo "º PASSO (CTRL + N)", opcoes,
-        atual ? atual : opcoes.Length, _DefinirSlotRotacao.Bind(rot, passo))
+    titulo := (passo > 1) ? passo "º PASSO: CTRL + N, OU E/R = ELIXIR/REVIVE" : "POKÉMON DO " passo "º PASSO (CTRL + N)"
+    _GCfg_AbrirSeletor(ancora, titulo, opcoes,
+        atual ? atual : opcoes.Length, _DefinirSlotRotacao.Bind(rot, passo, opcoes))
 }
 
-; Grava o pokémon escolhido (o último item do seletor é o vazio, 0).
+; Grava o escolhido: 1..6, "item" (E/R) ou 0 (o último, vazio).
 ; Mexer na sequência reinicia a rotação, senão a posição atual apontaria
-; para um passo diferente do que o jogador tinha em mente.
-_DefinirSlotRotacao(rot, passo, idx) {
-    SalvarCfg("Rotacao", _ChaveSlotRotacao(rot, passo), (idx > TECLA_POKEMON_MAX) ? 0 : idx)
+; para um passo diferente do que o jogador tinha em mente. Ganhar ou
+; perder o passo de ITEM muda a altura da tela — reabre (ver
+; _TrocarFormatoRotacao).
+_DefinirSlotRotacao(rot, passo, opcoes, idx) {
+    tinhaItem := RotacaoTemItem()
+    valor := (idx <= TECLA_POKEMON_MAX) ? idx : (opcoes[idx] = "E/R") ? "item" : 0
+    SalvarCfg("Rotacao", _ChaveSlotRotacao(rot, passo), valor)
     ReiniciarRotacao()
+    if (RotacaoTemItem() != tinhaItem)
+        SetTimer(AbrirConfigRotacao, -1)
 }
 
 ; Troca o formato e reabre a tela: a altura depende do nº de rotações.

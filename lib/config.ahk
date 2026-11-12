@@ -29,6 +29,7 @@ global _cfgCarregadoDe := ""   ; configFile já carregado no cache ("" = nenhum)
 global TEMPO_COOLDOWN_MAX := 60   ; segundos — faixa dos tempos de espera do Cooldown
 global TECLA_POKEMON_MAX  := 6    ; pokémons do time (Ctrl+1..Ctrl+6) — faixa das teclas do Cooldown e dos passos da Rotação
 global DELAY_COMBO_ROTACAO_MAX := 2000   ; ms — faixa da espera entre a troca da Rotação e o combo
+global ROTACAO_ITEM := TECLA_POKEMON_MAX + 1   ; "slot" do passo de ITEM da Rotação (elixir/revive) — ver _CfgSlotRotacao
 global COMBOS_ROTACAO := ["comboPrincipal", "comboSecundario"]   ; seção do INI do combo 1/2 que a Rotação solta
 
 CfgLer(secao, chave, padrao := "") {
@@ -165,12 +166,41 @@ GetFormatoRotacao() {
 ;   3x3: 1-2-3 | 1-4-5 | 1-—-6 — na 3ª rotação o 2º passo seria repetir
 ;        um pokémon antes do 6º; vazio por padrão, então do 1º vai direto
 ;        ao 3º (o usuário põe um Ctrl+N ali se quiser a repetição).
+;   Passo de ITEM (INI "item", devolve ROTACAO_ITEM): elixir/revive no
+;   pokémon anterior, alternando a cada volta — ver macros\rotacao.ahk.
+;   Nunca no 1º passo (não há pokémon antes dele na rotação).
 _CfgSlotRotacao(rot, passo) {
     static padroes := Map(
         "2x4", [[1, 2, 3, 4], [1, 2, 5, 6]],
         "3x3", [[1, 2, 3], [1, 4, 5], [1, 0, 6]])
     modo := GetFormatoRotacao().modo
-    return Max(0, Min(TECLA_POKEMON_MAX, _CfgInt("Rotacao", _ChaveSlotRotacao(rot, passo), padroes[modo][rot][passo])))
+    chave := _ChaveSlotRotacao(rot, passo)
+    if (passo > 1 && CfgLer("Rotacao", chave, "") = "item")
+        return ROTACAO_ITEM
+    return Max(0, Min(TECLA_POKEMON_MAX, _CfgInt("Rotacao", chave, padroes[modo][rot][passo])))
+}
+
+; Algum passo do formato atual é de ITEM? (a tela mostra as opções do
+; elixir/revive só nesse caso)
+RotacaoTemItem() {
+    fmt := GetFormatoRotacao()
+    Loop fmt.rotacoes {
+        rot := A_Index
+        Loop fmt.passos
+            if (_CfgSlotRotacao(rot, A_Index) = ROTACAO_ITEM)
+                return true
+    }
+    return false
+}
+
+; Elixir/Revive do passo de ITEM: "macro" (padrão, o macro usa) ou "mao"
+; (o jogador usa à mão e o macro pula aquela volta).
+RotacaoElixirPeloMacro() {
+    return CfgLer("Rotacao", "elixirModo", "macro") != "mao"
+}
+
+RotacaoRevivePeloMacro() {
+    return CfgLer("Rotacao", "reviveModo", "macro") != "mao"
 }
 
 ; Chave do INI do passo, no formato atual (ver _CfgSlotRotacao).

@@ -244,8 +244,8 @@ RenderCfg("config-cooldown-seletor", 288, 422, _DesenharConfigCooldown, [], "", 
 _rotacaoPos := 3
 RenderCfg("config-rotacao", 288, AlturaConfigRotacao(), _DesenharConfigRotacao,
     [[1, "hkmacro"], [2, "toggle"], [3, "reiniciar"], [4, "pokestop"], [5, "formato_a"], [6, "primeiro_a"],
-     [7, 267, 207], [7, 267, 331], [8, 267, 271], [8, 267, 395], [9, 267, 295], [9, 267, 419],
-     [10, "delay"], [11, "showmini_a"]])
+     [7, 165, 207], [7, 165, 331], [8, 267, 271], [8, 267, 395], [9, 267, 295], [9, 267, 419],
+     [13, "delay"], [14, "showmini_a"]])
 
 ; Seletor aberto no 3º passo da 2ª rotação (Ctrl+5), mouse sobre o 6.
 RenderCfg("config-rotacao-seletor", 288, AlturaConfigRotacao(), _DesenharConfigRotacao, [], "", 0,
@@ -256,14 +256,21 @@ RenderCfg("config-rotacao-seletor", 288, AlturaConfigRotacao(), _DesenharConfigR
 RenderCfg("config-rotacao-combo", 288, AlturaConfigRotacao(), _DesenharConfigRotacao, [], "", 0,
     { botao: "c2p3", hover: "sel_2" })
 
-; Formato 3x3 (sequência padrão 2-3 | 4-5 | 6, a 3ª rotação com o 2º
-; passo vazio): ao ligar, o próximo é o Ctrl+2 da 1ª rotação.
+; Formato 3x3 (2-3 | 4-5 | E/R-6: o 2º passo da 3ª rotação é o de ITEM,
+; o que mostra os campos 10-12 do elixir/revive): ao ligar, o próximo é o
+; Ctrl+2 da 1ª rotação, e o passo de ITEM mostra ELIXIR (1ª volta).
 SalvarCfg("Rotacao", "formato", "3x3")
-_rotacaoPos := 1
+_rotacaoPos := 1, _rotacaoCiclo := 1
 RenderCfg("config-rotacao-3x3", 288, AlturaConfigRotacao(), _DesenharConfigRotacao,
     [[1, "hkmacro"], [2, "toggle"], [3, "reiniciar"], [4, "pokestop"], [5, "formato_a"], [6, "primeiro_a"],
-     [7, 267, 207], [7, 267, 331], [7, 267, 455], [8, 267, 271], [8, 267, 395], [8, 267, 519],
-     [9, 267, 295], [9, 267, 419], [9, 267, 543], [10, "delay"], [11, "showmini_a"]])
+     [7, 165, 207], [7, 165, 331], [7, 165, 455], [8, 267, 271], [8, 267, 395], [8, 267, 519],
+     [9, 267, 295], [9, 267, 419], [9, 267, 543], [10, "elixir"], [11, "elixirModo_a"], [12, "reviveModo_a"],
+     [13, "delay"], [14, "showmini_a"]])
+
+; "COMEÇAR AQUI" da 3ª rotação (tem o E/R): seletor ELIXIR/REVIVE aberto,
+; mouse sobre o REVIVE.
+RenderCfg("config-rotacao-vez", 288, AlturaConfigRotacao(), _DesenharConfigRotacao, [], "", 0,
+    { botao: "atual3", hover: "sel_2" })
 SalvarCfg("Rotacao", "formato", "2x4")
 
 RenderCfg("config-geral", 288, 558, _DesenharConfigGeral,
