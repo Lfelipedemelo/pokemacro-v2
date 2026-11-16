@@ -413,11 +413,13 @@ _HudIconImg(nome, size) {
 ; e cacheado (_HudIconeRotacaoLigado) — o contorno são 9 DrawString, ~30%
 ; do custo de um frame da HUD, e o pulso redesenha 12x/s com macro ligado.
 ; Sem passo configurado: "—"; próximo aperto faz o revive do passo de
-; ITEM: "R".
+; ITEM: "R"; elixir pendente (posição parada no ITEM na vez do elixir,
+; ainda não usado — sai no próximo combo): "E", até o combo usá-lo.
 _HudDesenharIconeRotacao(g, cx, cy, sz, ligado) {
     if ligado {
         prox := RotacaoProxima()
-        img := _HudIconeRotacaoLigado(!prox ? "—" : prox.item ? "R" : String(prox.slot), sz)
+        img := _HudIconeRotacaoLigado(RotacaoElixirPendente() ? "E"
+            : !prox ? "—" : prox.item ? "R" : String(prox.slot), sz)
     } else {
         img := _HudIconImg("rotacao", sz)
     }
@@ -426,7 +428,7 @@ _HudDesenharIconeRotacao(g, cx, cy, sz, ligado) {
 
 ; Bitmap sz×sz do ícone da Rotação escurecido com 'txt' por cima.
 ; Cacheado pelo resto da sessão, como os ícones (Gdip_ScaledIcon): no
-; máximo 8 textos (1–6, "R" e "—") por tamanho de interface.
+; máximo 9 textos (1–6, "R", "E" e "—") por tamanho de interface.
 _HudIconeRotacaoLigado(txt, sz) {
     global _HUD_SCALE
     static cache := Map()

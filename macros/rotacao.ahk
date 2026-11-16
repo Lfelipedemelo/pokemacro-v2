@@ -198,8 +198,14 @@ RotacaoUsarElixir(gen) {
         return true
     }
     _rotacaoElixirUsado := true
+    _HudRedraw()   ; tira o "E" do ícone da HUD
     SendEvent(_TeclaParaSend(tecla))   ; pode ter Ctrl/Alt/Shift (ex.: "^XButton2")
     return EsperarInterrompivel(_CfgInt("Rotacao", "delayElixir", 300), gen)
+}
+
+; Elixir esperando o próximo combo (a HUD mostra "E" no ícone).
+RotacaoElixirPendente() {
+    return _RotacaoElixirArmado()
 }
 
 _RotacaoElixirArmado() {
@@ -280,5 +286,6 @@ ReiniciarRotacao(avisar := false) {
     _rotacaoElixirUsado := false
     _HudRedraw()
     if (avisar && (prox := RotacaoProxima()))
-        ShowHint("ROTAÇÃO REINICIADA — próximo: " (prox.item ? "REVIVE" : "Ctrl+" prox.slot), 1200, "info")
+        ShowHint("ROTAÇÃO REINICIADA — próximo: " (RotacaoElixirPendente() ? "ELIXIR (no combo)"
+            : prox.item ? "REVIVE" : "Ctrl+" prox.slot), 1200, "info")
 }

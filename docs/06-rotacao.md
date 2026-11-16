@@ -100,7 +100,7 @@ O passo que sai no próximo aperto aparece com contorno verde (nas imagens, o `C
    <p align="center"><img src="img/hud.png" width="420" alt="HUD com a Rotação ligada mostrando o número 2"></p>
 
    Na imagem, a Rotação acabou de ser ligada com o padrão (1º pokémon puxado à mão) e o ícone mostra **2**: o próximo aperto envia `Ctrl+2`.
-2. Com o jogo em foco, aperte a **Tecla Macro** para soltar o pokémon da vez. O número do ícone muda na hora (**R** quando o próximo aperto é o revive de um passo `E/R`). Se um combo estiver rodando, ele **para** antes da troca.
+2. Com o jogo em foco, aperte a **Tecla Macro** para soltar o pokémon da vez. O número do ícone muda na hora (**R** quando o próximo aperto é o revive de um passo `E/R`; **E** quando o elixir está esperando o próximo combo). Se um combo estiver rodando, ele **para** antes da troca.
 3. Saiu do compasso? Aperte a **Tecla Reiniciar** — aparece o aviso:
 
    <p align="center"><img src="img/hint-rotacao-reiniciada.png" width="420" alt="Aviso ROTAÇÃO REINICIADA"></p>
@@ -159,7 +159,7 @@ Exemplo com o padrão do 3 × 3 e `E/R` no 2º passo da 3ª rotação:
 3ª volta:  igual à 1ª ...
 ```
 
-- **No botão do passo** aparece o que sai **nesta** volta: `ELIXIR` ou `REVIVE`. Na HUD, quando o próximo aperto da Tecla Macro é o revive, o ícone mostra **R**.
+- **No botão do passo** aparece o que sai **nesta** volta: `ELIXIR` ou `REVIVE`. Na HUD, quando o próximo aperto da Tecla Macro é o revive, o ícone mostra **R**; na volta do elixir, enquanto ele ainda não saiu (o pokémon de antes do `E/R` está fora e o próximo combo vai usá-lo), o ícone mostra **E** — assim que o combo usa o elixir, volta a mostrar o número do próximo pokémon.
 - **`MACRO` / `MÃO`** (11 e 12): com `MÃO`, o macro não faz nada naquela volta e o passo é pulado — ex.: Revive em `MÃO` para quem prefere reviver à mão; a Tecla Macro vai direto para o `Ctrl+6`. O elixir e o revive continuam alternando do mesmo jeito.
 - **Combo depois do revive (opcional):** a linha de combo do passo `E/R` vale para o revive — `COMBO 1`/`COMBO 2` solta o combo de novo no 1º depois do revive; `—` só revive (você solta o combo à mão, se quiser). O combo depois do revive **não** usa o elixir.
 - **O elixir sai uma vez só por volta:** um 2º combo no mesmo pokémon não repete. Ele só sai pelas teclas do **Combo Principal/Secundário** — o **Combo Revive** nunca usa o elixir.
