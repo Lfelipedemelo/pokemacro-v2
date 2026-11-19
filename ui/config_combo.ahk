@@ -6,14 +6,16 @@
 ; combos (principal, secundário e combo revive). Fica em [Geral] e não
 ; na seção do combo para que mexer numa tela valha para todas e o
 ; "resetar" de um combo não apague o valor dos outros.
+; Faixa SLEEP_COMBO_MIN..SLEEP_COMBO_MAX (300 a 1000 ms), padrão 450 —
+; abaixo de 300 o jogo perde teclas.
 GetSleepCombo() {
-    return _CfgInt("Geral", "sleepCombo", 550)
+    return Max(SLEEP_COMBO_MIN, Min(SLEEP_COMBO_MAX, _CfgInt("Geral", "sleepCombo", SLEEP_COMBO_PADRAO)))
 }
 
 ; Slider do delay entre teclas, reaproveitado pelas telas de combo.
 _GCfg_SliderSleepCombo(g, boxes, x, y, w, hoverId) {
     return _GCfg_Slider(g, boxes, "sleep", x, y, w, "DELAY ENTRE TECLAS (TODOS OS COMBOS)", GetSleepCombo(),
-        300, 800, 1, "ms", (v) => SalvarCfg("Geral", "sleepCombo", v), hoverId)
+        SLEEP_COMBO_MIN, SLEEP_COMBO_MAX, 1, "ms", (v) => SalvarCfg("Geral", "sleepCombo", v), hoverId)
 }
 
 AbrirConfigCombo(tipo) {

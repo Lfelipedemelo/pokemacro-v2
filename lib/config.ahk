@@ -28,6 +28,9 @@ global _cfgCarregadoDe := ""   ; configFile já carregado no cache ("" = nenhum)
 
 global TEMPO_COOLDOWN_MAX := 60   ; segundos — faixa dos tempos de espera do Cooldown
 global TECLA_POKEMON_MAX  := 6    ; pokémons do time (Ctrl+1..Ctrl+6) — faixa das teclas do Cooldown e dos passos da Rotação
+global SLEEP_COMBO_MIN := 300            ; ms — faixa do delay entre teclas dos combos (Geral/sleepCombo);
+global SLEEP_COMBO_MAX := 1000           ;      abaixo de 300 o jogo perde teclas
+global SLEEP_COMBO_PADRAO := 450
 global DELAY_COMBO_ROTACAO_MAX := 2000   ; ms — faixa da espera entre a troca da Rotação e o combo
 global ROTACAO_ITEM := TECLA_POKEMON_MAX + 1   ; "slot" do passo de ITEM da Rotação (elixir/revive) — ver _CfgSlotRotacao
 global COMBOS_ROTACAO := ["comboPrincipal", "comboSecundario"]   ; seção do INI do combo 1/2 que a Rotação solta

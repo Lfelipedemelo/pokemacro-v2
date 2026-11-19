@@ -773,7 +773,16 @@ _GCfg_EditarValorSlider(id, atual, vMin, vMax, step, onChange, *) {
     _GCfg_ConfirmarEdicao()
     _gcfgEdit := { id: id, texto: String(atual), selecionado: true, cursor: true,
         min: vMin, max: vMax, step: step, onChange: onChange }
-    try WinActivate("ahk_id " _gcfgGui.Hwnd)
+    ; O próprio clique já ativa a janela; só pede o foco se ainda não tem.
+    ; Não usar WinActivate: quando o jogo estava em foco ele apelava para
+    ; truques (ativar outra janela, mandar Alt) que desativavam a tela por
+    ; um instante — o WM_ACTIVATE fechava a edição recém-aberta e os
+    ; dígitos iam para o jogo.
+    try {
+        hwnd := _gcfgGui.Hwnd
+        if !WinActive("ahk_id " hwnd)
+            DllCall("SetForegroundWindow", "Ptr", hwnd)
+    }
     SetTimer(_GCfg_PiscarCursor, 530)
 }
 
@@ -880,8 +889,22 @@ _GCfg_WM_Activate(wParam, lParam, msg, hwnd) {
         return
     if (!guiHwnd || hwnd != guiHwnd)
         return
-    if ((wParam & 0xFFFF) = 0 && _gcfgEdit)   ; WA_INACTIVE
-        _GCfg_ConfirmarEdicao()
+    ; WA_INACTIVE: confirma só se a janela continuar sem foco um instante
+    ; depois — a troca de foco do próprio clique no chip gera desativações
+    ; momentâneas que fechavam a edição assim que ela abria.
+    if ((wParam & 0xFFFF) = 0 && _gcfgEdit)
+        SetTimer(_GCfg_ConfirmarSeSemFoco, -250)
+}
+
+_GCfg_ConfirmarSeSemFoco() {
+    global _gcfgGui, _gcfgEdit
+    if (!_gcfgEdit)
+        return
+    try {
+        if WinActive("ahk_id " _gcfgGui.Hwnd)
+            return
+    }
+    _GCfg_ConfirmarEdicao()
 }
 
 ; ── Widgets ─────────────────────────────────────────────

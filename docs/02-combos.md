@@ -37,7 +37,7 @@ Passe o mouse na HUD e clique no **⚙ abaixo do ícone do Combo Principal** (ou
 | **4** | **Ligar/Desligar** | Atalho para ligar/desligar este combo sem abrir a HUD (aceita `Ctrl`/`Alt`/`Shift`, ex.: `Alt + 1`) |
 | **5** | **Full Attack** | `ATIVAR` envia a tecla de Full Attack **antes** do combo |
 | **6** | **Full Defense** | `ATIVAR` envia a tecla de Full Defense **depois** do combo |
-| **7** | **Delay Entre Teclas** | Intervalo entre cada tecla (300 a 800 ms, padrão 550 ms). **Vale para todos os combos** |
+| **7** | **Delay Entre Teclas** | Intervalo entre cada tecla (300 a 1000 ms, padrão 450 ms — abaixo de 300 ms o jogo perde teclas). **Vale para todos os combos** |
 | **8** | **Exibir no Mini Menu** | `NÃO` esconde o ícone deste combo da HUD |
 
 ### Passo a passo
@@ -48,7 +48,7 @@ Passe o mouse na HUD e clique no **⚙ abaixo do ícone do Combo Principal** (ou
    > 💡 Botões laterais do mouse (`XButton1`/`XButton2`) são práticos: você mira com o mouse e solta o combo sem tirar a mão.
 4. *(Opcional)* **Ligar/Desligar** (4): defina um atalho, ex.: `Alt + 1`.
 5. *(Opcional)* **Full Attack / Full Defense** (5 e 6): primeiro defina as teclas em [Configurações Gerais](07-configuracoes-gerais.md#passo-6--teclas-de-full-attack-e-full-defense); depois clique em `ATIVAR` aqui.
-6. **Delay** (7): comece com o padrão (550 ms). Se habilidades estiverem "falhando", aumente; se estiver sobrando tempo, diminua.
+6. **Delay** (7): comece com o padrão (450 ms). Se habilidades estiverem "falhando", aumente; se estiver sobrando tempo, diminua (até 300 ms).
 7. Feche a tela no **×**.
 
 > ⚠️ **Prefixo F:** o combo envia `F3…F8` ou `3…8` conforme a opção **[Prefixo [F]](07-configuracoes-gerais.md#passo-1--prefixo-f)** das Configurações Gerais. Confira se bate com as teclas das suas habilidades no jogo.
@@ -73,10 +73,10 @@ Passe o mouse na HUD e clique no **⚙ abaixo do ícone do Combo Principal** (ou
 | Prefixo [F] | `SIM (F1..F9)` |
 | Full Attack | Ativado (tecla `F10`) |
 | Full Defense | Desativado |
-| Delay | 550 ms |
+| Delay | 450 ms |
 | Tecla do Macro | `XButton2` |
 
-Ao apertar `XButton2` no jogo: `F10` → `F3` → 550 ms → `F4` → 550 ms → … → `F8`.
+Ao apertar `XButton2` no jogo: `F10` → `F3` → 450 ms → `F4` → 450 ms → … → `F8`.
 
 ---
 

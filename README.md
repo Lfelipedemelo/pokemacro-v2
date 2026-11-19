@@ -225,12 +225,12 @@ Com os ícones na vertical (Configurações Gerais → ÍCONES DA HUD), vira uma
 
 Controla o **intervalo em milissegundos** entre cada tecla enviada no combo. Aparece nas telas do **Combo Principal**, **Combo Secundário** e **Combo Revive**, mas é **um valor só**: mexer em uma tela altera para todos os combos (e resetar um combo não apaga esse valor).
 
-- **Valor menor** = combo mais rápido (ex: 400ms)
-- **Valor maior** = combo mais lento, mais seguro (ex: 700ms)
-- **Padrão:** 550ms (ajustável de 300 a 800ms)
+- **Padrão:** 450ms (ajustável de 300 a 1000ms — abaixo de 300ms o jogo perde teclas)
+- **Valor menor** = combo mais rápido (mínimo 300ms)
+- **Valor maior** = combo mais lento, mais seguro (ex: 600ms)
 - O intervalo real entre as teclas é o valor configurado (com ~10ms de margem).
 
-> Ajuste conforme a latência do servidor. Em servidores com alta latência, aumente o delay para evitar que habilidades sejam perdidas.
+> Se alguma habilidade estiver sendo perdida (ex.: servidor com alta latência), aumente o delay.
 
 ---
 
