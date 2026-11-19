@@ -235,8 +235,14 @@ _HudRegistrarHook() {
     global _hudEventHook, _hudEventCb
     if (_hudEventHook)
         return
-    if (!_hudEventCb)
+    if (!_hudEventCb) {
         _hudEventCb := CallbackCreate(_HudOnForegroundChange, "", 7)
+        ; Ao sair (ExitApp, Reload da atualização, #SingleInstance), o AHK
+        ; libera as variáveis globais; se o hook ainda estiver ativo, uma
+        ; troca de janela nesse meio-tempo chamava _HudVisibilidade com
+        ; miniGui já sem valor ("variable has not been assigned a value").
+        OnExit((*) => _HudRemoverHook())
+    }
     ; SetWinEventHook(eventMin, eventMax, hmodWinEventProc, pfnWinEventProc, idProcess, idThread, dwFlags)
     _hudEventHook := DllCall("SetWinEventHook", "UInt", 0x3, "UInt", 0x3, "Ptr", 0, "Ptr", _hudEventCb, "UInt", 0, "UInt", 0, "UInt", 0, "Ptr")
 }
@@ -250,6 +256,9 @@ _HudRemoverHook() {
 }
 
 _HudOnForegroundChange(hHook, event, hwnd, idObject, idChild, idThread, msEventTime) {
+    global miniGui
+    if !IsSet(miniGui)   ; script encerrando (globais já liberadas) — ver _HudRegistrarHook
+        return
     _HudVisibilidade(hwnd)
 }
 
