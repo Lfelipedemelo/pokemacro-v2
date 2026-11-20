@@ -136,43 +136,43 @@ RenderCfg(nome, w, h, drawFn, anot, hoverId := "", confirm := 0, seletor := 0) {
     Gdip_DestroyLayeredCanvas(canvas)
 }
 
-; Mesmo desenho do ShowHint (lib\hint.ahk), só que para um PNG.
+; Mesmo desenho do ShowHint (lib\hint.ahk: _HintMedidas/_HintDesenhar),
+; só que para um PNG.
 RenderHint(nome, text, kind) {
     global S, OUT
-    pal := _HintPaleta(kind)
-    PAD := 24, ICON_D := 44, GAP := 18, fontSz := 15, radius := 16
-    sz   := Gdip_MeasureText(text, fontSz, true, 720)
-    txtW := Ceil(sz[1]) + 2
-    txtH := Ceil(sz[2])
-    h := PAD + Max(ICON_D, txtH) + PAD
-    w := PAD + ICON_D + GAP + txtW + PAD
+    m := _HintMedidas(text)
     k := 1.25
-    canvas := Gdip_NewLayeredCanvas(Ceil(w * k), Ceil(h * k))
+    canvas := Gdip_NewLayeredCanvas(Ceil(m.w * k), Ceil(m.h * k))
     g := canvas.pGraphics
     Gdip_ScaleTransform(g, k, k)
+    _HintDesenhar(g, text, kind, m)
+    SalvarPng(canvas.pBitmap, OUT "\" nome ".png")
+    Gdip_DestroyLayeredCanvas(canvas)
+}
 
-    bgBrush := Gdip_BrushSolid(Gdip_Argb(245, T()["BG"]))
-    Gdip_FillRoundRect(g, bgBrush, 0, 0, w, h, radius)
-    Gdip_DeleteBrush(bgBrush)
-    Gdip_SetClipRoundRect(g, 0, 0, w, h, radius)
-    stripeBrush := Gdip_BrushSolid(Gdip_Argb(255, pal["cor"]))
-    Gdip_FillRect(g, stripeBrush, 0, 0, w, 4)
-    Gdip_DeleteBrush(stripeBrush)
-    Gdip_ResetClip(g)
-    borderPen := Gdip_Pen(Gdip_Argb(255, T()["SEP"]), 1.4)
-    Gdip_DrawRoundRect(g, borderPen, 0.5, 0.5, w - 1, h - 1, radius)
-    Gdip_DeletePen(borderPen)
-    icCx := PAD + ICON_D / 2, icCy := h / 2
-    icBg := Gdip_BrushSolid(Gdip_Argb(46, pal["cor"]))
-    Gdip_FillEllipse(g, icBg, icCx - ICON_D / 2, icCy - ICON_D / 2, ICON_D, ICON_D)
-    Gdip_DeleteBrush(icBg)
-    icRing := Gdip_Pen(Gdip_Argb(255, pal["cor"]), 1.8)
-    Gdip_DrawEllipse(g, icRing, icCx - ICON_D / 2, icCy - ICON_D / 2, ICON_D, ICON_D)
-    Gdip_DeletePen(icRing)
-    Gdip_DrawText(g, pal["glifo"], 18, true, Gdip_Argb(255, pal["cor"]),
-        icCx - ICON_D / 2, icCy - ICON_D / 2, ICON_D, ICON_D, true)
-    Gdip_DrawText(g, text, fontSz, true, Gdip_Argb(255, T()["TEXT"]), PAD + ICON_D + GAP, 0, txtW, h, false)
+; Contagem (lib\hint.ahk: _ContadorDesenhar) do tipo "pausa" ou "stun".
+RenderContador(nome, tipo, text, compacto, perigo := false) {
+    global OUT
+    m := _ContadorMedidas(tipo, compacto)
+    k := 1.25
+    canvas := Gdip_NewLayeredCanvas(Ceil(m.w * k), Ceil(m.h * k))
+    g := canvas.pGraphics
+    Gdip_ScaleTransform(g, k, k)
+    _ContadorDesenhar(g, tipo, text, m, perigo)
+    SalvarPng(canvas.pBitmap, OUT "\" nome ".png")
+    Gdip_DestroyLayeredCanvas(canvas)
+}
 
+; Prévia arrastável da contagem (lib\hint.ahk: _ContadorPrevPintar),
+; desenhada num PNG em vez da janela.
+RenderPreviewContador(nome, tipo, compacto) {
+    global OUT
+    pm := _ContadorPrevMedidas(tipo, compacto)
+    k := 1.25
+    canvas := Gdip_NewLayeredCanvas(Ceil(pm.w * k), Ceil(pm.h * k))
+    g := canvas.pGraphics
+    Gdip_ScaleTransform(g, k, k)
+    _ContadorPrevPintar(g, tipo, pm)
     SalvarPng(canvas.pBitmap, OUT "\" nome ".png")
     Gdip_DestroyLayeredCanvas(canvas)
 }
@@ -217,10 +217,15 @@ RenderHud(nome, barHover, hoverT, anotar := false) {
 }
 
 ; ── Telas de configuração ───────────────────────────────
-RenderCfg("config-combo", 288, 308, _DesenharConfigCombo.Bind("comboPrincipal"),
-    [[1, "inicial"], [2, "final"], [3, "hkmacro"], [4, "toggle"], [5, "atk_a"], [6, "def_a"], [7, "sleep"], [8, "showmini_a"]])
+RenderCfg("config-combo", 288, 464, _DesenharConfigCombo.Bind("comboPrincipal"),
+    [[1, "inicial"], [2, "final"], [3, "hkmacro"], [4, "toggle"], [5, "atk_a"], [6, "def_a"], [7, "sleep"],
+     [8, "stun_a"], [9, "stunTecla"], [10, "stunTam_a"], [11, "stunPos"], [12, "stunCopiar"], [13, "showmini_a"]])
 
-RenderCfg("config-combo-reset", 288, 308, _DesenharConfigCombo.Bind("comboPrincipal"), [], "conf_nao",
+; Seletor do botão do stun aberto (F3..F8, stun no F5), mouse sobre o F5.
+RenderCfg("config-combo-stun", 288, 464, _DesenharConfigCombo.Bind("comboPrincipal"), [], "", 0,
+    { botao: "stunTecla", hover: "sel_3" })
+
+RenderCfg("config-combo-reset", 288, 464, _DesenharConfigCombo.Bind("comboPrincipal"), [], "conf_nao",
     { titulo: "RESETAR COMBOPRINCIPAL?", sub: "Esta ação não pode ser desfeita.", onSim: 0, textoSim: "SIM, RESETAR" })
 
 RenderCfg("config-revive", 288, 308, _DesenharConfigRevive,
@@ -238,19 +243,25 @@ RenderCfg("config-cooldown-seletor", 288, 422, _DesenharConfigCooldown, [], "", 
 
 ; Padrão (1º de cada rotação à mão): sequência 2-3-4 | 2-5-6; dois apertos
 ; depois do início, o próximo é o Ctrl+4 da 1ª rotação (contorno verde).
-; Os marcadores 7 (pokémon), 8 (combo pós-troca), 9 (Pokestop) e 10
-; (pausa no combo, última linha) vão em todos os cartões de rotação (um
-; por rotação; cartões a cada 148).
+; Os marcadores 7 (pokémon), 8 (combo pós-troca), 9 (Pokestop), 10 (pausa
+; no combo) e 11 (stun, última linha) vão em todos os cartões de rotação (um
+; por rotação; cartões a cada 172).
 _rotacaoPos := 3
 RenderCfg("config-rotacao", 288, AlturaConfigRotacao(), _DesenharConfigRotacao,
     [[1, "hkmacro"], [2, "toggle"], [3, "reiniciar"], [4, "pokestop"], [5, "formato_a"], [6, "primeiro_a"],
-     [7, 165, 207], [7, 165, 355], [8, 267, 271], [8, 267, 419], [9, 267, 295], [9, 267, 443],
-     [10, 267, 319], [10, 267, 467], [14, "delay"], [15, "showmini_a"]])
+     [7, 165, 207], [7, 165, 379], [8, 267, 271], [8, 267, 443], [9, 267, 295], [9, 267, 467],
+     [10, 267, 319], [10, 267, 491], [11, 267, 343], [11, 267, 515],
+     [15, "delay"], [16, "contagemTam_a"], [17, "contagemPos"], [18, "showmini_a"]])
 
 ; Painel da pausa aberto no 3º passo da 1ª rotação (Combo 1, F3..F8:
 ; pausa depois do F4 por 1500 ms), mouse sobre o F4.
 RenderCfg("config-rotacao-pausa", 288, AlturaConfigRotacao(), _DesenharConfigRotacao, [], "", 0,
     { botao: "p1p3", hover: "sel_3" })
+
+; Seletor do stun aberto no 3º passo da 1ª rotação (Combo 1, F3..F8: stun
+; no F6), mouse sobre o F6.
+RenderCfg("config-rotacao-stun", 288, AlturaConfigRotacao(), _DesenharConfigRotacao, [], "", 0,
+    { botao: "st1p3", hover: "sel_5" })
 
 ; Seletor aberto no 3º passo da 2ª rotação (Ctrl+5), mouse sobre o 6.
 RenderCfg("config-rotacao-seletor", 288, AlturaConfigRotacao(), _DesenharConfigRotacao, [], "", 0,
@@ -262,16 +273,17 @@ RenderCfg("config-rotacao-combo", 288, AlturaConfigRotacao(), _DesenharConfigRot
     { botao: "c2p3", hover: "sel_2" })
 
 ; Formato 3x3 (2-3 | 4-5 | E/R-6: o 2º passo da 3ª rotação é o de ITEM,
-; o que mostra os campos 10-12 do elixir/revive): ao ligar, o próximo é o
+; o que mostra os campos 12-14 do elixir/revive): ao ligar, o próximo é o
 ; Ctrl+2 da 1ª rotação, e o passo de ITEM mostra ELIXIR (1ª volta).
 SalvarCfg("Rotacao", "formato", "3x3")
 _rotacaoPos := 1, _rotacaoCiclo := 1
 RenderCfg("config-rotacao-3x3", 288, AlturaConfigRotacao(), _DesenharConfigRotacao,
     [[1, "hkmacro"], [2, "toggle"], [3, "reiniciar"], [4, "pokestop"], [5, "formato_a"], [6, "primeiro_a"],
-     [7, 165, 207], [7, 165, 355], [7, 165, 503], [8, 267, 271], [8, 267, 419], [8, 267, 567],
-     [9, 267, 295], [9, 267, 443], [9, 267, 591], [10, 267, 319], [10, 267, 467], [10, 267, 615],
-     [11, "elixir"], [12, "elixirModo_a"], [13, "reviveModo_a"],
-     [14, "delay"], [15, "showmini_a"]])
+     [7, 165, 207], [7, 165, 379], [7, 165, 551], [8, 267, 271], [8, 267, 443], [8, 267, 615],
+     [9, 267, 295], [9, 267, 467], [9, 267, 639], [10, 267, 319], [10, 267, 491], [10, 267, 663],
+     [11, 267, 343], [11, 267, 515], [11, 267, 687],
+     [12, "elixir"], [13, "elixirModo_a"], [14, "reviveModo_a"],
+     [15, "delay"], [16, "contagemTam_a"], [17, "contagemPos"], [18, "showmini_a"]])
 
 ; "COMEÇAR AQUI" da 3ª rotação (tem o E/R): seletor ELIXIR/REVIVE aberto,
 ; mouse sobre o REVIVE.
@@ -289,7 +301,7 @@ RenderCfg("config-geral-atualizacao", 288, 558, _DesenharConfigGeral, [[11, 267,
 _atualiz.nova := "", _atualiz.estado := "ocioso"
 
 ; hover num campo, para mostrar o destaque
-RenderCfg("config-combo-hover", 288, 308, _DesenharConfigCombo.Bind("comboPrincipal"), [], "hkmacro")
+RenderCfg("config-combo-hover", 288, 464, _DesenharConfigCombo.Bind("comboPrincipal"), [], "hkmacro")
 
 ; ── HUD ─────────────────────────────────────────────────
 _HUD_SCALE := 2
@@ -325,7 +337,14 @@ RenderHint("hint-dedo-teste-nao", "DEDO NÃO ENCONTRADO (21 ms) — pokémon gua
 RenderHint("hint-proibido", "Clique esquerdo/direito não pode ser usado", "warn")
 RenderHint("hint-revive-erro", "Erro: Defina a posição primeiro!", "danger")
 RenderHint("hint-rotacao-reiniciada", "ROTAÇÃO REINICIADA — próximo: Ctrl+2", "info")
-RenderHint("hint-pausa", "1,4s", "warn")
+RenderContador("contagem-pausa", "pausa", "1,4s", false)
+RenderContador("contagem-pausa-compacta", "pausa", "1,4s", true)
+RenderContador("contagem-stun", "stun", "4,2s", false)
+RenderContador("contagem-stun-compacta", "stun", "4,2s", true)
+RenderContador("contagem-stun-fim", "stun", "1,6s", false, true)
+RenderPreviewContador("contagem-previa", "pausa", false)
+RenderPreviewContador("contagem-previa-compacta", "pausa", true)
+RenderPreviewContador("contagem-previa-stun", "stun", false)
 
 FileDelete(A_ScriptDir "\demo_run.ini")
 ExitApp()

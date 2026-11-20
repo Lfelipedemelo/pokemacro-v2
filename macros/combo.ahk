@@ -17,7 +17,7 @@ ExecutarCombo(tipo) {
     ; skills — ver RotacaoUsarElixir.
     gen := InterromperCombo()
     if RotacaoUsarElixir(gen)
-        _RodarSequenciaCombo(GetCfg(tipo), gen)
+        _RodarSequenciaCombo(GetCfg(tipo), gen, 0, _CfgStunCombo(tipo))   ; stun da tela do combo
 }
 
 ; ─── Interrupção de combo por "geração" ──────────────────
@@ -47,7 +47,9 @@ InterromperCombo() {
 ; _CfgPausaRotacao): depois da tecla 'tecla', em vez do delay normal
 ; espera 'ms' com a contagem na tela (_EsperarPausaCombo). Ignorada se a
 ; tecla não estiver entre a inicial e a penúltima do combo.
-_RodarSequenciaCombo(cfg, gen, pausa := 0) {
+; 'stun' (nº da tecla, 0 = nenhuma): ao enviar essa tecla, começa (ou
+; recomeça) a contagem do stun — ver StunIniciar.
+_RodarSequenciaCombo(cfg, gen, pausa := 0, stun := 0) {
     sleepMs := GetSleepCombo()
     usarF   := GetUsarPrefixoF()
 
@@ -70,6 +72,8 @@ _RodarSequenciaCombo(cfg, gen, pausa := 0) {
 
         numTecla := numInicial + A_Index - 1
         SendEvent((usarF = "true") ? "{F" numTecla "}" : "{" numTecla "}")
+        if (stun && stun = numTecla)
+            StunIniciar()
 
         ; A pausa substitui o delay: o tempo da skill responder já está
         ; dentro dela, e assim o configurado é o tempo para mover.
@@ -91,28 +95,60 @@ _RodarSequenciaCombo(cfg, gen, pausa := 0) {
 }
 
 ; Pausa no meio do combo: espera 'ms' como EsperarInterrompivel, mas com
-; um aviso no meio da tela mostrando só o tempo que falta ("1,4s"),
-; atualizado a cada ~100ms. Interrompida (Rotação apertada de novo,
-; pânico, jogo sem foco) ou no fim, o aviso some. Devolve false se foi
-; interrompida.
+; a contagem "pausa" mostrando o tempo que falta ("1,4s") — no lugar e no
+; tamanho escolhidos na tela da Rotação —, atualizada a cada ~100ms.
+; Interrompida (Rotação apertada de novo, pânico, jogo sem foco) ou no
+; fim, a contagem some. Devolve false se foi interrompida.
 _EsperarPausaCombo(ms, gen) {
     fim := A_TickCount + ms
-    janela := 0
+    seq := 0
     try {
         Loop {
             resta := fim - A_TickCount
             if (resta <= 0)
                 return true
-            ; décimos arredondados para cima: chega a "0,1s", nunca mostra
-            ; "0,0s" com tempo ainda faltando
-            txt := StrReplace(Format("{:.1f}", Ceil(resta / 100) / 10), ".", ",") "s"
-            janela := ShowHint(txt, resta + 500, "warn")
+            seq := MostrarContador("pausa", resta, resta + 500)
             if !EsperarInterrompivel(Min(resta, 100), gen)
                 return false
         }
     } finally {
-        FecharHint(janela)
+        if (seq)
+            FecharContador("pausa", seq)
     }
+}
+
+; ─── Contagem do stun ────────────────────────────────────
+; Ao enviar a tecla de stun do combo (ver _CfgStunCombo/_CfgStunRotacao),
+; conta STUN_MS na tela (contagem "stun", vermelha nos últimos 2 s) — o
+; tempo que o alvo fica parado para o jogador trocar de pokémon e agir.
+; Roda num timer, à parte do combo: continua com o combo interrompido, a
+; troca de pokémon ou o jogo sem foco. Enviar a tecla de novo (qualquer
+; combo) recomeça; só a tecla de pânico para antes do fim (StunParar).
+global STUN_MS := 6000
+global _stunFim := 0
+
+StunIniciar() {
+    global _stunFim
+    _stunFim := A_TickCount + STUN_MS
+    _StunTick()
+    SetTimer(_StunTick, 100)
+}
+
+_StunTick() {
+    global _stunFim
+    resta := _stunFim - A_TickCount
+    if (resta <= 0) {
+        StunParar()
+        return
+    }
+    MostrarContador("stun", resta, resta + 500, resta <= 2000)
+}
+
+StunParar() {
+    global _stunFim
+    SetTimer(_StunTick, 0)
+    _stunFim := 0
+    FecharContador("stun")
 }
 
 ; false se o combo da geração 'gen' deve parar (foi interrompido — a

@@ -28,11 +28,11 @@ Tutoriais ilustrados de como configurar e usar cada função, tela por tela:
 | # | Guia | Conteúdo |
 |:-:|------|----------|
 | 1 | [Primeiros passos](docs/01-primeiros-passos.md) | Abrir o programa, usar a HUD, capturar teclas e posições, avisos, reset |
-| 2 | [Combo Principal / Secundário](docs/02-combos.md) | Sequência de habilidades com Full Attack / Full Defense |
+| 2 | [Combo Principal / Secundário](docs/02-combos.md) | Sequência de habilidades com Full Attack / Full Defense e contagem do stun na tela |
 | 3 | [Revive](docs/03-revive.md) | Reviver com um botão + detecção do pokémon (ícone do dedo) |
 | 4 | [Combo Revive](docs/04-combo-revive.md) | Reviver e já soltar um combo |
 | 5 | [Cooldown](docs/05-cooldown.md) | Rotação de pokémons com `Ctrl + N` e tempos por posição |
-| 6 | [Rotação](docs/06-rotacao.md) | Uma tecla que troca de pokémon numa ordem salva (e, se quiser, aperta o Pokestop e solta um combo logo depois — com pausa no meio para mover o pokémon —, e alterna Elixir de Ataque / Revive), com o próximo `Ctrl + N` na HUD |
+| 6 | [Rotação](docs/06-rotacao.md) | Uma tecla que troca de pokémon numa ordem salva (e, se quiser, aperta o Pokestop e solta um combo logo depois — com pausa no meio para mover o pokémon e contagem do stun —, e alterna Elixir de Ataque / Revive), com o próximo `Ctrl + N` na HUD |
 | 7 | [Configurações Gerais](docs/07-configuracoes-gerais.md) | Prefixo F, Modo Legado, tamanho, HUD vertical, Tecla de Pânico, Full Attack/Defense, Tecla Pokestop, atualizações |
 
 <p align="center"><img src="docs/img/hud-hover.png" width="480" alt="HUD do PokéMacro"></p>
@@ -205,6 +205,8 @@ Com os ícones na vertical (Configurações Gerais → ÍCONES DA HUD), vira uma
 | **Full Attack** | Ativa/desativa o envio da tecla de Full Attack (global) antes do combo |
 | **Full Defense** | Ativa/desativa o envio da tecla de Full Defense (global) após o combo |
 | **Delay Entre Teclas (ms)** | Intervalo entre cada tecla do combo — valor **compartilhado por todos os combos** (veja abaixo) |
+| **Contar Stun (6s)** / **Botão do Stun** | Com `SIM`, quando o combo envia o botão escolhido (a skill de stun, ex.: `F5`), aparece na tela uma contagem de **6 segundos** — o tempo para trocar de pokémon e agir. Ela roda à parte (o combo não espera), continua mesmo trocando de pokémon e recomeça se o botão sair de novo; a tecla de pânico a encerra |
+| **Contagem do Stun** / **Posição** | Tamanho (`NORMAL`, número grande com `STUN` em cima, ou `COMPACTA`) e lugar da contagem do stun — iguais nos dois combos. **Posição** abre uma prévia para arrastar; **Usar a mesma no stun** copia a posição e o tamanho da contagem da pausa da Rotação |
 | **Hotkey Ligar/Desligar** | Tecla para ativar/desativar o macro sem abrir a interface |
 
 **Como configurar passo a passo:**
@@ -362,7 +364,9 @@ Funciona exatamente igual ao **Combo Principal**, mas é uma configuração sepa
 | **Cartões das rotações** | O `Ctrl+N` de cada passo. Clicar num passo abre um seletor com `1` a `6`, `E/R` (elixir/revive, do 2º passo em diante) e `—` (vazio); clicar fora ou `Esc` fecha. Mexer em um passo reinicia a rotação. No canto de cada cartão, `ATUAL` marca a rotação do próximo aperto e `COMEÇAR AQUI` pula para o começo de outra (ex.: depois de fazer uma rotação à mão). Na rotação com `E/R`, o chip também pergunta se a vez é do `ELIXIR` ou do `REVIVE` |
 | **Combo depois da troca** | 2ª linha de cada cartão: `—` (nenhum), `COMBO 1` ou `COMBO 2` — o combo solto logo depois de trocar para aquele passo. Não reinicia a rotação |
 | **Pokestop** | 3ª linha de cada cartão: `STOP` (aperta a Tecla Pokestop logo depois da troca, antes do combo) ou `SEM STOP` (padrão). Clique para alternar |
-| **Pausa no combo** | Última linha de cada cartão: `—` (sem pausa) ou, ex., `F4 · 1500` — o combo pós-troca para depois do `F4` por 1500 ms (aviso com a contagem na tela) e só então solta o resto. Clique para escolher a tecla e o tempo (500 a 3000 ms). Não reinicia a rotação |
+| **Pausa no combo** | 4ª linha de cada cartão: `—` (sem pausa) ou, ex., `F4 · 1500` — o combo pós-troca para depois do `F4` por 1500 ms (aviso com a contagem na tela) e só então solta o resto. Clique para escolher a tecla e o tempo (500 a 3000 ms). Não reinicia a rotação |
+| **Stun** | Última linha de cada cartão: `SEM STUN` ou, ex., `STUN F6` — quando o combo pós-troca daquele passo envia o `F6`, aparece a contagem de 6 s do stun (no combo da Rotação vale este chip, não a opção da tela do combo) |
+| **Contagem da pausa** / **Posição** | Tamanho da contagem da pausa (`NORMAL`, número grande, ou `COMPACTA`) e onde ela aparece: clique em **Posição** para abrir uma prévia e arrastá-la pela tela (botão direito = volta ao centro); clique de novo para fechar |
 | **Tecla Elixir** / **Elixir** | *(só com um passo `E/R`)* A hotkey do Elixir de Ataque no jogo (aceita Ctrl/Alt/Shift + tecla ou botão do mouse, ex.: `CTRL + XBUTTON2`), e se ele é usado pelo `MACRO` ou à `MÃO` |
 | **Revive** | *(só com um passo `E/R`)* Se o revive é feito pelo `MACRO` (com a posição, hotkey e delay da tela do Revive) ou à `MÃO` |
 | **Espera antes do combo** | Tempo (0–2000 ms, padrão 500) entre a troca e o combo, para o pokémon já estar fora |

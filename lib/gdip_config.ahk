@@ -40,6 +40,7 @@ global _gcfgY       := 0
 global _gcfgBoxes   := []
 global _gcfgHoverId := ""
 global _gcfgDraw    := 0
+global _gcfgAoFechar := 0   ; chamado quando a tela fecha (ex.: Rotação fecha a prévia da contagem) ou 0
 global _gcfgDragBox := 0
 global _gcfgConfirm := 0   ; confirmação aberta por cima da tela ({titulo, sub, onSim, textoSim}) ou 0
 global _gcfgEdit    := 0   ; chip de slider sendo editado pelo teclado (ver _GCfg_EditarValorSlider) ou 0
@@ -82,8 +83,10 @@ global _GCFG_SCALE      := _GCFG_SCALE_BASE * EscalaFator()
 ; Se outra tela de config já estiver aberta, fecha-a primeiro — só uma
 ; fica visível por vez, mas clicar num botão de config sempre leva a
 ; ele (em vez de ficar sem efeito porque "já tinha algo aberto").
-_GCfg_Abrir(w, h, drawFn) {
-    global _gcfgGui, _gcfgW, _gcfgH, _gcfgX, _gcfgY, _gcfgBoxes, _gcfgHoverId, _gcfgDraw, _gcfgDragBox, _GCFG_SCALE, _gcfgConfirm, _gcfgEdit, _gcfgSeletor
+; 'aoFechar' (opcional): função chamada quando esta tela fechar (inclusive
+; ao ser trocada por outra ou reaberta).
+_GCfg_Abrir(w, h, drawFn, aoFechar := 0) {
+    global _gcfgGui, _gcfgW, _gcfgH, _gcfgX, _gcfgY, _gcfgBoxes, _gcfgHoverId, _gcfgDraw, _gcfgDragBox, _GCFG_SCALE, _gcfgConfirm, _gcfgEdit, _gcfgSeletor, _gcfgAoFechar
     global _gcfgVisH, _gcfgScroll, _gcfgScrollDrag, _gcfgBoxesTela
 
     ; A mesma tela reaberta (ex.: Rotação ao trocar de formato) mantém a
@@ -128,6 +131,7 @@ _GCfg_Abrir(w, h, drawFn) {
     _gcfgBoxes   := []
     _gcfgHoverId := ""
     _gcfgDraw    := drawFn
+    _gcfgAoFechar := aoFechar
     _gcfgDragBox := 0
 
     _gcfgGui := Gui("-Caption +ToolWindow +AlwaysOnTop +E0x80000")
@@ -175,10 +179,14 @@ _GCfg_LimiteVisivel(h) {
 }
 
 _GCfg_Fechar() {
-    global _gcfgGui, _gcfgDragBox, _gcfgX, _gcfgY, _gcfgConfirm, _gcfgCanvas, _gcfgSeletor, _gcfgConteudo
+    global _gcfgGui, _gcfgDragBox, _gcfgX, _gcfgY, _gcfgConfirm, _gcfgCanvas, _gcfgSeletor, _gcfgConteudo, _gcfgAoFechar
     if (!_gcfgGui)
         return
     _GCfg_ConfirmarEdicao()   ; fechar com um valor digitado e não confirmado salva ele
+    if (_gcfgAoFechar) {
+        f := _gcfgAoFechar, _gcfgAoFechar := 0
+        f.Call()
+    }
     SalvarCfg("Geral", "configPosX", _gcfgX)
     SalvarCfg("Geral", "configPosY", _gcfgY)
     _gcfgDragBox := 0
@@ -541,13 +549,8 @@ _GCfg_DesenharSeletor(g, w, h, hoverId) {
         _GCfg_Slider(g, boxes, "sel_slider", px + padI, sy, pw - padI * 2, sl.label, sl.valor.Call(),
             sl.min, sl.max, sl.step, sl.unit, sl.onChange, hoverId)
         ; opção sem tempo (ex.: sem pausa): slider apagado e sem clique
-        if !sl.ativo.Call(s.sel) {
-            while (boxes.Length > n0)
-                boxes.Pop()
-            veuSl := Gdip_BrushSolid(Gdip_Argb(170, T()["BG3"]))
-            Gdip_FillRoundRect(g, veuSl, px + padI, sy, pw - padI * 2, sliderH, 8)
-            Gdip_DeleteBrush(veuSl)
-        }
+        if !sl.ativo.Call(s.sel)
+            _GCfg_Apagar(g, boxes, n0, px + padI, sy, pw - padI * 2, sliderH)
     }
     ; o próprio painel absorve cliques entre os chips; o véu (por último)
     ; fecha o seletor em qualquer clique fora dele
@@ -939,6 +942,18 @@ _GCfg_ConfirmarSeSemFoco() {
 }
 
 ; ── Widgets ─────────────────────────────────────────────
+
+; Apaga (desabilita) o que foi desenhado em {x, y, w, h} depois que
+; 'boxes' tinha n0 itens: tira os cliques desses widgets e cobre com um
+; véu da cor do fundo. Ex.: n0 := boxes.Length, desenha os widgets,
+; if !ativo → _GCfg_Apagar(g, boxes, n0, ...).
+_GCfg_Apagar(g, boxes, n0, x, y, w, h) {
+    while (boxes.Length > n0)
+        boxes.Pop()
+    veu := Gdip_BrushSolid(Gdip_Argb(170, T()["BG"]))
+    Gdip_FillRoundRect(g, veu, x, y, w, h, 8)
+    Gdip_DeleteBrush(veu)
+}
 
 ; Cabeçalho: faixa colorida + título + botões × (fechar) e ↺ (resetar,
 ; opcional — passe 0 para omitir, como na tela Configurações Gerais).

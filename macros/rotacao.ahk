@@ -149,7 +149,8 @@ ExecutarRotacao() {
     seguinte := seq[_rotacaoPos]
     _rotacaoComboPendente := prox.combo ? { combo: prox.combo, gen: gen,
         elixir: seguinte.item && seguinte.rot = prox.rot,
-        pausa: _CfgPausaRotacao(prox.rot, prox.passo) } : 0
+        pausa: _CfgPausaRotacao(prox.rot, prox.passo),
+        stun: _CfgStunRotacao(prox.rot, prox.passo) } : 0
     if prox.combo
         SetTimer(_RodarComboRotacao, -1)
 }
@@ -238,8 +239,9 @@ _RodarComboRotacao() {
         if (p.elixir && !RotacaoUsarElixir(p.gen))
             return
         secao := COMBOS_ROTACAO[p.combo]
-        ; com a pausa do passo (se tiver) no meio — ver _CfgPausaRotacao
-        if !_RodarSequenciaCombo(GetCfg(secao), p.gen, p.pausa)
+        ; com a pausa do passo (se tiver) no meio — ver _CfgPausaRotacao —
+        ; e o stun do chip do passo (não o da tela do combo)
+        if !_RodarSequenciaCombo(GetCfg(secao), p.gen, p.pausa, p.stun)
             ShowHint("ROTAÇÃO: configure os botões do " MACROS_INFO[secao].label, 1800, "danger")
     } finally {
         _macroExecutando := false

@@ -242,23 +242,49 @@ _CfgPausaRotacao(rot, passo) {
         ms: Max(PAUSA_ROTACAO_MIN, Min(PAUSA_ROTACAO_MAX, _CfgInt("Rotacao", chave "pm", 1000))) }
 }
 
+; Números das teclas do combo da seção 'secao' ("comboPrincipal"...), da
+; inicial à final. Vazio se o combo não tem botões configurados.
+TeclasDoCombo(secao) {
+    lista := []
+    try {
+        ini := Integer(RegExReplace(CfgLer(secao, "teclaInicial", ""), "\D", ""))
+        fim := Integer(RegExReplace(CfgLer(secao, "teclaFinal", ""), "\D", ""))
+    } catch {
+        return lista
+    }
+    Loop Max(0, fim - ini + 1)
+        lista.Push(ini + A_Index - 1)
+    return lista
+}
+
 ; Teclas em que dá para pausar o combo 'combo' (1/2, ver COMBOS_ROTACAO):
 ; da inicial à penúltima (pausar depois da última não faz sentido). Array
 ; de números; vazio se o combo não tem botões configurados.
 TeclasPausaCombo(combo) {
     global COMBOS_ROTACAO
-    lista := []
     if !(combo = 1 || combo = 2)
-        return lista
-    try {
-        ini := Integer(RegExReplace(CfgLer(COMBOS_ROTACAO[combo], "teclaInicial", ""), "\D", ""))
-        fim := Integer(RegExReplace(CfgLer(COMBOS_ROTACAO[combo], "teclaFinal", ""), "\D", ""))
-    } catch {
-        return lista
-    }
-    Loop Max(0, fim - ini)
-        lista.Push(ini + A_Index - 1)
+        return []
+    lista := TeclasDoCombo(COMBOS_ROTACAO[combo])
+    if lista.Length
+        lista.Pop()
     return lista
+}
+
+; Contagem do stun (6 s fixos, ver StunIniciar): o combo começa a contar ao
+; enviar a tecla devolvida aqui (0 = não conta).
+;  - Pela hotkey do combo: [secao] stunAtivo (true/false, padrão false) e
+;    stunTecla (nº da tecla) — tela do Combo Principal/Secundário.
+;  - Pela Rotação: o chip STUN do passo (chave do passo + "st", nº da
+;    tecla, 0 = sem stun) — a config do combo não vale ali.
+; Uma tecla fora das do combo simplesmente nunca é enviada, então não conta.
+_CfgStunCombo(secao) {
+    if (CfgLer(secao, "stunAtivo", "false") != "true")
+        return 0
+    return Max(0, _CfgInt(secao, "stunTecla", 0))
+}
+
+_CfgStunRotacao(rot, passo) {
+    return Max(0, _CfgInt("Rotacao", _ChaveSlotRotacao(rot, passo) "st", 0))
 }
 
 ; Tecla Pokestop do jogo (global, em [Geral]) — editável tanto na tela de

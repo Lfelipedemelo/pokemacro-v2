@@ -203,7 +203,7 @@ AtualizarHotkeyCombo() {
     ; Reiniciar a Rotação só vale com ela ligada (mesmo critério da tecla
     ; de executar) — desligada, a tecla volta a chegar ao jogo.
     pedidos.Push({ chave: _MontarChaveHk(CfgLer("Rotacao", "teclaReiniciar", "")), crit: critExec["rotacao"], cb: (*) => ReiniciarRotacao(true) })
-    pedidos.Push({ chave: _MontarChaveHk(CfgLer("Geral", "teclaPanico", "")), crit: critJogo, cb: (*) => DesligarTodosMacros() })
+    pedidos.Push({ chave: _MontarChaveHk(CfgLer("Geral", "teclaPanico", "")), crit: critJogo, cb: (*) => (DesligarTodosMacros(), StunParar()) })   ; pânico também some com a contagem do stun
 
     for p in pedidos {
         if (p.chave = "")

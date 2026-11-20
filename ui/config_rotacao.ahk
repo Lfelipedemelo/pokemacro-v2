@@ -2,14 +2,15 @@
 ; ui\config_rotacao.ahk — Config Rotação (GDI+)
 ; =====================================================
 
-; Altura: 606 com 2 rotações (2x4); cada rotação a mais soma um cartão
-; (148) e um passo de ITEM soma as 2 linhas do elixir/revive (104).
+; Altura: 706 com 2 rotações (2x4); cada rotação a mais soma um cartão
+; (172) e um passo de ITEM soma as 2 linhas do elixir/revive (104).
+; Fechar a tela fecha também a prévia da contagem.
 AbrirConfigRotacao() {
-    _GCfg_Abrir(288, AlturaConfigRotacao(), _DesenharConfigRotacao)
+    _GCfg_Abrir(288, AlturaConfigRotacao(), _DesenharConfigRotacao, FecharPreviewContador)
 }
 
 AlturaConfigRotacao() {
-    return 606 + (GetFormatoRotacao().rotacoes - 2) * 148 + (RotacaoTemItem() ? 104 : 0)
+    return 706 + (GetFormatoRotacao().rotacoes - 2) * 172 + (RotacaoTemItem() ? 104 : 0)
 }
 
 _DesenharConfigRotacao(g, w, h, hoverId) {
@@ -65,12 +66,12 @@ _DesenharConfigRotacao(g, w, h, hoverId) {
 
     ; ── Um cartão por rotação (passos: Ctrl+1..6 ou vazio; embaixo de
     ;    cada passo, o combo solto depois da troca: —, C1 ou C2; o
-    ;    Pokestop do passo, liga/desliga; e por último a pausa no meio
-    ;    desse combo) ──
+    ;    Pokestop do passo, liga/desliga; a pausa no meio desse combo; e
+    ;    por último o botão do combo que conta o stun) ──
     prox := RotacaoProxima()
     Loop fmt.rotacoes {
         rot := A_Index
-        cardH := 140
+        cardH := 164
         cardBrush := Gdip_BrushSolid(Gdip_Argb(255, T()["BG2"]))
         Gdip_FillRoundRect(g, cardBrush, pad, y, w - pad*2, cardH, 8)
         Gdip_DeleteBrush(cardBrush)
@@ -101,6 +102,7 @@ _DesenharConfigRotacao(g, w, h, hoverId) {
             _DesenharChipComboRotacao(g, boxes, rot, passo, sx + 2, y + 64, slotW - 4, enviado, hoverId)
             _DesenharChipStopRotacao(g, boxes, rot, passo, sx + 2, y + 88, slotW - 4, enviado, hoverId)
             _DesenharChipPausaRotacao(g, boxes, rot, passo, sx + 2, y + 112, slotW - 4, enviado, hoverId)
+            _DesenharChipStunRotacao(g, boxes, rot, passo, sx + 2, y + 136, slotW - 4, enviado, hoverId)
         }
         y += cardH + 8
     }
@@ -130,6 +132,17 @@ _DesenharConfigRotacao(g, w, h, hoverId) {
     ; pokébola antes do 1º botão do combo.
     y += _GCfg_Slider(g, boxes, "delay", pad, y, w - pad*2, "ESPERA ANTES DO COMBO", GetDelayComboRotacao(),
         0, DELAY_COMBO_ROTACAO_MAX, 10, "ms", (v) => SalvarCfg("Rotacao", "delayCombo", v), hoverId) + 8
+
+    ; Contagem da pausa no combo: tamanho (normal = número grande,
+    ; compacta = pequeno) e posição — o campo abre/fecha uma prévia que se
+    ; arrasta pela tela (ver AlternarPreviewContador).
+    _GCfg_Toggle(g, boxes, "contagemTam", pad, y, colW, "CONTAGEM DA PAUSA", "NORMAL", "COMPACTA",
+        CfgLer("Rotacao", "contagemCompacta", "false") != "true",
+        (*) => (SalvarCfg("Rotacao", "contagemCompacta", "false"), _ContadorPrevDesenhar()),
+        (*) => (SalvarCfg("Rotacao", "contagemCompacta", "true"), _ContadorPrevDesenhar()), hoverId)
+    _GCfg_Field(g, boxes, "contagemPos", col2, y, colW, "POSIÇÃO", ContadorPosTexto("pausa"),
+        (*) => AlternarPreviewContador("pausa"), hoverId)
+    y += 44 + 8
 
     _GCfg_ShowInMini(g, boxes, pad, y, w - pad*2, "Rotacao", hoverId)
 
@@ -241,6 +254,62 @@ _DesenharChipPausaRotacao(g, boxes, rot, passo, x, y, w, enviado, hoverId) {
     if (ativo)
         boxes.Push({ id: id, x: x, y: y, w: w, h: h,
             onClick: _EscolherPausaRotacao.Bind(rot, passo, { x: x, y: y, w: w, h: h }) })
+}
+
+; Chip do stun, sob o da pausa: "SEM STUN" ou "STUN F5" — ao soltar o F5,
+; o combo pós-troca deste passo começa (ou recomeça) a contagem do stun
+; (ver StunIniciar). Vale no lugar da config de stun da tela do combo.
+; Apagado e sem clique se o passo não é enviado ou não solta combo; uma
+; tecla fora das do combo (teclas mudadas depois) mostra "SEM STUN".
+_DesenharChipStunRotacao(g, boxes, rot, passo, x, y, w, enviado, hoverId) {
+    global COMBOS_ROTACAO
+    h := 20
+    id := "st" rot "p" passo
+    combo := _CfgComboRotacao(rot, passo)
+    ativo := enviado && combo
+    tecla := _CfgStunRotacao(rot, passo)
+    vale := false
+    if (ativo)
+        for tc in TeclasDoCombo(COMBOS_ROTACAO[combo])
+            if (tc = tecla)
+                vale := true
+    hov := ativo && (hoverId = id)
+
+    br := Gdip_BrushSolid(Gdip_Argb(ativo ? 255 : 110, hov ? T()["BG3"] : T()["BG"]))
+    Gdip_FillRoundRect(g, br, x, y, w, h, 6)
+    Gdip_DeleteBrush(br)
+    if (vale) {
+        pen := Gdip_Pen(Gdip_Argb(150, ROTACAO_COR), 1)
+        Gdip_DrawRoundRect(g, pen, x, y, w, h, 6)
+        Gdip_DeletePen(pen)
+    }
+
+    cor := !ativo ? Gdip_Argb(90, T()["MUTED"])
+        : hov ? Gdip_Argb(255, T()["ACCENT"])
+        : vale ? Gdip_Argb(255, ROTACAO_COR)
+        : Gdip_Argb(255, T()["MUTED"])
+    Gdip_DrawText(g, vale ? "STUN " _NomeTeclaCombo(tecla) : "SEM STUN", 8, true, cor, x, y, w, h, true)
+
+    if (ativo)
+        boxes.Push({ id: id, x: x, y: y, w: w, h: h,
+            onClick: _EscolherStunRotacao.Bind(rot, passo, { x: x, y: y, w: w, h: h }) })
+}
+
+; Seletor do stun do passo: — (sem stun) ou uma das teclas do combo do
+; passo, da inicial à final. Não reinicia a rotação.
+_EscolherStunRotacao(rot, passo, ancora, *) {
+    global COMBOS_ROTACAO
+    chave := _ChaveSlotRotacao(rot, passo)
+    teclas := TeclasDoCombo(COMBOS_ROTACAO[_CfgComboRotacao(rot, passo)])
+    opcoes := ["—"], sel := 1
+    atual := _CfgStunRotacao(rot, passo)
+    for tc in teclas {
+        opcoes.Push(_NomeTeclaCombo(tc))
+        if (tc = atual)
+            sel := A_Index + 1
+    }
+    _GCfg_AbrirSeletor(ancora, "CONTAR STUN (6s) AO ENVIAR QUAL BOTÃO", opcoes, sel,
+        (idx) => SalvarCfg("Rotacao", chave "st", idx = 1 ? 0 : teclas[idx - 1]), 30)
 }
 
 ; Nome da tecla N do combo como ela sai no jogo: "F2" ou "2" (ver

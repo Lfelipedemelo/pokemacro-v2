@@ -21,6 +21,7 @@ Cada formato guarda a **sua própria** configuração: trocar de 2 × 4 para 3 �
 - **Cada aperto também para o combo que estiver rodando** (Combo Principal, Secundário, Combo Revive ou o combo pós-troca de um aperto anterior). Assim as skills que faltavam — e o Full Defense — não saem no pokémon que acabou de entrar.
 - **Combo depois da troca (opcional, por passo).** Embaixo de cada passo há uma opção: `—` (só troca, padrão), `COMBO 1` ou `COMBO 2`. Com um combo marcado, depois de enviar o `Ctrl + N` o macro espera a **Espera antes do combo** (o tempo do pokémon sair da pokébola) e solta o combo — veja [6.4](#64-combo-depois-da-troca).
 - **Pausa no meio do combo (opcional, por passo).** Na última linha de cada passo dá para fazer o combo parar depois de uma tecla (ex.: `F2`) por um tempo (500 a 3000 ms), para você mover o pokémon, e só então soltar o resto — veja [Pausa no meio do combo](#pausa-no-meio-do-combo).
+- **Contagem do stun (opcional, por passo).** Na última linha de cada passo dá para escolher a tecla de stun do combo: quando ela sai, aparecem na tela os **6 segundos** que você tem para trocar e agir — veja [Contagem do stun](#contagem-do-stun).
 - **Pokestop depois da troca (opcional, por passo).** Na 3ª linha de cada passo há `STOP` / `SEM STOP`. Com `STOP`, logo depois do `Ctrl + N` o macro aperta a **Tecla Pokestop** — antes do combo, se houver — veja [6.5](#65-pokestop-depois-da-troca).
 - **Elixir / Revive (opcional, passo `E/R`).** Um passo pode ser `E/R` em vez de um pokémon: ele alterna, a cada volta, entre o **Elixir de Ataque** e o **Revive** no pokémon de antes dele — veja [6.6](#66-elixir--revive-passo-er).
 - Um passo **vazio (`—`)** é pulado. Ex.: no 2 × 4, deixando o 4º passo da 2ª rotação vazio, a ordem vira `1-2-3-4 | 1-2-5` e volta para o começo.
@@ -66,14 +67,17 @@ Passe o mouse na HUD e clique no **⚙ abaixo do ícone da Rotação** (o 6º, d
 | **7** | **Rotações (cartões)** | Um cartão por rotação, com um botão por passo. Clicar num passo abre o seletor para escolher o pokémon (`1` a `6`), `E/R` (elixir/revive — do 2º passo em diante; o botão mostra `ELIXIR` ou `REVIVE`, o que sai nesta volta) ou `—` (vazio). No canto de cada cartão, **`ATUAL`** marca a rotação do próximo aperto; nas outras, **`COMEÇAR AQUI`** leva a Rotação para o começo daquela rotação — veja [6.3](#63-usando-no-jogo) |
 | **8** | **Combo depois da troca** | A 2ª linha de cada cartão: o combo que sai logo depois de trocar para aquele passo — `—` (nenhum), `COMBO 1` (Combo Principal) ou `COMBO 2` (Combo Secundário). Fica apagada nos passos que o macro não envia (vazios, ou o 1º com `PULAR`) |
 | **9** | **Pokestop** | A 3ª linha de cada cartão: `STOP` aperta a **Tecla Pokestop** logo depois de soltar aquele pokémon (antes do combo); `SEM STOP` (padrão) não aperta. Clique para alternar. Também fica apagada nos passos que o macro não envia |
-| **10** | **Pausa no combo** | A última linha de cada cartão: `—` (padrão, sem pausa) ou, por exemplo, `F4 · 1500` — o combo pós-troca para depois do `F4` por 1500 ms e só então solta o resto. Clique para abrir o painel com a tecla e o tempo — veja [Pausa no meio do combo](#pausa-no-meio-do-combo). Fica apagada nos passos sem combo (8) e nos que o macro não envia |
-| **11** | **Tecla Elixir** | *(só aparece com um passo `E/R`)* A hotkey do Elixir de Ataque no jogo. Aceita combinação com **Ctrl/Alt/Shift** e botões do mouse, inclusive o **direito** — ex.: segure `Ctrl` e aperte o botão do mouse para salvar `CTRL + XBUTTON2` (só o clique esquerdo é recusado) |
-| **12** | **Elixir** | *(só com `E/R`)* `MACRO` (padrão): o macro usa o elixir nas voltas dele. `MÃO`: você usa à mão e o macro não faz nada nessas voltas |
-| **13** | **Revive** | *(só com `E/R`)* `MACRO` (padrão): a Tecla Macro faz o revive nas voltas dele, com **tudo da [tela do Revive](03-revive.md)** (posição, hotkey e delay — configure lá). `MÃO`: você revive à mão e a Tecla Macro vai direto para o próximo pokémon |
-| **14** | **Espera antes do combo** | Tempo (0 a 2000 ms, padrão 500) entre a troca e o 1º botão do combo, para o pokémon já estar fora. Só vale nos passos com combo |
-| **15** | **Exibir no Mini Menu** | `NÃO` esconde o ícone da Rotação da HUD |
+| **10** | **Pausa no combo** | A 4ª linha de cada cartão: `—` (padrão, sem pausa) ou, por exemplo, `F4 · 1500` — o combo pós-troca para depois do `F4` por 1500 ms e só então solta o resto. Clique para abrir o painel com a tecla e o tempo — veja [Pausa no meio do combo](#pausa-no-meio-do-combo). Fica apagada nos passos sem combo (8) e nos que o macro não envia |
+| **11** | **Stun** | A última linha de cada cartão: `SEM STUN` (padrão) ou, por exemplo, `STUN F6` — quando o combo pós-troca daquele passo envia o `F6`, começa a **contagem do stun** (6 s) na tela. Clique para escolher a tecla (`—` ou uma das teclas do combo). Fica apagada nos passos sem combo (8) e nos que o macro não envia — veja [Contagem do stun](#contagem-do-stun) |
+| **12** | **Tecla Elixir** | *(só aparece com um passo `E/R`)* A hotkey do Elixir de Ataque no jogo. Aceita combinação com **Ctrl/Alt/Shift** e botões do mouse, inclusive o **direito** — ex.: segure `Ctrl` e aperte o botão do mouse para salvar `CTRL + XBUTTON2` (só o clique esquerdo é recusado) |
+| **13** | **Elixir** | *(só com `E/R`)* `MACRO` (padrão): o macro usa o elixir nas voltas dele. `MÃO`: você usa à mão e o macro não faz nada nessas voltas |
+| **14** | **Revive** | *(só com `E/R`)* `MACRO` (padrão): a Tecla Macro faz o revive nas voltas dele, com **tudo da [tela do Revive](03-revive.md)** (posição, hotkey e delay — configure lá). `MÃO`: você revive à mão e a Tecla Macro vai direto para o próximo pokémon |
+| **15** | **Espera antes do combo** | Tempo (0 a 2000 ms, padrão 500) entre a troca e o 1º botão do combo, para o pokémon já estar fora. Só vale nos passos com combo |
+| **16** | **Contagem da pausa** | Tamanho do aviso com o tempo que falta durante a pausa no combo (10): `NORMAL` (padrão, número grande) ou `COMPACTA` (número pequeno) |
+| **17** | **Posição** | Onde a contagem aparece (`CENTRO` = meio da tela, padrão). Clique para abrir uma prévia e arrastá-la; clique de novo (`✓ PRONTO`) para fechar — veja [Pausa no meio do combo](#pausa-no-meio-do-combo) |
+| **18** | **Exibir no Mini Menu** | `NÃO` esconde o ícone da Rotação da HUD |
 
-O passo que sai no próximo aperto aparece com contorno verde (nas imagens, o `Ctrl+4` da 1ª rotação no 2 × 4 e o `Ctrl+2` no 3 × 3). Os campos 11 a 13 só aparecem quando algum passo do formato é `E/R` (na imagem do 3 × 3, o 2º passo da 3ª rotação). Com eles, a tela pode ficar mais alta que o monitor — aí ela ganha uma barra de rolagem (role com a roda do mouse; veja [Primeiros Passos](01-primeiros-passos.md#13-anatomia-de-uma-tela-de-configuração)).
+O passo que sai no próximo aperto aparece com contorno verde (nas imagens, o `Ctrl+4` da 1ª rotação no 2 × 4 e o `Ctrl+2` no 3 × 3). Os campos 12 a 14 só aparecem quando algum passo do formato é `E/R` (na imagem do 3 × 3, o 2º passo da 3ª rotação). Com eles, a tela pode ficar mais alta que o monitor — aí ela ganha uma barra de rolagem (role com a roda do mouse; veja [Primeiros Passos](01-primeiros-passos.md#13-anatomia-de-uma-tela-de-configuração)).
 
 ### Passo a passo
 
@@ -85,12 +89,12 @@ O passo que sai no próximo aperto aparece com contorno verde (nas imagens, o `C
 
    > Mexer em qualquer passo (ou nas opções 5 e 6) **reinicia** a rotação.
 4. **1º Pokémon** (6): deixe em `PULAR` se você puxa o 1º pokémon à mão no começo de cada rotação (o normal). Escolha `SOLTAR` se quiser que o macro chame ele também.
-5. *(Opcional)* **Combo depois da troca** (8): clique na 2ª linha de um passo e escolha `—`, `C1` (Combo 1) ou `C2` (Combo 2). Ajuste a **Espera antes do combo** (14) se o combo começar antes do pokémon sair.
+5. *(Opcional)* **Combo depois da troca** (8): clique na 2ª linha de um passo e escolha `—`, `C1` (Combo 1) ou `C2` (Combo 2). Ajuste a **Espera antes do combo** (15) se o combo começar antes do pokémon sair.
 
    <p align="center"><img src="img/config-rotacao-combo.png" width="300" alt="Seletor do combo depois da troca aberto no 3º passo da 2ª rotação, com as opções vazio, C1 e C2"></p>
-6. *(Opcional)* **Pausa no combo** (10): num passo com combo, clique na última linha e escolha depois de qual tecla o combo para e por quanto tempo. Veja [Pausa no meio do combo](#pausa-no-meio-do-combo).
+6. *(Opcional)* **Pausa no combo** (10) e **Stun** (11): num passo com combo, clique na 4ª linha para escolher depois de qual tecla o combo para e por quanto tempo (veja [Pausa no meio do combo](#pausa-no-meio-do-combo)), e na última para escolher a tecla que começa a contagem do stun (veja [Contagem do stun](#contagem-do-stun)).
 7. *(Opcional)* **Pokestop** (9): defina a **Tecla Pokestop** (4) e clique na 3ª linha dos passos em que o pokémon deve dar stop ao sair — ela muda de `SEM STOP` para `STOP` (verde). Veja [6.5](#65-pokestop-depois-da-troca).
-8. *(Opcional)* **Elixir / Revive**: escolha `E/R` num passo (ex.: o 2º da 3ª rotação no 3 × 3), defina a **Tecla Elixir** (11), escolha `MACRO` ou `MÃO` para o elixir (12) e o revive (13) e confira a posição e a hotkey na tela do Revive (o revive usa as de lá). Veja [6.6](#66-elixir--revive-passo-er).
+8. *(Opcional)* **Elixir / Revive**: escolha `E/R` num passo (ex.: o 2º da 3ª rotação no 3 × 3), defina a **Tecla Elixir** (12), escolha `MACRO` ou `MÃO` para o elixir (13) e o revive (14) e confira a posição e a hotkey na tela do Revive (o revive usa as de lá). Veja [6.6](#66-elixir--revive-passo-er).
 9. *(Opcional)* **Tecla Reiniciar** (3): útil se, no meio da luta, a ordem real dos pokémons sair do compasso da HUD.
 10. Feche no **×**.
 
@@ -132,7 +136,7 @@ Cada passo pode soltar um combo logo depois de trocar de pokémon. Ex.: na image
 
 ### Pausa no meio do combo
 
-Alguns pokémons precisam **andar entre as skills**: soltam o `F1` e o `F2`, você move o pokémon, e só então vem o resto do combo. Para isso, cada passo com combo tem a **pausa no combo** (10, a última linha do cartão). Ex.: na imagem do 6.2, o `Ctrl+3` da 1ª rotação solta o Combo 1 (`F3` a `F8`) com `F4 · 1500`: sai o `F3`, o `F4`, o macro espera 1,5 s e solta do `F5` ao `F8`.
+Alguns pokémons precisam **andar entre as skills**: soltam o `F1` e o `F2`, você move o pokémon, e só então vem o resto do combo. Para isso, cada passo com combo tem a **pausa no combo** (10, a 4ª linha do cartão). Ex.: na imagem do 6.2, o `Ctrl+3` da 1ª rotação solta o Combo 1 (`F3` a `F8`) com `F4 · 1500`: sai o `F3`, o `F4`, o macro espera 1,5 s e solta do `F5` ao `F8`.
 
 Clique na linha para abrir o painel:
 
@@ -142,12 +146,32 @@ Clique na linha para abrir o painel:
 - **Tempo da pausa:** de 500 a 3000 ms, de 50 em 50 (padrão 1000). Arraste o slider ou clique no valor para digitar. Fica apagado com `—`.
 - O painel fica aberto enquanto você escolhe; clique fora ou aperte `Esc` para fechar. Mudar a pausa **não** reinicia a rotação.
 - A pausa **substitui** o Delay entre teclas depois daquela tecla: o tempo que você configura já conta a partir da tecla e, quando acaba, a tecla seguinte sai na hora.
-- Durante a pausa aparece no meio da tela um aviso só com o **tempo que falta**, contando para baixo:
+- Durante a pausa aparece, em amarelo, só o **tempo que falta**, contando para baixo — por padrão no meio da tela, no tamanho normal (à esquerda, número grande) ou **compacto** (à direita):
 
-  <p align="center"><img src="img/hint-pausa.png" width="170" alt="Aviso amarelo com a contagem 1,4s"></p>
+  | Normal | Compacta |
+  |:---:|:---:|
+  | <img src="img/contagem-pausa.png" width="120" alt="Contagem amarela 1,4s, número grande"> | <img src="img/contagem-pausa-compacta.png" width="70" alt="Contagem amarela compacta 1,4s"> |
+
+- **Tamanho e lugar da contagem:** em **Contagem da pausa** (16) escolha `NORMAL` ou `COMPACTA`. Para mudar o lugar, clique em **Posição** (17): aparece na tela uma **prévia** da contagem, com contorno tracejado. **Arraste a prévia** com o botão esquerdo até onde quiser (ex.: perto do personagem). A posição é salva ao soltar e o campo mostra o ponto escolhido. **Botão direito** na prévia volta ela para o meio da tela. Quando terminar, clique de novo em **Posição** (agora mostra `✓ PRONTO`) para fechar a prévia. Ela também fecha junto com a tela. Trocar entre `NORMAL` e `COMPACTA` com a prévia aberta já mostra o tamanho novo.
+
+  <p align="center"><img src="img/contagem-previa.png" width="210" alt="Prévia da contagem com contorno tracejado e a legenda ARRASTE · BOTÃO DIREITO = CENTRO"> &nbsp; <img src="img/contagem-previa-compacta.png" width="210" alt="Prévia da contagem compacta"></p>
+
+  A posição e o tamanho valem para todos os passos.
 - **Apertar a Tecla Macro durante a pausa** cancela o resto do combo (o aviso some) e já faz a próxima troca, como no meio de qualquer combo. O mesmo vale se o jogo perder o foco ou com a tecla de pânico.
 - A pausa vale **só para o combo que a Rotação solta depois da troca**. Apertando a tecla normal do Combo Principal/Secundário, o combo sai sem pausa.
 - Ela fica guardada pelo **número da tecla**: se você mudar as teclas do combo e a tecla da pausa sair da faixa dele, a pausa é ignorada (a linha mostra `—`).
+
+### Contagem do stun
+
+Depois de uma skill de stun, você tem alguns segundos para trocar de pokémon e agir. A **contagem do stun** mostra esses **6 segundos** na tela, a partir do momento em que o combo envia a tecla do stun. Na Rotação, ela é escolhida **por passo** na última linha do cartão (11). Ex.: na imagem do 6.2, o `Ctrl+3` da 1ª rotação solta o Combo 1 com `STUN F6`; quando o combo envia o `F6`, a contagem começa.
+
+<p align="center"><img src="img/config-rotacao-stun.png" width="300" alt="Seletor do stun aberto no 3º passo da 1ª rotação, com vazio e F3 a F8"></p>
+
+- **Qual tecla:** `—` (`SEM STUN`) ou qualquer tecla do combo do passo, inclusive a última. Mudar o stun **não** reinicia a rotação.
+- No combo que a Rotação solta, **vale o chip do passo**, e não a opção de stun da tela do combo (essa vale só quando você solta o combo pela tecla normal dele). Com `SEM STUN`, o combo daquele passo **não mexe** na contagem: uma contagem que já esteja rodando continua.
+- O combo **não para** por causa da contagem: ela roda à parte. Ela **continua** se você trocar de pokémon, se o combo for interrompido depois da tecla do stun ou se o jogo perder o foco. Se o combo for interrompido antes da tecla, ela nem começa.
+- Existe **uma contagem de stun só**: se outro combo enviar a tecla de stun dele, ela recomeça dos 6 s. A **tecla de pânico** encerra a contagem.
+- A contagem do stun é **azul**, com `STUN` em cima do número, e fica **vermelha nos últimos 2 segundos**. Ela tem posição e tamanho próprios (pode aparecer junto com a da pausa), configurados nas [telas do Combo Principal/Secundário](02-combos.md#24-contagem-do-stun).
 
 ---
 
@@ -182,7 +206,7 @@ Exemplo com o padrão do 3 × 3 e `E/R` no 2º passo da 3ª rotação:
 ```
 
 - **No botão do passo** aparece o que sai **nesta** volta: `ELIXIR` ou `REVIVE`. Na HUD, quando o próximo aperto da Tecla Macro é o revive, o ícone mostra **R**; na volta do elixir, enquanto ele ainda não saiu (o pokémon de antes do `E/R` está fora e o próximo combo vai usá-lo), o ícone mostra **E** — assim que o combo usa o elixir, volta a mostrar o número do próximo pokémon.
-- **`MACRO` / `MÃO`** (12 e 13): com `MÃO`, o macro não faz nada naquela volta e o passo é pulado — ex.: Revive em `MÃO` para quem prefere reviver à mão; a Tecla Macro vai direto para o `Ctrl+6`. O elixir e o revive continuam alternando do mesmo jeito.
+- **`MACRO` / `MÃO`** (13 e 14): com `MÃO`, o macro não faz nada naquela volta e o passo é pulado — ex.: Revive em `MÃO` para quem prefere reviver à mão; a Tecla Macro vai direto para o `Ctrl+6`. O elixir e o revive continuam alternando do mesmo jeito.
 - **Combo depois do revive (opcional):** a linha de combo do passo `E/R` vale para o revive — `COMBO 1`/`COMBO 2` solta o combo de novo no 1º depois do revive; `—` só revive (você solta o combo à mão, se quiser). O combo depois do revive **não** usa o elixir.
 - **O elixir sai uma vez só por volta:** um 2º combo no mesmo pokémon não repete. Ele só sai pelas teclas do **Combo Principal/Secundário** — o **Combo Revive** nunca usa o elixir.
 - **Atenção:** o macro sabe que é a vez do elixir porque a Rotação já passou do último pokémon da rotação anterior (o 5º). Por isso, solte o combo desse pokémon **pela própria Rotação** (combo depois da troca, [6.4](#64-combo-depois-da-troca)): se você apertar a tecla do Combo com o 5º ainda em campo, o elixir sai nele.
@@ -199,11 +223,12 @@ Exemplo com o padrão do 3 × 3 e `E/R` no 2º passo da 3ª rotação:
 |---------|---------|
 | Trocou mas não soltou o combo | Confira se o passo tem `COMBO 1`/`COMBO 2` na 2ª linha (8). Se a linha está apagada, o macro não envia aquele passo (vazio, ou o 1º com `PULAR`) |
 | Aviso *"ROTAÇÃO: configure os botões do COMBO PRINCIPAL"* (ou SECUNDÁRIO) | O passo usa um combo sem Botão Inicial/Final; configure-os na tela daquele combo |
-| O combo começa antes do pokémon sair (skills falham) | Aumente a **Espera antes do combo** (14) |
+| O combo começa antes do pokémon sair (skills falham) | Aumente a **Espera antes do combo** (15) |
 | O pokémon não teve tempo de andar entre as skills | Aumente o **tempo da pausa** (10) daquele passo, ou escolha uma tecla mais cedo para pausar |
 | A pausa não aconteceu | A linha da pausa (10) mostra `—`? Confira se o passo tem combo (8) e se a tecla escolhida ainda está dentro das teclas do combo. A pausa só vale no combo que a Rotação solta (não na tecla normal do combo) |
+| A contagem do stun não apareceu | O passo tem `STUN` + uma tecla na última linha (11)? Essa tecla ainda está nas teclas do combo? A contagem começa quando a tecla **sai** — se o combo foi interrompido antes dela, não conta |
 | O elixir saiu no pokémon errado (o 5º) | O combo do 5º foi solto pela tecla do Combo. Marque `COMBO 1`/`COMBO 2` no passo do 5º, para a Rotação soltar o combo dele (veja [6.6](#66-elixir--revive-passo-er)) |
-| O elixir não saiu | Confira: é a volta do elixir (o botão do passo `E/R` mostra `ELIXIR`)? **Elixir** (12) em `MACRO`? **Tecla Elixir** (11) definida? O combo foi pela tecla do Combo Principal/Secundário (não o Combo Revive)? |
+| O elixir não saiu | Confira: é a volta do elixir (o botão do passo `E/R` mostra `ELIXIR`)? **Elixir** (13) em `MACRO`? **Tecla Elixir** (12) definida? O combo foi pela tecla do Combo Principal/Secundário (não o Combo Revive)? |
 | Aviso *"ROTAÇÃO: defina a posição do REVIVE"* | O passo `E/R` usa a posição do Revive; defina-a na [tela do Revive](03-revive.md) |
 | Aviso *"ROTAÇÃO: configure a tecla POKESTOP"* | Um passo tem `STOP` ligado mas a **Tecla Pokestop** (4) está vazia; defina-a aqui ou nas Configurações Gerais |
 | O pokémon não deu stop ao sair | Confira se o passo está com `STOP` (9) e se a **Tecla Pokestop** (4) é a mesma do jogo |

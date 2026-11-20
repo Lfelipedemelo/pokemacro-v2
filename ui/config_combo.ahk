@@ -18,8 +18,37 @@ _GCfg_SliderSleepCombo(g, boxes, x, y, w, hoverId) {
         SLEEP_COMBO_MIN, SLEEP_COMBO_MAX, 1, "ms", (v) => SalvarCfg("Geral", "sleepCombo", v), hoverId)
 }
 
+; Fechar a tela fecha também a prévia da contagem do stun.
 AbrirConfigCombo(tipo) {
-    _GCfg_Abrir(288, 308, _DesenharConfigCombo.Bind(tipo))
+    _GCfg_Abrir(288, 464, _DesenharConfigCombo.Bind(tipo), FecharPreviewContador)
+}
+
+; Botão do stun do combo como aparece no campo: "F5", ou "—" se nenhum
+; (ou um que saiu da faixa do combo depois de mudar as teclas dele).
+_TextoStunCombo(tipo) {
+    t := Max(0, _CfgInt(tipo, "stunTecla", 0))
+    for tc in TeclasDoCombo(tipo)
+        if (tc = t)
+            return _NomeTeclaCombo(t)
+    return "—"
+}
+
+; Seletor do botão do stun: as teclas do combo, da inicial à final.
+_EscolherStunCombo(tipo, ancora, *) {
+    teclas := TeclasDoCombo(tipo)
+    if !teclas.Length {
+        ShowHint("Defina o BOTÃO INICIAL e o FINAL primeiro", 1600, "warn")
+        return
+    }
+    opcoes := [], sel := 0
+    atual := _CfgInt(tipo, "stunTecla", 0)
+    for tc in teclas {
+        opcoes.Push(_NomeTeclaCombo(tc))
+        if (tc = atual)
+            sel := A_Index
+    }
+    _GCfg_AbrirSeletor(ancora, "CONTAR 6s AO ENVIAR QUAL BOTÃO", opcoes, sel,
+        (idx) => SalvarCfg(tipo, "stunTecla", teclas[idx]), 30)
 }
 
 _DesenharConfigCombo(tipo, g, w, h, hoverId) {
@@ -64,6 +93,33 @@ _DesenharConfigCombo(tipo, g, w, h, hoverId) {
     y += 44 + 8
 
     y += _GCfg_SliderSleepCombo(g, boxes, pad, y, w - pad*2, hoverId) + 8
+
+    ; ── Contagem do stun (6 s) ao enviar um botão do combo pela hotkey
+    ;    (na Rotação vale o chip STUN de cada passo). Ligar/desligar e o
+    ;    botão são deste combo; tamanho e posição da contagem são os
+    ;    mesmos nos dois combos. ──
+    stunLigado := CfgLer(tipo, "stunAtivo", "false") = "true"
+    _GCfg_Toggle(g, boxes, "stun", pad, y, colW, "CONTAR STUN (6s)", "SIM", "NÃO", stunLigado,
+        (*) => SalvarCfg(tipo, "stunAtivo", "true"),
+        (*) => SalvarCfg(tipo, "stunAtivo", "false"), hoverId)
+    ancoraStun := { x: col2, y: y, w: colW, h: 44 }
+    _GCfg_Field(g, boxes, "stunTecla", col2, y, colW, "BOTÃO DO STUN", _TextoStunCombo(tipo),
+        _EscolherStunCombo.Bind(tipo, ancoraStun), hoverId)
+    y += 44 + 8
+
+    n0 := boxes.Length, yStun := y
+    _GCfg_Toggle(g, boxes, "stunTam", pad, y, colW, "CONTAGEM DO STUN", "NORMAL", "COMPACTA",
+        CfgLer("Geral", "stunCompacta", "false") != "true",
+        (*) => (SalvarCfg("Geral", "stunCompacta", "false"), _ContadorPrevDesenhar()),
+        (*) => (SalvarCfg("Geral", "stunCompacta", "true"), _ContadorPrevDesenhar()), hoverId)
+    _GCfg_Field(g, boxes, "stunPos", col2, y, colW, "POSIÇÃO", ContadorPosTexto("stun"),
+        (*) => AlternarPreviewContador("stun"), hoverId)
+    y += 44 + 8
+    _GCfg_Field(g, boxes, "stunCopiar", pad, y, w - pad*2, "POSIÇÃO DA CONTAGEM DA PAUSA (ROTAÇÃO)", "USAR A MESMA NO STUN",
+        (*) => (CopiarContador("pausa", "stun"), ShowHint("STUN: mesma posição e tamanho da pausa", 1400, "success")), hoverId)
+    y += 44 + 8
+    if !stunLigado
+        _GCfg_Apagar(g, boxes, n0, pad, yStun, w - pad*2, y - 8 - yStun)
 
     _GCfg_ShowInMini(g, boxes, pad, y, w - pad*2, tipo, hoverId)
 
