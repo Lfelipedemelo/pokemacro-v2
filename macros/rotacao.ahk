@@ -10,7 +10,9 @@
 ; A HUD mostra no ícone qual Ctrl+N sai no próximo pressionamento.
 ; Cada pressionamento também interrompe o combo em andamento; se o passo
 ; tiver Pokestop ligado, aperta a tecla Pokestop logo depois da troca, e
-; se tiver um combo marcado (Combo 1/2), solta esse combo em seguida.
+; se tiver um combo marcado (Combo 1/2), solta esse combo em seguida —
+; com a pausa do passo no meio, se tiver (ex.: F1, F2, espera 1,5s para
+; mover o pokémon, F3...; ver _CfgPausaRotacao).
 ;
 ; Passo de ITEM (ex.: 2º da 3ª rotação no 3x3 — 1, item, 6): alterna a
 ; cada volta da sequência entre o elixir de ataque e o revive, ambos no
@@ -146,7 +148,8 @@ ExecutarRotacao() {
     ; Pokémon de outra rotação (ex.: o 5º antes do ITEM da 3ª) não usa.
     seguinte := seq[_rotacaoPos]
     _rotacaoComboPendente := prox.combo ? { combo: prox.combo, gen: gen,
-        elixir: seguinte.item && seguinte.rot = prox.rot } : 0
+        elixir: seguinte.item && seguinte.rot = prox.rot,
+        pausa: _CfgPausaRotacao(prox.rot, prox.passo) } : 0
     if prox.combo
         SetTimer(_RodarComboRotacao, -1)
 }
@@ -235,7 +238,8 @@ _RodarComboRotacao() {
         if (p.elixir && !RotacaoUsarElixir(p.gen))
             return
         secao := COMBOS_ROTACAO[p.combo]
-        if !_RodarSequenciaCombo(GetCfg(secao), p.gen)
+        ; com a pausa do passo (se tiver) no meio — ver _CfgPausaRotacao
+        if !_RodarSequenciaCombo(GetCfg(secao), p.gen, p.pausa)
             ShowHint("ROTAÇÃO: configure os botões do " MACROS_INFO[secao].label, 1800, "danger")
     } finally {
         _macroExecutando := false

@@ -238,14 +238,19 @@ RenderCfg("config-cooldown-seletor", 288, 422, _DesenharConfigCooldown, [], "", 
 
 ; Padrão (1º de cada rotação à mão): sequência 2-3-4 | 2-5-6; dois apertos
 ; depois do início, o próximo é o Ctrl+4 da 1ª rotação (contorno verde).
-; Os marcadores 7 (pokémon), 8 (combo pós-troca) e 9 (Pokestop, última
-; linha) vão em todos os cartões de rotação (um por rotação; cartões a
-; cada 124).
+; Os marcadores 7 (pokémon), 8 (combo pós-troca), 9 (Pokestop) e 10
+; (pausa no combo, última linha) vão em todos os cartões de rotação (um
+; por rotação; cartões a cada 148).
 _rotacaoPos := 3
 RenderCfg("config-rotacao", 288, AlturaConfigRotacao(), _DesenharConfigRotacao,
     [[1, "hkmacro"], [2, "toggle"], [3, "reiniciar"], [4, "pokestop"], [5, "formato_a"], [6, "primeiro_a"],
-     [7, 165, 207], [7, 165, 331], [8, 267, 271], [8, 267, 395], [9, 267, 295], [9, 267, 419],
-     [13, "delay"], [14, "showmini_a"]])
+     [7, 165, 207], [7, 165, 355], [8, 267, 271], [8, 267, 419], [9, 267, 295], [9, 267, 443],
+     [10, 267, 319], [10, 267, 467], [14, "delay"], [15, "showmini_a"]])
+
+; Painel da pausa aberto no 3º passo da 1ª rotação (Combo 1, F3..F8:
+; pausa depois do F4 por 1500 ms), mouse sobre o F4.
+RenderCfg("config-rotacao-pausa", 288, AlturaConfigRotacao(), _DesenharConfigRotacao, [], "", 0,
+    { botao: "p1p3", hover: "sel_3" })
 
 ; Seletor aberto no 3º passo da 2ª rotação (Ctrl+5), mouse sobre o 6.
 RenderCfg("config-rotacao-seletor", 288, AlturaConfigRotacao(), _DesenharConfigRotacao, [], "", 0,
@@ -263,9 +268,10 @@ SalvarCfg("Rotacao", "formato", "3x3")
 _rotacaoPos := 1, _rotacaoCiclo := 1
 RenderCfg("config-rotacao-3x3", 288, AlturaConfigRotacao(), _DesenharConfigRotacao,
     [[1, "hkmacro"], [2, "toggle"], [3, "reiniciar"], [4, "pokestop"], [5, "formato_a"], [6, "primeiro_a"],
-     [7, 165, 207], [7, 165, 331], [7, 165, 455], [8, 267, 271], [8, 267, 395], [8, 267, 519],
-     [9, 267, 295], [9, 267, 419], [9, 267, 543], [10, "elixir"], [11, "elixirModo_a"], [12, "reviveModo_a"],
-     [13, "delay"], [14, "showmini_a"]])
+     [7, 165, 207], [7, 165, 355], [7, 165, 503], [8, 267, 271], [8, 267, 419], [8, 267, 567],
+     [9, 267, 295], [9, 267, 443], [9, 267, 591], [10, 267, 319], [10, 267, 467], [10, 267, 615],
+     [11, "elixir"], [12, "elixirModo_a"], [13, "reviveModo_a"],
+     [14, "delay"], [15, "showmini_a"]])
 
 ; "COMEÇAR AQUI" da 3ª rotação (tem o E/R): seletor ELIXIR/REVIVE aberto,
 ; mouse sobre o REVIVE.
@@ -319,6 +325,7 @@ RenderHint("hint-dedo-teste-nao", "DEDO NÃO ENCONTRADO (21 ms) — pokémon gua
 RenderHint("hint-proibido", "Clique esquerdo/direito não pode ser usado", "warn")
 RenderHint("hint-revive-erro", "Erro: Defina a posição primeiro!", "danger")
 RenderHint("hint-rotacao-reiniciada", "ROTAÇÃO REINICIADA — próximo: Ctrl+2", "info")
+RenderHint("hint-pausa", "1,4s", "warn")
 
 FileDelete(A_ScriptDir "\demo_run.ini")
 ExitApp()

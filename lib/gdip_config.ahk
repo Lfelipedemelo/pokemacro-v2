@@ -435,11 +435,17 @@ _GCfg_DesenharConfirmacao(g, w, h, hoverId) {
 ; recebe clique — mesmo esquema da confirmação.
 ; 'chipW': largura máxima de cada chip — 28 cabe um número; opções com
 ; palavra (ex.: ELIXIR/REVIVE) passam mais.
-_GCfg_AbrirSeletor(ancora, titulo, opcoes, sel, onEscolher, chipW := 28) {
+; 'slider' (opcional): painel com um _GCfg_Slider embaixo dos chips (ex.:
+; a pausa do passo da Rotação — tecla + tempo). Objeto { label, unit, min,
+; max, step, valor: () => número atual, onChange: (v) => ..., ativo:
+; (sel) => o slider vale para essa opção? (apagado e sem clique se não) }.
+; Com slider, escolher um chip não fecha o painel (falta o tempo) — só
+; clicar fora ou Esc.
+_GCfg_AbrirSeletor(ancora, titulo, opcoes, sel, onEscolher, chipW := 28, slider := 0) {
     global _gcfgSeletor, _gcfgHoverId, _gcfgGui
     if (!_gcfgGui)
         return
-    _gcfgSeletor := { ancora: ancora, titulo: titulo, opcoes: opcoes, sel: sel, onEscolher: onEscolher, chipW: chipW }
+    _gcfgSeletor := { ancora: ancora, titulo: titulo, opcoes: opcoes, sel: sel, onEscolher: onEscolher, chipW: chipW, slider: slider }
     _gcfgHoverId := ""
     _GCfg_Redraw()
 }
@@ -453,6 +459,11 @@ _GCfg_FecharSeletor(*) {
 _GCfg_EscolherNoSeletor(idx, *) {
     global _gcfgSeletor
     s := _gcfgSeletor
+    if (s && s.slider) {   ; painel com slider fica aberto (ver _GCfg_AbrirSeletor)
+        s.sel := idx
+        s.onEscolher.Call(idx)
+        return
+    }
     _GCfg_FecharSeletor()
     if (s)
         s.onEscolher.Call(idx)
@@ -484,7 +495,10 @@ _GCfg_DesenharSeletor(g, w, h, hoverId) {
     chipW := Min(s.chipW, Floor((w - 16 - padI * 2 - (n - 1) * gap) / n))
     pw := padI * 2 + n * chipW + (n - 1) * gap
     pw := Min(w - 16, Max(pw, Ceil(Gdip_MeasureText(s.titulo, 8, true)[1]) + padI * 2))
-    ph := padI + tituloH + chipH + padI
+    sliderH := 44, sliderGap := 6
+    if (s.slider)
+        pw := Min(w - 16, Max(pw, 220))
+    ph := padI + tituloH + chipH + padI + (s.slider ? sliderGap + sliderH : 0)
     px := Max(8, Min(a.x + a.w / 2 - pw / 2, w - 8 - pw))
     py := a.y + a.h + 4
     if (py + ph > _GCfg_LimiteVisivel(h) - 8)   ; com rolagem, o limite é o fim do que está à vista
@@ -519,6 +533,21 @@ _GCfg_DesenharSeletor(g, w, h, hoverId) {
         }
         Gdip_DrawText(g, s.opcoes[idx], 10, true, Gdip_Argb(255, (ativo || hov) ? T()["TEXT"] : T()["MUTED"]), cx, cy, chipW, chipH, true)
         boxes.Push({ id: id, x: cx, y: cy, w: chipW, h: chipH, onClick: _GCfg_EscolherNoSeletor.Bind(idx) })
+    }
+    if (s.slider) {
+        sl := s.slider
+        sy := cy + chipH + sliderGap
+        n0 := boxes.Length
+        _GCfg_Slider(g, boxes, "sel_slider", px + padI, sy, pw - padI * 2, sl.label, sl.valor.Call(),
+            sl.min, sl.max, sl.step, sl.unit, sl.onChange, hoverId)
+        ; opção sem tempo (ex.: sem pausa): slider apagado e sem clique
+        if !sl.ativo.Call(s.sel) {
+            while (boxes.Length > n0)
+                boxes.Pop()
+            veuSl := Gdip_BrushSolid(Gdip_Argb(170, T()["BG3"]))
+            Gdip_FillRoundRect(g, veuSl, px + padI, sy, pw - padI * 2, sliderH, 8)
+            Gdip_DeleteBrush(veuSl)
+        }
     }
     ; o próprio painel absorve cliques entre os chips; o véu (por último)
     ; fecha o seletor em qualquer clique fora dele
@@ -833,7 +862,9 @@ _GCfg_WM_KeyDown(wParam, lParam, msg, hwnd) {
     global _gcfgGui, _gcfgEdit, _gcfgSeletor
     if (!_gcfgGui || hwnd != _gcfgGui.Hwnd)
         return
-    if (_gcfgSeletor && wParam = 0x1B) {   ; Esc fecha o seletor aberto
+    ; Esc fecha o seletor aberto — a não ser que esteja digitando o valor
+    ; do slider dele: aí o Esc só cancela a digitação (abaixo).
+    if (_gcfgSeletor && wParam = 0x1B && !_gcfgEdit) {
         _GCfg_FecharSeletor()
         _GCfg_Redraw()
         return 0

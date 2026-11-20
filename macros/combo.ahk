@@ -43,7 +43,11 @@ InterromperCombo() {
 ; for interrompido (revive, rotação, macro desligado, pânico) ou se o
 ; jogo perder o foco. 'gen' é a geração devolvida por InterromperCombo()
 ; ao começar. Devolve false se o combo não tem botões configurados.
-_RodarSequenciaCombo(cfg, gen) {
+; 'pausa' ({ tecla, ms }, só no combo pós-troca da Rotação — ver
+; _CfgPausaRotacao): depois da tecla 'tecla', em vez do delay normal
+; espera 'ms' com a contagem na tela (_EsperarPausaCombo). Ignorada se a
+; tecla não estiver entre a inicial e a penúltima do combo.
+_RodarSequenciaCombo(cfg, gen, pausa := 0) {
     sleepMs := GetSleepCombo()
     usarF   := GetUsarPrefixoF()
 
@@ -67,7 +71,12 @@ _RodarSequenciaCombo(cfg, gen) {
         numTecla := numInicial + A_Index - 1
         SendEvent((usarF = "true") ? "{F" numTecla "}" : "{" numTecla "}")
 
-        if !EsperarInterrompivel(sleepMs, gen)
+        ; A pausa substitui o delay: o tempo da skill responder já está
+        ; dentro dela, e assim o configurado é o tempo para mover.
+        if (pausa && pausa.tecla = numTecla && numTecla < numFinal) {
+            if !_EsperarPausaCombo(pausa.ms, gen)
+                return true
+        } else if !EsperarInterrompivel(sleepMs, gen)
             return true
     }
 
@@ -79,6 +88,31 @@ _RodarSequenciaCombo(cfg, gen) {
         SendEvent("{" cfg["fullDefense"] "}")
     }
     return true
+}
+
+; Pausa no meio do combo: espera 'ms' como EsperarInterrompivel, mas com
+; um aviso no meio da tela mostrando só o tempo que falta ("1,4s"),
+; atualizado a cada ~100ms. Interrompida (Rotação apertada de novo,
+; pânico, jogo sem foco) ou no fim, o aviso some. Devolve false se foi
+; interrompida.
+_EsperarPausaCombo(ms, gen) {
+    fim := A_TickCount + ms
+    janela := 0
+    try {
+        Loop {
+            resta := fim - A_TickCount
+            if (resta <= 0)
+                return true
+            ; décimos arredondados para cima: chega a "0,1s", nunca mostra
+            ; "0,0s" com tempo ainda faltando
+            txt := StrReplace(Format("{:.1f}", Ceil(resta / 100) / 10), ".", ",") "s"
+            janela := ShowHint(txt, resta + 500, "warn")
+            if !EsperarInterrompivel(Min(resta, 100), gen)
+                return false
+        }
+    } finally {
+        FecharHint(janela)
+    }
 }
 
 ; false se o combo da geração 'gen' deve parar (foi interrompido — a

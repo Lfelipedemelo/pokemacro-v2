@@ -32,7 +32,7 @@ Tutoriais ilustrados de como configurar e usar cada função, tela por tela:
 | 3 | [Revive](docs/03-revive.md) | Reviver com um botão + detecção do pokémon (ícone do dedo) |
 | 4 | [Combo Revive](docs/04-combo-revive.md) | Reviver e já soltar um combo |
 | 5 | [Cooldown](docs/05-cooldown.md) | Rotação de pokémons com `Ctrl + N` e tempos por posição |
-| 6 | [Rotação](docs/06-rotacao.md) | Uma tecla que troca de pokémon numa ordem salva (e, se quiser, aperta o Pokestop e solta um combo logo depois, e alterna Elixir de Ataque / Revive), com o próximo `Ctrl + N` na HUD |
+| 6 | [Rotação](docs/06-rotacao.md) | Uma tecla que troca de pokémon numa ordem salva (e, se quiser, aperta o Pokestop e solta um combo logo depois — com pausa no meio para mover o pokémon —, e alterna Elixir de Ataque / Revive), com o próximo `Ctrl + N` na HUD |
 | 7 | [Configurações Gerais](docs/07-configuracoes-gerais.md) | Prefixo F, Modo Legado, tamanho, HUD vertical, Tecla de Pânico, Full Attack/Defense, Tecla Pokestop, atualizações |
 
 <p align="center"><img src="docs/img/hud-hover.png" width="480" alt="HUD do PokéMacro"></p>
@@ -345,7 +345,7 @@ Funciona exatamente igual ao **Combo Principal**, mas é uma configuração sepa
 2. Passos vazios (`—`) são pulados — ex.: o 2º passo da 3ª rotação no 3 × 3 (o pokémon repetido) vem vazio; com um `Ctrl+N` nele, a repetição passa a sair.
 3. Ligar a Rotação sempre começa do início; a **Tecla Reiniciar** faz o mesmo no meio do jogo. Por padrão o macro **pula o 1º passo de todas as rotações** (você puxa esse pokémon à mão no começo de cada rotação): no 2 × 4 os apertos enviam `2-3-4 | 2-5-6`, no 3 × 3 `2-3 | 4-5 | 6`, e voltam para o `2`.
 4. Cada aperto **interrompe o combo em andamento**, para as skills restantes não saírem no pokémon que acabou de entrar.
-5. **Combo depois da troca (opcional, por passo):** cada passo pode soltar o **Combo 1** (config do Combo Principal) ou o **Combo 2** (config do Combo Secundário) logo depois do `Ctrl+N`, após a **Espera antes do combo**. Apertar a Tecla Macro de novo no meio do combo para ele e já faz a próxima troca.
+5. **Combo depois da troca (opcional, por passo):** cada passo pode soltar o **Combo 1** (config do Combo Principal) ou o **Combo 2** (config do Combo Secundário) logo depois do `Ctrl+N`, após a **Espera antes do combo**. Apertar a Tecla Macro de novo no meio do combo para ele e já faz a próxima troca. Cada passo também pode **pausar o combo** depois de uma tecla (ex.: `F2`) por 500 a 3000 ms, para você mover o pokémon — com a contagem do tempo na tela — e então soltar o resto.
 6. **Pokestop (opcional, por passo):** com o `STOP` ligado num passo, o macro aperta a **Tecla Pokestop** ~0,4 s depois do `Ctrl+N` (tempo do jogo processar a troca) — antes do combo pós-troca, se houver.
 7. **Elixir / Revive (passo `E/R`, opcional):** um passo pode ser `E/R` em vez de um `Ctrl+N` — ex.: o 2º da 3ª rotação no 3 × 3, que fica `1 → E/R → 6`. Ele alterna a cada volta da sequência, sempre no pokémon de antes dele (o 1º): na 1ª volta (e 3ª, 5ª...) é o **Elixir de Ataque**, usado automaticamente quando você aperta a tecla do **Combo Principal/Secundário** nesse pokémon, antes das skills; na 2ª volta (e 4ª, 6ª...) é o **Revive**, feito pela Tecla Macro da Rotação (depois dele, o combo e o Pokestop do passo, se marcados). Cada um pode ser `MACRO` ou `MÃO` (o macro pula aquela volta).
 
@@ -360,8 +360,9 @@ Funciona exatamente igual ao **Combo Principal**, mas é uma configuração sepa
 | **Rotações** | Formato `2 × 4` ou `3 × 3` — a tela mostra um cartão por rotação |
 | **1º Pokémon** | `PULAR` (padrão): o 1º passo das rotações nunca é enviado (puxado à mão). `SOLTAR`: o 1º passo sai normalmente |
 | **Cartões das rotações** | O `Ctrl+N` de cada passo. Clicar num passo abre um seletor com `1` a `6`, `E/R` (elixir/revive, do 2º passo em diante) e `—` (vazio); clicar fora ou `Esc` fecha. Mexer em um passo reinicia a rotação. No canto de cada cartão, `ATUAL` marca a rotação do próximo aperto e `COMEÇAR AQUI` pula para o começo de outra (ex.: depois de fazer uma rotação à mão). Na rotação com `E/R`, o chip também pergunta se a vez é do `ELIXIR` ou do `REVIVE` |
-| **Combo depois da troca** | Linha de baixo de cada cartão: `—` (nenhum), `COMBO 1` ou `COMBO 2` — o combo solto logo depois de trocar para aquele passo. Não reinicia a rotação |
-| **Pokestop** | Última linha de cada cartão: `STOP` (aperta a Tecla Pokestop logo depois da troca, antes do combo) ou `SEM STOP` (padrão). Clique para alternar |
+| **Combo depois da troca** | 2ª linha de cada cartão: `—` (nenhum), `COMBO 1` ou `COMBO 2` — o combo solto logo depois de trocar para aquele passo. Não reinicia a rotação |
+| **Pokestop** | 3ª linha de cada cartão: `STOP` (aperta a Tecla Pokestop logo depois da troca, antes do combo) ou `SEM STOP` (padrão). Clique para alternar |
+| **Pausa no combo** | Última linha de cada cartão: `—` (sem pausa) ou, ex., `F4 · 1500` — o combo pós-troca para depois do `F4` por 1500 ms (aviso com a contagem na tela) e só então solta o resto. Clique para escolher a tecla e o tempo (500 a 3000 ms). Não reinicia a rotação |
 | **Tecla Elixir** / **Elixir** | *(só com um passo `E/R`)* A hotkey do Elixir de Ataque no jogo (aceita Ctrl/Alt/Shift + tecla ou botão do mouse, ex.: `CTRL + XBUTTON2`), e se ele é usado pelo `MACRO` ou à `MÃO` |
 | **Revive** | *(só com um passo `E/R`)* Se o revive é feito pelo `MACRO` (com a posição, hotkey e delay da tela do Revive) ou à `MÃO` |
 | **Espera antes do combo** | Tempo (0–2000 ms, padrão 500) entre a troca e o combo, para o pokémon já estar fora |

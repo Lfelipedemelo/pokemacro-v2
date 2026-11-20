@@ -16,8 +16,16 @@
 ;       "warn"    — amarelo(T().STRIPE2) — cancelado/nada capturado
 ;       "danger"  — vermelho(T().DANGER) — erro/pré-requisito faltando
 
+;   Devolve o nº deste aviso, para FecharHint(n) fechá-lo só se nenhum
+;   outro tiver aparecido depois (ex.: a contagem da pausa do combo).
+;
+; Um aviso novo com outro ainda na tela reaproveita a janela (só redesenha
+; por cima) — a contagem da pausa troca o texto a cada 100ms, e destruir e
+; recriar a janela a cada vez fazia piscar.
+
 global _hintGui := 0
 global _hintTmr := 0
+global _hintSeq := 0   ; nº do último aviso mostrado (ver FecharHint)
 
 _HintPaleta(kind) {
     switch kind {
@@ -29,18 +37,17 @@ _HintPaleta(kind) {
 }
 
 ShowHint(text, time := 1200, kind := "info") {
-    global _hintGui, _hintTmr
+    global _hintGui, _hintTmr, _hintSeq
 
     if (_hintTmr) {
         SetTimer(_hintTmr, 0)
         _hintTmr := 0
     }
-    if IsObject(_hintGui) {
-        try _hintGui.Destroy()
-        _hintGui := 0
+    seq := ++_hintSeq
+    if (text = "") {
+        _HintFechar(seq)
+        return seq
     }
-    if (text = "")
-        return
 
     Gdip_EnsureStarted()
     pal := _HintPaleta(kind)
@@ -62,9 +69,11 @@ ShowHint(text, time := 1200, kind := "info") {
     ; E0x20 (transparente ao mouse) + E0x08000000 (não ativa): o aviso
     ; aparece no meio da tela durante o jogo — não pode tirar o foco dele
     ; nem engolir cliques.
-    _hintGui := Gui("-Caption +ToolWindow +AlwaysOnTop +E0x80000 +E0x20 +E0x08000000")
-    _hintGui.Show("x" x " y" y " w10 h10 NoActivate Hide")
-    Win_MostrarSemAtivar(_hintGui.Hwnd)
+    if !IsObject(_hintGui) {
+        _hintGui := Gui("-Caption +ToolWindow +AlwaysOnTop +E0x80000 +E0x20 +E0x08000000")
+        _hintGui.Show("x" x " y" y " w10 h10 NoActivate Hide")
+        Win_MostrarSemAtivar(_hintGui.Hwnd)
+    }
 
     canvas := Gdip_NewLayeredCanvas(w, h)
     g := canvas.pGraphics
@@ -108,14 +117,29 @@ ShowHint(text, time := 1200, kind := "info") {
     Gdip_PresentLayeredCanvas(canvas, _hintGui.Hwnd, x, y)
     Gdip_DestroyLayeredCanvas(canvas)
 
-    janela := _hintGui
-    _hintTmr := _HintFechar.Bind(janela)
+    _hintTmr := _HintFechar.Bind(seq)
     SetTimer(_hintTmr, -time)
+    return seq
 }
 
-_HintFechar(janela) {
-    global _hintGui, _hintTmr
-    if (_hintGui = janela) {
+; Fecha o aviso 'seq' (devolvido por ShowHint) se ele ainda for o último
+; mostrado — um aviso que apareceu depois fica na tela.
+FecharHint(seq) {
+    global _hintSeq, _hintTmr
+    if (!seq || seq != _hintSeq)
+        return
+    if (_hintTmr) {
+        SetTimer(_hintTmr, 0)
+        _hintTmr := 0
+    }
+    _HintFechar(seq)
+}
+
+_HintFechar(seq) {
+    global _hintGui, _hintTmr, _hintSeq
+    if (seq != _hintSeq)
+        return
+    if IsObject(_hintGui) {
         try _hintGui.Destroy()
         _hintGui := 0
     }

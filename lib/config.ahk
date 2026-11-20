@@ -32,7 +32,9 @@ global SLEEP_COMBO_MIN := 300            ; ms — faixa do delay entre teclas do
 global SLEEP_COMBO_MAX := 1000           ;      abaixo de 300 o jogo perde teclas
 global SLEEP_COMBO_PADRAO := 450
 global DELAY_COMBO_ROTACAO_MAX := 2000   ; ms — faixa da espera entre a troca da Rotação e o combo
-global ROTACAO_ITEM := TECLA_POKEMON_MAX + 1   ; "slot" do passo de ITEM da Rotação (elixir/revive) — ver _CfgSlotRotacao
+global PAUSA_ROTACAO_MIN := 500    ; ms — faixa da pausa no meio do combo pós-troca da Rotação
+global PAUSA_ROTACAO_MAX := 3000
+global ROTACAO_ITEM :=TECLA_POKEMON_MAX + 1   ; "slot" do passo de ITEM da Rotação (elixir/revive) — ver _CfgSlotRotacao
 global COMBOS_ROTACAO := ["comboPrincipal", "comboSecundario"]   ; seção do INI do combo 1/2 que a Rotação solta
 
 CfgLer(secao, chave, padrao := "") {
@@ -225,6 +227,38 @@ _CfgComboRotacao(rot, passo) {
 ; desligado. Chave do INI = chave do passo + "s" ("r1p2s", "t2p3s"...).
 _CfgPokestopRotacao(rot, passo) {
     return CfgLer("Rotacao", _ChaveSlotRotacao(rot, passo) "s", "false") = "true"
+}
+
+; Pausa no meio do combo pós-troca do passo (para dar tempo de mover o
+; pokémon): depois de soltar a tecla N do combo, em vez do delay normal
+; entre teclas espera 'ms' e só então solta o resto. Chaves do INI = chave
+; do passo + "pt" (nº da tecla, 0 = sem pausa — padrão) e "pm" (ms,
+; PAUSA_ROTACAO_MIN..MAX, padrão 1000). Devolve { tecla, ms } (tecla 0 =
+; sem pausa). Só vale se a tecla estiver entre a inicial e a penúltima do
+; combo — ver _RodarSequenciaCombo.
+_CfgPausaRotacao(rot, passo) {
+    chave := _ChaveSlotRotacao(rot, passo)
+    return { tecla: Max(0, _CfgInt("Rotacao", chave "pt", 0)),
+        ms: Max(PAUSA_ROTACAO_MIN, Min(PAUSA_ROTACAO_MAX, _CfgInt("Rotacao", chave "pm", 1000))) }
+}
+
+; Teclas em que dá para pausar o combo 'combo' (1/2, ver COMBOS_ROTACAO):
+; da inicial à penúltima (pausar depois da última não faz sentido). Array
+; de números; vazio se o combo não tem botões configurados.
+TeclasPausaCombo(combo) {
+    global COMBOS_ROTACAO
+    lista := []
+    if !(combo = 1 || combo = 2)
+        return lista
+    try {
+        ini := Integer(RegExReplace(CfgLer(COMBOS_ROTACAO[combo], "teclaInicial", ""), "\D", ""))
+        fim := Integer(RegExReplace(CfgLer(COMBOS_ROTACAO[combo], "teclaFinal", ""), "\D", ""))
+    } catch {
+        return lista
+    }
+    Loop Max(0, fim - ini)
+        lista.Push(ini + A_Index - 1)
+    return lista
 }
 
 ; Tecla Pokestop do jogo (global, em [Geral]) — editável tanto na tela de
