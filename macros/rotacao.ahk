@@ -130,9 +130,9 @@ ExecutarRotacao() {
             ShowHint("ROTAÇÃO: configure a tecla POKESTOP", 1800, "danger")
         else {
             ; Espera o jogo processar a troca antes do Pokestop: apertado
-            ; logo após o Ctrl+N o jogo ignorava. Rotacao/delayPokestop no
-            ; config.ini (ms) ajusta; sem tela própria.
-            Sleep(Integer(CfgLer("Rotacao", "delayPokestop", "400")))
+            ; logo após o Ctrl+N o jogo ignorava. Ajustável na tela da
+            ; Rotação (ESPERA ANTES DO POKESTOP).
+            Sleep(GetDelayPokestop())
             SendEvent("{" teclaStop "}")
         }
     }
@@ -189,7 +189,7 @@ _RotacaoRevive() {
 ; Elixir de ataque, chamado antes de um combo soltar as skills. Na vez do
 ; elixir, com a posição da Rotação parada no passo de ITEM (o pokémon de
 ; antes do ITEM está fora), envia a tecla Elixir e espera
-; Rotacao/delayElixir (ms, padrão 300, só no config.ini) para o jogo
+; Rotacao/delayElixir (ms, padrão 300, ver GetDelayElixir) para o jogo
 ; aplicar antes da 1ª skill. Uma vez por posição: um 2º combo no mesmo
 ; pokémon não repete. Devolve false se o combo foi interrompido na espera.
 RotacaoUsarElixir(gen) {
@@ -204,7 +204,7 @@ RotacaoUsarElixir(gen) {
     _rotacaoElixirUsado := true
     _HudRedraw()   ; tira o "E" do ícone da HUD
     SendEvent(_TeclaParaSend(tecla))   ; pode ter Ctrl/Alt/Shift (ex.: "^XButton2")
-    return EsperarInterrompivel(_CfgInt("Rotacao", "delayElixir", 300), gen)
+    return EsperarInterrompivel(GetDelayElixir(), gen)
 }
 
 ; Elixir esperando o próximo combo (a HUD mostra "E" no ícone).
@@ -275,6 +275,15 @@ RotacaoDefinirVez(elixir) {
     _rotacaoCiclo := elixir ? 1 : 2
     _rotacaoElixirUsado := false
     _HudRedraw()
+}
+
+; Algum passo que o macro envia tem Pokestop ligado? (mostra a espera
+; antes do Pokestop na tela da Rotação)
+RotacaoTemPokestop() {
+    for e in RotacaoSequencia()
+        if e.stop
+            return true
+    return false
 }
 
 ; A rotação 'rot' tem passo de ITEM?

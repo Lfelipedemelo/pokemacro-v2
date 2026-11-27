@@ -17,7 +17,16 @@ ExecutarCombo(tipo) {
     ; skills — ver RotacaoUsarElixir.
     gen := InterromperCombo()
     if RotacaoUsarElixir(gen)
-        _RodarSequenciaCombo(GetCfg(tipo), gen, 0, _CfgStunCombo(tipo))   ; stun da tela do combo
+        if !_RodarSequenciaCombo(GetCfg(tipo), gen, 0, _CfgStunCombo(tipo))   ; stun da tela do combo
+            AvisarBotoesCombo(tipo)
+}
+
+; Combo sem Botão Inicial/Final utilizável (vazio, sem número, ou o
+; inicial depois do final): sem o aviso, a tecla do combo simplesmente
+; não fazia nada.
+AvisarBotoesCombo(secao) {
+    global MACROS_INFO
+    ShowHint(MACROS_INFO[secao].label ": configure os botões INICIAL e FINAL", 1800, "danger")
 }
 
 ; ─── Interrupção de combo por "geração" ──────────────────
@@ -59,6 +68,10 @@ _RodarSequenciaCombo(cfg, gen, pausa := 0, stun := 0) {
     } catch {
         return false
     }
+    ; Inicial depois da final: o loop não soltaria nenhuma tecla — conta
+    ; como combo sem botões (quem chama avisa), sem soltar o Full Attack.
+    if (numFinal < numInicial)
+        return false
 
     if (cfg["usarFullAtk"] = "true" && cfg["fullAttack"] != "N/A") {
         SendEvent("{" cfg["fullAttack"] "}")

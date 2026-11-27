@@ -70,6 +70,7 @@ Se a posição do Revive não estiver definida, aparece o aviso *"COMBO REVIVE: 
 | Sintoma | Solução |
 |---------|---------|
 | Revive funciona mas o combo não sai | Aumente o **Delay Após Revive**; confira Botão Inicial/Final |
+| Aviso *"COMBO REVIVE: configure os botões INICIAL e FINAL"* | O Botão Inicial ou o Final não está definido, ou o inicial vem depois do final (ex.: `F8` → `F3`) |
 | O revive sai invertido | Calibre a [detecção do pokémon](03-revive.md#34-detecção-do-pokémon-ícone-do-dedo) na tela do Revive |
 | Nada acontece | Combo Revive ligado na HUD? Jogo em foco? Tecla do Macro definida? |
 

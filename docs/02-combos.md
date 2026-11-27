@@ -120,6 +120,8 @@ No jogo, quando o combo envia o botão do stun, a contagem aparece e vai descend
 | Sintoma | Solução |
 |---------|---------|
 | Nada acontece | O ícone está com anel azul? O jogo está em foco? Botão Inicial/Final e Tecla do Macro não estão `N/A`? |
+| Aviso *"COMBO PRINCIPAL: configure os botões INICIAL e FINAL"* (ou SECUNDÁRIO) | O **Botão Inicial** (1) ou o **Final** (2) não está definido, ou o inicial vem depois do final (ex.: `F8` → `F3`). Ao salvar um botão assim, a tela já avisa *"BOTÃO INICIAL (…) está depois do FINAL (…)"* |
+| Aviso *"BOTÃO INICIAL: use uma tecla com número"* | Os botões do combo precisam ser teclas com número (`F3` ou `3`) — só o número é usado. A tecla não foi salva |
 | Algumas habilidades não saem | Aumente o **Delay Entre Teclas** (o jogo pode estar recusando teclas muito rápidas) |
 | Sai a tecla errada (`3` em vez de `F3`) | Ajuste o **Prefixo [F]** nas Configurações Gerais |
 | O combo parou no meio | Algo o interrompeu: Revive, Pânico, macro desligado ou você trocou de janela |

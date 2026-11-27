@@ -3,14 +3,24 @@
 ; =====================================================
 
 ; Altura: 706 com 2 rotações (2x4); cada rotação a mais soma um cartão
-; (172) e um passo de ITEM soma as 2 linhas do elixir/revive (104).
+; (172), um passo de ITEM soma as 3 linhas do elixir/revive (156) e algum
+; passo com Pokestop soma a linha da espera antes do Pokestop (52).
 ; Fechar a tela fecha também a prévia da contagem.
 AbrirConfigRotacao() {
     _GCfg_Abrir(288, AlturaConfigRotacao(), _DesenharConfigRotacao, FecharPreviewContador)
 }
 
 AlturaConfigRotacao() {
-    return 706 + (GetFormatoRotacao().rotacoes - 2) * 172 + (RotacaoTemItem() ? 104 : 0)
+    return 706 + (GetFormatoRotacao().rotacoes - 2) * 172 + (RotacaoTemItem() ? 156 : 0)
+        + (RotacaoTemPokestop() ? 52 : 0)
+}
+
+; Depois de uma mudança que pode mostrar/esconder linhas (passo de ITEM,
+; Pokestop): se a altura mudou, reabre a tela fora do handler do clique
+; (ver _TrocarFormatoRotacao).
+_ReabrirRotacaoSeMudou(alturaAntes) {
+    if (AlturaConfigRotacao() != alturaAntes)
+        SetTimer(AbrirConfigRotacao, -1)
 }
 
 _DesenharConfigRotacao(g, w, h, hoverId) {
@@ -58,10 +68,12 @@ _DesenharConfigRotacao(g, w, h, hoverId) {
     ; O 1º pokémon de cada rotação normalmente é puxado à mão — por
     ; padrão o 1º passo de todas as rotações fica fora da sequência (ver
     ; RotacaoSequencia).
+    ; Pode mudar se algum passo com Pokestop é enviado (o 1º) — e com
+    ; isso a altura da tela.
     _GCfg_Toggle(g, boxes, "primeiro", col2, y, colW, "1º POKÉMON", "PULAR", "SOLTAR",
         !RotacaoEnviarPrimeiro(),
-        (*) => (SalvarCfg("Rotacao", "enviarPrimeiro", "false"), ReiniciarRotacao()),
-        (*) => (SalvarCfg("Rotacao", "enviarPrimeiro", "true"),  ReiniciarRotacao()), hoverId)
+        (*) => _DefinirEnviarPrimeiro("false"),
+        (*) => _DefinirEnviarPrimeiro("true"), hoverId)
     y += 44 + 8
 
     ; ── Um cartão por rotação (passos: Ctrl+1..6 ou vazio; embaixo de
@@ -119,6 +131,9 @@ _DesenharConfigRotacao(g, w, h, hoverId) {
             (*) => SalvarCfg("Rotacao", "elixirModo", "macro"),
             (*) => SalvarCfg("Rotacao", "elixirModo", "mao"), hoverId)
         y += 44 + 8
+        ; Tempo para o jogo aplicar o elixir antes da 1ª skill do combo.
+        y += _GCfg_Slider(g, boxes, "delayElixir", pad, y, w - pad*2, "ESPERA DEPOIS DO ELIXIR", GetDelayElixir(),
+            0, DELAY_ELIXIR_MAX, 10, "ms", (v) => SalvarCfg("Rotacao", "delayElixir", v), hoverId) + 8
         ; O revive usa tudo da tela do Revive (posição, hotkey, delay) —
         ; aqui só se o macro faz ou não. Muda quais passos a tecla da
         ; Rotação pula — o próximo da HUD pode mudar.
@@ -127,6 +142,12 @@ _DesenharConfigRotacao(g, w, h, hoverId) {
             (*) => (SalvarCfg("Rotacao", "reviveModo", "mao"), _HudRedraw()), hoverId)
         y += 44 + 8
     }
+
+    ; Só com algum passo com STOP: tempo entre a troca e a tecla Pokestop
+    ; (vem antes da espera do combo, como no jogo).
+    if RotacaoTemPokestop()
+        y += _GCfg_Slider(g, boxes, "delayStop", pad, y, w - pad*2, "ESPERA ANTES DO POKESTOP", GetDelayPokestop(),
+            0, DELAY_POKESTOP_MAX, 10, "ms", (v) => SalvarCfg("Rotacao", "delayPokestop", v), hoverId) + 8
 
     ; Só pesa nos passos com combo marcado: tempo para o pokémon sair da
     ; pokébola antes do 1º botão do combo.
@@ -212,7 +233,22 @@ _DesenharChipStopRotacao(g, boxes, rot, passo, x, y, w, ativo, hoverId) {
     ; Não mexe na ordem da sequência, então não reinicia a rotação.
     if (ativo)
         boxes.Push({ id: id, x: x, y: y, w: w, h: h,
-            onClick: (*) => SalvarCfg("Rotacao", _ChaveSlotRotacao(rot, passo) "s", stop ? "false" : "true") })
+            onClick: _AlternarStopRotacao.Bind(rot, passo, stop) })
+}
+
+; Liga/desliga o Pokestop do passo. O 1º STOP ligado (ou o último
+; desligado) mostra/esconde a espera antes do Pokestop — reabre a tela.
+_AlternarStopRotacao(rot, passo, stop, *) {
+    h := AlturaConfigRotacao()
+    SalvarCfg("Rotacao", _ChaveSlotRotacao(rot, passo) "s", stop ? "false" : "true")
+    _ReabrirRotacaoSeMudou(h)
+}
+
+_DefinirEnviarPrimeiro(valor) {
+    h := AlturaConfigRotacao()
+    SalvarCfg("Rotacao", "enviarPrimeiro", valor)
+    ReiniciarRotacao()
+    _ReabrirRotacaoSeMudou(h)
 }
 
 ; Chip da pausa no meio do combo pós-troca, sob o do Pokestop: "—" (sem
@@ -425,15 +461,14 @@ _EscolherSlotRotacao(rot, passo, ancora, *) {
 ; Grava o escolhido: 1..6, "item" (E/R) ou 0 (o último, vazio).
 ; Mexer na sequência reinicia a rotação, senão a posição atual apontaria
 ; para um passo diferente do que o jogador tinha em mente. Ganhar ou
-; perder o passo de ITEM muda a altura da tela — reabre (ver
-; _TrocarFormatoRotacao).
+; perder o passo de ITEM (ou um passo com STOP enviado) muda a altura da
+; tela — reabre (ver _ReabrirRotacaoSeMudou).
 _DefinirSlotRotacao(rot, passo, opcoes, idx) {
-    tinhaItem := RotacaoTemItem()
+    h := AlturaConfigRotacao()
     valor := (idx <= TECLA_POKEMON_MAX) ? idx : (opcoes[idx] = "E/R") ? "item" : 0
     SalvarCfg("Rotacao", _ChaveSlotRotacao(rot, passo), valor)
     ReiniciarRotacao()
-    if (RotacaoTemItem() != tinhaItem)
-        SetTimer(AbrirConfigRotacao, -1)
+    _ReabrirRotacaoSeMudou(h)
 }
 
 ; Troca o formato e reabre a tela: a altura depende do nº de rotações.

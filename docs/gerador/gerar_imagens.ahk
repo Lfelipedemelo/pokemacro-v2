@@ -251,7 +251,7 @@ RenderCfg("config-rotacao", 288, AlturaConfigRotacao(), _DesenharConfigRotacao,
     [[1, "hkmacro"], [2, "toggle"], [3, "reiniciar"], [4, "pokestop"], [5, "formato_a"], [6, "primeiro_a"],
      [7, 165, 207], [7, 165, 379], [8, 267, 271], [8, 267, 443], [9, 267, 295], [9, 267, 467],
      [10, 267, 319], [10, 267, 491], [11, 267, 343], [11, 267, 515],
-     [15, "delay"], [16, "contagemTam_a"], [17, "contagemPos"], [18, "showmini_a"]])
+     [16, "delayStop"], [17, "delay"], [18, "contagemTam_a"], [19, "contagemPos"], [20, "showmini_a"]])
 
 ; Painel da pausa aberto no 3º passo da 1ª rotação (Combo 1, F3..F8:
 ; pausa depois do F4 por 1500 ms), mouse sobre o F4.
@@ -273,7 +273,7 @@ RenderCfg("config-rotacao-combo", 288, AlturaConfigRotacao(), _DesenharConfigRot
     { botao: "c2p3", hover: "sel_2" })
 
 ; Formato 3x3 (2-3 | 4-5 | E/R-6: o 2º passo da 3ª rotação é o de ITEM,
-; o que mostra os campos 12-14 do elixir/revive): ao ligar, o próximo é o
+; o que mostra os campos 12-15 do elixir/revive; o STOP do t2p2 mostra o 16): ao ligar, o próximo é o
 ; Ctrl+2 da 1ª rotação, e o passo de ITEM mostra ELIXIR (1ª volta).
 SalvarCfg("Rotacao", "formato", "3x3")
 _rotacaoPos := 1, _rotacaoCiclo := 1
@@ -282,8 +282,8 @@ RenderCfg("config-rotacao-3x3", 288, AlturaConfigRotacao(), _DesenharConfigRotac
      [7, 165, 207], [7, 165, 379], [7, 165, 551], [8, 267, 271], [8, 267, 443], [8, 267, 615],
      [9, 267, 295], [9, 267, 467], [9, 267, 639], [10, 267, 319], [10, 267, 491], [10, 267, 663],
      [11, 267, 343], [11, 267, 515], [11, 267, 687],
-     [12, "elixir"], [13, "elixirModo_a"], [14, "reviveModo_a"],
-     [15, "delay"], [16, "contagemTam_a"], [17, "contagemPos"], [18, "showmini_a"]])
+     [12, "elixir"], [13, "elixirModo_a"], [14, "delayElixir"], [15, "reviveModo_a"],
+     [16, "delayStop"], [17, "delay"], [18, "contagemTam_a"], [19, "contagemPos"], [20, "showmini_a"]])
 
 ; "COMEÇAR AQUI" da 3ª rotação (tem o E/R): seletor ELIXIR/REVIVE aberto,
 ; mouse sobre o REVIVE.

@@ -44,5 +44,6 @@ ExecutarComboRevive() {
     if !macros["comboRevive"]   ; pode ter sido desligado durante o delay
         return
 
-    _RodarSequenciaCombo(cfg, gen)
+    if !_RodarSequenciaCombo(cfg, gen)
+        AvisarBotoesCombo("comboRevive")
 }

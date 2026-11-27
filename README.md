@@ -348,7 +348,7 @@ Funciona exatamente igual ao **Combo Principal**, mas é uma configuração sepa
 3. Ligar a Rotação sempre começa do início; a **Tecla Reiniciar** faz o mesmo no meio do jogo. Por padrão o macro **pula o 1º passo de todas as rotações** (você puxa esse pokémon à mão no começo de cada rotação): no 2 × 4 os apertos enviam `2-3-4 | 2-5-6`, no 3 × 3 `2-3 | 4-5 | 6`, e voltam para o `2`.
 4. Cada aperto **interrompe o combo em andamento**, para as skills restantes não saírem no pokémon que acabou de entrar.
 5. **Combo depois da troca (opcional, por passo):** cada passo pode soltar o **Combo 1** (config do Combo Principal) ou o **Combo 2** (config do Combo Secundário) logo depois do `Ctrl+N`, após a **Espera antes do combo**. Apertar a Tecla Macro de novo no meio do combo para ele e já faz a próxima troca. Cada passo também pode **pausar o combo** depois de uma tecla (ex.: `F2`) por 500 a 3000 ms, para você mover o pokémon — com a contagem do tempo na tela — e então soltar o resto.
-6. **Pokestop (opcional, por passo):** com o `STOP` ligado num passo, o macro aperta a **Tecla Pokestop** ~0,4 s depois do `Ctrl+N` (tempo do jogo processar a troca) — antes do combo pós-troca, se houver.
+6. **Pokestop (opcional, por passo):** com o `STOP` ligado num passo, o macro aperta a **Tecla Pokestop** depois do `Ctrl+N`, passada a **Espera antes do Pokestop** (padrão 0,4 s — tempo do jogo processar a troca) — antes do combo pós-troca, se houver.
 7. **Elixir / Revive (passo `E/R`, opcional):** um passo pode ser `E/R` em vez de um `Ctrl+N` — ex.: o 2º da 3ª rotação no 3 × 3, que fica `1 → E/R → 6`. Ele alterna a cada volta da sequência, sempre no pokémon de antes dele (o 1º): na 1ª volta (e 3ª, 5ª...) é o **Elixir de Ataque**, usado automaticamente quando você aperta a tecla do **Combo Principal/Secundário** nesse pokémon, antes das skills; na 2ª volta (e 4ª, 6ª...) é o **Revive**, feito pela Tecla Macro da Rotação (depois dele, o combo e o Pokestop do passo, se marcados). Cada um pode ser `MACRO` ou `MÃO` (o macro pula aquela volta).
 
 #### Opções de Configuração
@@ -368,7 +368,9 @@ Funciona exatamente igual ao **Combo Principal**, mas é uma configuração sepa
 | **Stun** | Última linha de cada cartão: `SEM STUN` ou, ex., `STUN F6` — quando o combo pós-troca daquele passo envia o `F6`, aparece a contagem de 6 s do stun (no combo da Rotação vale este chip, não a opção da tela do combo) |
 | **Contagem da pausa** / **Posição** | Tamanho da contagem da pausa (`NORMAL`, número grande, ou `COMPACTA`) e onde ela aparece: clique em **Posição** para abrir uma prévia e arrastá-la pela tela (botão direito = volta ao centro); clique de novo para fechar |
 | **Tecla Elixir** / **Elixir** | *(só com um passo `E/R`)* A hotkey do Elixir de Ataque no jogo (aceita Ctrl/Alt/Shift + tecla ou botão do mouse, ex.: `CTRL + XBUTTON2`), e se ele é usado pelo `MACRO` ou à `MÃO` |
+| **Espera depois do elixir** | *(só com um passo `E/R`)* Tempo (0–1500 ms, padrão 300) entre a Tecla Elixir e a 1ª skill do combo |
 | **Revive** | *(só com um passo `E/R`)* Se o revive é feito pelo `MACRO` (com a posição, hotkey e delay da tela do Revive) ou à `MÃO` |
+| **Espera antes do Pokestop** | *(só com algum passo em `STOP`)* Tempo (0–1500 ms, padrão 400) entre o `Ctrl+N` e a Tecla Pokestop — logo depois da troca, o jogo ignora |
 | **Espera antes do combo** | Tempo (0–2000 ms, padrão 500) entre a troca e o combo, para o pokémon já estar fora |
 
 ---

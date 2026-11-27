@@ -34,6 +34,8 @@ global SLEEP_COMBO_PADRAO := 450
 global DELAY_COMBO_ROTACAO_MAX := 2000   ; ms — faixa da espera entre a troca da Rotação e o combo
 global PAUSA_ROTACAO_MIN := 500    ; ms — faixa da pausa no meio do combo pós-troca da Rotação
 global PAUSA_ROTACAO_MAX := 3000
+global DELAY_POKESTOP_MAX := 1500   ; ms — faixa da espera entre a troca da Rotação e a tecla Pokestop
+global DELAY_ELIXIR_MAX   := 1500   ; ms — faixa da espera entre o elixir da Rotação e a 1ª skill
 global ROTACAO_ITEM :=TECLA_POKEMON_MAX + 1   ; "slot" do passo de ITEM da Rotação (elixir/revive) — ver _CfgSlotRotacao
 global COMBOS_ROTACAO := ["comboPrincipal", "comboSecundario"]   ; seção do INI do combo 1/2 que a Rotação solta
 
@@ -297,6 +299,18 @@ GetTeclaPokestop() {
 ; o pokémon precisa ter saído da pokébola antes das skills.
 GetDelayComboRotacao() {
     return Max(0, Min(DELAY_COMBO_ROTACAO_MAX, _CfgInt("Rotacao", "delayCombo", 500)))
+}
+
+; Espera (ms) entre o Ctrl+N da Rotação e a tecla Pokestop: apertada logo
+; depois da troca, o jogo a ignorava.
+GetDelayPokestop() {
+    return Max(0, Min(DELAY_POKESTOP_MAX, _CfgInt("Rotacao", "delayPokestop", 400)))
+}
+
+; Espera (ms) entre a tecla Elixir da Rotação e a 1ª skill do combo, para
+; o jogo aplicar o elixir antes.
+GetDelayElixir() {
+    return Max(0, Min(DELAY_ELIXIR_MAX, _CfgInt("Rotacao", "delayElixir", 300)))
 }
 
 ; Atalho para checar se um macro deve aparecer no mini menu.

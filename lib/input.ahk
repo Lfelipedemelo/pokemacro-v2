@@ -14,6 +14,13 @@ _BotaoProibido(tecla) {
 ; a valer depois de outra ação qualquer re-registrar as hotkeys.
 ; Devolve true se salvou.
 _SalvarTeclaCapturada(secao, chave, tecla, label) {
+    ; Botões do combo: só o número da tecla é usado (F3 → 3), então uma
+    ; tecla sem número (ex.: "q") deixaria o combo sem fazer nada.
+    ehBotaoCombo := (chave = "teclaInicial" || chave = "teclaFinal")
+    if (ehBotaoCombo && !(tecla ~= "\d")) {
+        ShowHint(label ": use uma tecla com número (ex.: F3 ou 3)", 2200, "danger")
+        return false
+    }
     ehHotkey := HotkeySlotExiste(secao, chave)
     if (ehHotkey) {
         conflito := ConflitoDeTecla(secao, chave, tecla)
@@ -27,8 +34,22 @@ _SalvarTeclaCapturada(secao, chave, tecla, label) {
         AtualizarHotkeyCombo()
         ResolverTeclaComum(secao, chave)
     }
+    ; Salva mesmo assim (o jogador pode estar trocando os dois), mas avisa
+    ; que, do jeito que ficou, o combo não sai.
+    if (ehBotaoCombo && _BotoesComboInvertidos(secao)) {
+        ShowHint("BOTÃO INICIAL (" StrUpper(CfgLer(secao, "teclaInicial", "")) ") está depois do FINAL ("
+            . StrUpper(CfgLer(secao, "teclaFinal", "")) ") — o combo não vai sair", 2600, "warn")
+        return true
+    }
     ShowHint(label ": " _ComboDisplay(tecla), 1300, "success")
     return true
+}
+
+; Os dois botões do combo estão definidos e o inicial vem depois do final?
+_BotoesComboInvertidos(secao) {
+    ini := RegExReplace(CfgLer(secao, "teclaInicial", ""), "\D", "")
+    fim := RegExReplace(CfgLer(secao, "teclaFinal", ""), "\D", "")
+    return ini != "" && fim != "" && Integer(ini) > Integer(fim)
 }
 
 ; Modificadores fisicamente pressionados, no formato de hotkey do AHK.
